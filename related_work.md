@@ -32,9 +32,17 @@
 
 ## 3. Evaluation & Benchmarking
 
+
+a. [Throughput](https://www.vellum.ai/llm-leaderboard)
+b. Cost
+c. Latency e.g. [TTFT](https://www.vellum.ai/llm-leaderboard)
+d. Robustness
+e. Scalability
+f. [CO2 emission](https://huggingface.co/docs/leaderboards/open_llm_leaderboard/emissions)
+
 [1] [Survey on Evaluation of LLM-based Agents](http://arxiv.org/abs/2503.16416)
 [2] Adaptive test case construction http://arxiv.org/abs/2503.13335, http://arxiv.org/abs/2407.08351
-[3]
+[3] [LLM Leaderboard](https://www.vellum.ai/llm-leaderboard)
 
 
 
