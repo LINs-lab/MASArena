@@ -43,7 +43,8 @@ f. [CO2 emission](https://huggingface.co/docs/leaderboards/open_llm_leaderboard/
 [1] [Survey on Evaluation of LLM-based Agents](http://arxiv.org/abs/2503.16416)
 [2] Adaptive test case construction http://arxiv.org/abs/2503.13335, http://arxiv.org/abs/2407.08351
 [3] [LLM Leaderboard](https://www.vellum.ai/llm-leaderboard)
-
-
+[4] [Find open source llm](https://easyllm.site/static/models.html)
+[5] [Qwen-Moe](https://qwenlm.github.io/blog/qwen-moe/)
+[6] [Joint MoE Scaling Laws: Mixture of Experts Can Be Memory Efficient](https://arxiv.org/pdf/2502.05172)
 
 # Discussion
