@@ -34,11 +34,38 @@
 
 
 a. [Throughput](https://www.vellum.ai/llm-leaderboard)
-b. Cost
+b. Memory and Computational Cost by Model Size [openllm leaderboard](https://huggingface.co/spaces/open-llm-leaderboard/open_llm_leaderboard#/)
 c. Latency e.g. [TTFT](https://www.vellum.ai/llm-leaderboard)
-d. Robustness
-e. Scalability
-f. [CO2 emission](https://huggingface.co/docs/leaderboards/open_llm_leaderboard/emissions)
+d. [CO2 emission](benchmark/data/leaderboard/llm_cost_CO2.json)
+
+
+e. **Robustness**: A system's ability to maintain performance despite errors, unexpected inputs, or perturbations
+ * Test distributed resilience by simulating agent failures
+ * Complexity of the task
+
+f. **Scalability**: The system's ability to handle increased loads efficiently
+ * SA: Perfmance with increasing number of resources (computation, memory, etc.)
+ * MAS: Performance with increasing number of agents
+
+
+
+**Standard performance metrics:**
+- Throughput: Define as tokens processed per second during full task completion
+- TTFT (Time to First Token): Measure in milliseconds from input submission to first output
+- Model Parameter Efficiency: Calculate as (task success score / activated parameters)
+- Resource Utilization: Measure as (success rate / total computation used)
+- Utility: unify the metrics of SA and MAS with different metrics
+
+**Experimental Controls**
+- How to control MAS?
+- Stanard Task solving 
+  - Complexity?
+- Robutness: Fault-Tolerance Tasks
+- Scalability: Large-scale tasks
+  - increase the number of agents
+  - increase the size of the model, quantization or existing provided models.
+- 
+
 
 [1] [Survey on Evaluation of LLM-based Agents](http://arxiv.org/abs/2503.16416)
 [2] Adaptive test case construction http://arxiv.org/abs/2503.13335, http://arxiv.org/abs/2407.08351
@@ -46,5 +73,8 @@ f. [CO2 emission](https://huggingface.co/docs/leaderboards/open_llm_leaderboard/
 [4] [Find open source llm](https://easyllm.site/static/models.html)
 [5] [Qwen-Moe](https://qwenlm.github.io/blog/qwen-moe/)
 [6] [Joint MoE Scaling Laws: Mixture of Experts Can Be Memory Efficient](https://arxiv.org/pdf/2502.05172)
+[7] [OpenLLM Leaderboard](https://huggingface.co/spaces/open-llm-leaderboard/open_llm_leaderboard#/)
 
 # Discussion
+- How to construct MAS?
+- How to define the unified metrics? 
