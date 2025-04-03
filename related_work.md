@@ -28,11 +28,27 @@
 - Diverse perspectives and knowledge sharing
 - Parallel processing capabilities
 
+
+| MAS | Features | Limitaiton | ...|
+| --- | --- | --- | --- |
+
+
+
 [1] [Why Do Multi-Agent LLM Systems Fail?](https://arxiv.org/abs/2503.13657)
 
 ## 3. Evaluation & Benchmarking
 
 
+
+### Summary of benchmarks and avaliable evaluation framework
+
+| Dataset | Task | ... |
+| --- | --- | --- |
+
+
+
+
+### Our proposed evaluation metrics
 a. [Throughput](https://www.vellum.ai/llm-leaderboard)
 b. Memory and Computational Cost by Model Size [openllm leaderboard](https://huggingface.co/spaces/open-llm-leaderboard/open_llm_leaderboard#/)
 c. Latency e.g. [TTFT](https://www.vellum.ai/llm-leaderboard)
