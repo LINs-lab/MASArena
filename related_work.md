@@ -29,9 +29,17 @@
 - Parallel processing capabilities
 
 
-| MAS | Features | Limitaiton | ...|
-| --- | --- | --- | --- |
-
+| MAS | Features | Flexible Agents | Workflow-based |  Limitaiton |
+| --- | --- | --- | --- | --- | 
+| [Mixture of Agents (ICLR 2025 Spotlight)](https://openreview.net/forum?id=h0ZfDIrj7T) | MOE-like | Yes | Yes | high latency & low throughput |
+| [ACC-Collab (ICLR 2025)](https://openreview.net/forum?id=nfKfAzkiez) | DPO | No | No | rely on training samples |
+| [EvoMAC (ICLR 2025)](https://arxiv.org/html/2410.16946v1) | textual backpropagation | Yes | Yes (adaptive MAC) | relies on objective environment feedback & code task |
+| [ADAS (ICLR 2025)](https://openreview.net/forum?id=t9U3LW7JVX) |Meta Agent Search  | Yes | No | ---|
+| [MetaGPT (ICLR 2024 oral)](https://openreview.net/forum?id=VtmBAGCN7o) | Code task | No | Yes | hard to config more agents |
+| [ChatEval (ICLR 2024)](https://openreview.net/forum?id=B1l83RkFvH) | debate framework | Yes | Yes | --- |
+| [AgentVerse [ICLR 2024]](https://openreview.net/forum?id=EHg5GDnyq1) | role-assign and evaluate | Yes | Yes | --- |
+| [Camel (NeurIPS 2023)](https://openreview.net/forum?id=B1l83RkFvH) | role play framework | Yes | Yes | hard to config more agents |
+<!-- | [IoA (ICLR 2025 Spotlight)](https://arxiv.org/abs/2407.07061) | System framework | -- | -- |  -- | -->
 
 
 [1] [Why Do Multi-Agent LLM Systems Fail?](https://arxiv.org/abs/2503.13657)
