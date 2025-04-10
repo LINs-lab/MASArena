@@ -1,4 +1,3 @@
-
 # Research Focus: Comparative Analysis about when MAS Outperforms Single Agents
 
 * `Key Method`: Evaluate the system **cost** and **performance** trade-off between single agent (SA) and MAS
@@ -28,6 +27,15 @@
 - Diverse perspectives and knowledge sharing
 - Parallel processing capabilities
 
+### Table of MASs used by [1]
+
+| MAS | Agentic Architecture | Purpose of the System |
+| --- | --- | --- |
+| MetaGPT  | Assembly Line | Simulating the SOPs of different roles in Software Companies to create open-ended software applications |
+| ChatDev | Hierarchical Workflow | Simulating different Software Engineering phases like (design, code, QA) through simulated roles in a software engineering company |
+| HyperAgent | Hierarchical Workflow | Simulating a software engineering team with a central Planner agent coordinating with specialized child agents (Navigator, Editor, and Executor) |
+| AppWorld | Star Topology | Tool-calling agents specialized to utility services (ex: GMail, Spotify, etc.) being orchestrated by a supervisor to achieve cross-service tasks |
+| AG2 | N/A - Agentic Framework | An open-source programming framework for building agents and managing their interactions. |
 
 | MAS | Features | Flexible Agents | Workflow-based |  Limitaiton |
 | --- | --- | --- | --- | --- | 
@@ -35,11 +43,12 @@
 | [ACC-Collab (ICLR 2025)](https://openreview.net/forum?id=nfKfAzkiez) | DPO | No | No | rely on training samples |
 | [EvoMAC (ICLR 2025)](https://arxiv.org/html/2410.16946v1) | textual backpropagation | Yes | Yes (adaptive MAC) | relies on objective environment feedback & code task |
 | [ADAS (ICLR 2025)](https://openreview.net/forum?id=t9U3LW7JVX) |Meta Agent Search  | Yes | No | ---|
-| [MetaGPT (ICLR 2024 oral)](https://openreview.net/forum?id=VtmBAGCN7o) | Code task | No | Yes | hard to config more agents |
-| [ChatEval (ICLR 2024)](https://openreview.net/forum?id=B1l83RkFvH) | debate framework | Yes | Yes | --- |
 | [AgentVerse [ICLR 2024]](https://openreview.net/forum?id=EHg5GDnyq1) | role-assign and evaluate | Yes | Yes | --- |
 | [Camel (NeurIPS 2023)](https://openreview.net/forum?id=B1l83RkFvH) | role play framework | Yes | Yes | hard to config more agents |
 <!-- | [IoA (ICLR 2025 Spotlight)](https://arxiv.org/abs/2407.07061) | System framework | -- | -- |  -- | -->
+
+
+
 
 
 [1] [Why Do Multi-Agent LLM Systems Fail?](https://arxiv.org/abs/2503.13657)
