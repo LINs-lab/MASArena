@@ -10,11 +10,19 @@ This project aims to develop a comprehensive benchmarking framework for multi-ag
 
 Our framework distinguishes between performance gains (dimensions 1-2) and operational costs (dimensions 3-4) to provide a balanced evaluation.
 
+## Important Resources
+
+1. Dataset selection: https://a1lhymw1g2r.feishu.cn/wiki/OXJbwKAntiZZqtkzNU7c4dqwn9f
+2. MAS benchmark: xxx 
+
 ## Current Status
 - [x] Core workflow implementation for benchmark integration and token consumption tracking
-- [ ] Agent system integration
-- [ ] Benchmark suite integration
-- [ ] Performance metrics calculation based on token details
+- [x] Agent system integration
+- [x] Performance metrics calculation based on token details
+- [x] Visualization of the metrics and agent interaction.
+- [ ] MCP tools integration
+- [ ] Benchmark suite integration (without MCP tools)
+- [ ] Benchmark suite integration (with MCP tools)
 - [ ] Runtime monitoring system for throughput, latency, and resource usage in deployment scenarios
 - [ ] Clear definition of agent workflow and MAS. 
 
@@ -26,16 +34,21 @@ Our framework distinguishes between performance gains (dimensions 1-2) and opera
 - Token consumption tracking mechanisms
 - Complete integration of 2 agent simple systems and 1 benchmark
 
-### Phase 2: Integration (April 10 - April 17, 2025)
-- **Milestone 1** (April 17, 2025): Complete integration of almost all agent systems and benchmarks
-- **Milestone 2** (April 17, 2025): Implement initial metrics calculation based on token details
+### Phase 2: Metrics Design (Completed)
+- Design the metrics for the benchmark, including throughput, latency, and resource cost.
+- Evaluation demo for the metrics.
+- Visualization of the metrics and agent interaction.
+  
+### Phase 3: Integration (April 30 - May 10, 2025)
+- **Milestone 1** (May 10, 2025): Complete integration of almost all agent systems and benchmarks
+- **Milestone 2** (May 10, 2025): MCP tools integration
+- 
+### Phase 4: Performance Measurement (May 10 - May 20, 2025)
+- **Milestone 3** (May 20, 2025): Develop runtime monitoring system
+- **Milestone 4** (May 20, 2025): Plan the experiment settings and run the experiments
 
-### Phase 3: Performance Measurement (April 17 - April 21, 2025)
-- **Milestone 3** (April 21, 2025): Develop runtime monitoring system
-- **Milestone 4** (April 21, 2025): Plan the experiment settings and run the experiments
-
-### Phase 4: Validation and Refinement (April 21 - April 25, 2025)
-- **Milestone 5** (April 25, 2025): Evaluation and analysis of the results
+### Phase 5: Validation and Refinement (May 20 - May 30, 2025)
+- **Milestone 5** (May 30, 2025): Evaluation and analysis of the results
 
 
 
@@ -44,6 +57,7 @@ Our framework distinguishes between performance gains (dimensions 1-2) and opera
 2. Check the current milestone tasks
 3. Checkout the branch `base-workflow-implementation`. 
 4. Run the workflow to test the basic functionality.
+
 
 
 ## Meeting notes
@@ -56,5 +70,7 @@ Our framework distinguishes between performance gains (dimensions 1-2) and opera
 4 | 2025.03.26 20:30 GMT+8 | [Notes](meeting-notes/Meeting-20250326.md) | [Summary](https://ocnfww8fyyv6.feishu.cn/docx/GQEYdxeYyo1x1vxukHhcgnlQnMg) |
 5 | 2025.04.02 20:30 GMT+8 | [Notes](meeting-notes/Meeting-20250402.md) | [Summary](https://ocnfww8fyyv6.feishu.cn/docx/RCHQd7tuxoDGHtxYXLBcC36Bnsh) |
 6 | 2025.04.16 20:30 GMT+8 | [Notes](meeting-notes/Meeting-20250416.md) | [Summary](https://ocnfww8fyyv6.feishu.cn/minutes/obcnwx8h58445o46hw12k4w2) |
+7 | 2025.04.30 20:30 GMT+8 | [Notes](meeting-notes/Meeting-20250430.md) | [Summary](https://ocnfww8fyyv6.feishu.cn/docx/TCUkdxhJGoxPenxKsm0cmKohnjh#doxcnGl4WhCU9SkojzO91IAcltc) |
+
 Feishu Page: [project_multi_agents_benchmark](https://ocnfww8fyyv6.feishu.cn/docx/PVXfdIcvYof6R8xKon4cCyQJncb)
 
