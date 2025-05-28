@@ -12,8 +12,10 @@ Our framework distinguishes between performance gains (dimensions 1-2) and opera
 
 ## Important Resources
 
-1. Dataset selection: https://a1lhymw1g2r.feishu.cn/wiki/OXJbwKAntiZZqtkzNU7c4dqwn9f
-2. MAS benchmark: xxx 
+1. Dataset selection: https://ocnfww8fyyv6.feishu.cn/sheets/QQ3As1dCyhzXnbtqIWfcZU1EnDh
+2. MAS benchmark: https://ocnfww8fyyv6.feishu.cn/sheets/Vtw2snMazhHRWStV3i5c7mYZn8d
+3. Task Management: https://ocnfww8fyyv6.feishu.cn/base/Ut81bCzLJa1YovsDNX7cfyybnde?table=tblySUDMSSo30bCA&view=vew2hRFW2F
+4. Model Table (Hypothesis): https://ocnfww8fyyv6.feishu.cn/sheets/DtE7s0HAHhJoDftFrINcUbsOnLe
 
 ## Current Status
 - [x] Core workflow implementation for benchmark integration and token consumption tracking
@@ -71,6 +73,7 @@ Our framework distinguishes between performance gains (dimensions 1-2) and opera
 5 | 2025.04.02 20:30 GMT+8 | [Notes](meeting-notes/Meeting-20250402.md) | [Summary](https://ocnfww8fyyv6.feishu.cn/docx/RCHQd7tuxoDGHtxYXLBcC36Bnsh) |
 6 | 2025.04.16 20:30 GMT+8 | [Notes](meeting-notes/Meeting-20250416.md) | [Summary](https://ocnfww8fyyv6.feishu.cn/minutes/obcnwx8h58445o46hw12k4w2) |
 7 | 2025.04.30 20:30 GMT+8 | [Notes](meeting-notes/Meeting-20250430.md) | [Summary](https://ocnfww8fyyv6.feishu.cn/docx/TCUkdxhJGoxPenxKsm0cmKohnjh#doxcnGl4WhCU9SkojzO91IAcltc) |
+8 | 2025.05.14 20:30 GMT+8 | [Notes](meeting-notes/Meeting-20250514.md) | [Summary](https://ocnfww8fyyv6.feishu.cn/minutes/obcng56h82y11ebj672wg1b2) |
 
 Feishu Page: [project_multi_agents_benchmark](https://ocnfww8fyyv6.feishu.cn/docx/PVXfdIcvYof6R8xKon4cCyQJncb)
 
