@@ -74,6 +74,6 @@ Our framework distinguishes between performance gains (dimensions 1-2) and opera
 6 | 2025.04.16 20:30 GMT+8 | [Notes](meeting-notes/Meeting-20250416.md) | [Summary](https://ocnfww8fyyv6.feishu.cn/minutes/obcnwx8h58445o46hw12k4w2) |
 7 | 2025.04.30 20:30 GMT+8 | [Notes](meeting-notes/Meeting-20250430.md) | [Summary](https://ocnfww8fyyv6.feishu.cn/docx/TCUkdxhJGoxPenxKsm0cmKohnjh#doxcnGl4WhCU9SkojzO91IAcltc) |
 8 | 2025.05.14 20:30 GMT+8 | [Notes](meeting-notes/Meeting-20250514.md) | [Summary](https://ocnfww8fyyv6.feishu.cn/minutes/obcng56h82y11ebj672wg1b2) |
-
+9 | 2025.05.28 20:30 GMT+8 | [Notes](meeting-notes/Meeting-20250528.md) | [Summary](https://ocnfww8fyyv6.feishu.cn/minutes/obcnqgdzxm136p2ja5u53794) |
 Feishu Page: [project_multi_agents_benchmark](https://ocnfww8fyyv6.feishu.cn/docx/PVXfdIcvYof6R8xKon4cCyQJncb)
 
