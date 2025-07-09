@@ -69,6 +69,50 @@ OPENAI_API_BASE=https://api.openai.com/v1
   * Single Agent: `single_agent`
   * Multi-Agent: `supervisor_mas`, `swarm`, `agentverse`, `chateval`, `evoagent`, `jarvis`, `metagpt`
 
+## 🧪 Testing
+
+MASArena includes a comprehensive test suite to ensure code reliability and facilitate development.
+
+### Running Tests
+
+```bash
+# Run all tests
+pytest
+
+# Run tests with coverage
+pytest --cov=mas_arena --cov-report=html
+
+# Run only unit tests
+pytest -m "unit"
+
+# Run only integration tests
+pytest -m "integration"
+
+# Run tests excluding slow tests
+pytest -m "not slow"
+
+# Run specific test file
+pytest tests/test_agents.py
+
+# Run with verbose output
+pytest -v
+```
+
+### Test Structure
+
+- `tests/test_agents.py` - Tests for agent systems
+- `tests/test_evaluators.py` - Tests for evaluation components
+- `tests/test_tools.py` - Tests for tool management
+- `tests/test_benchmark_runner.py` - Tests for benchmark execution
+- `tests/test_integration.py` - End-to-end integration tests
+- `tests/conftest.py` - Shared fixtures and configuration
+
+### Test Categories
+
+- **Unit Tests**: Fast, isolated tests for individual components
+- **Integration Tests**: Tests for component interactions
+- **Slow Tests**: Long-running tests (marked with `@pytest.mark.slow`)
+
 ## 📚 Documentation
 
 For comprehensive guides, tutorials, and API references, visit our complete [documentation](https://lins-lab.github.io/MASArena).
