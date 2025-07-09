@@ -119,3 +119,4 @@ uvicorn==0.34.3
 xmltodict==0.14.2
 yarl==1.18.3
 zstandard==0.23.0
+rich==13.7.1

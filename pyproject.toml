@@ -39,6 +39,7 @@ dependencies = [
     "langchain-core",
     "aliyun-python-sdk-core",
     "requests",
+    "rich>=13.7.1",
     "tika",
     "xmltodict",
     "aiofiles>=24.1.0",
