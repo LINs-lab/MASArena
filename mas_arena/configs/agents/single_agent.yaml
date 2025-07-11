@@ -1,0 +1,24 @@
+name: SingleAgentWorkflow
+description: A simple workflow that uses a single LLM call to answer a problem.
+
+nodes:
+  - id: llm_call
+    component: "SingleAgent"  # This will be mapped to the SingleAgent's run_agent logic
+    params:
+      model_name: "qwen-plus" # Default model, can be overridden
+      system_prompt: "You are a helpful assistant." # Default system prompt
+
+inputs:
+  - name: problem
+    type: Dict[str, Any]
+    maps_to:
+      - llm_call.problem
+
+outputs:
+  - name: final_answer
+    type: str
+    comes_from: llm_call.final_answer
+
+  - name: messages
+    type: list
+    comes_from: llm_call.messages 

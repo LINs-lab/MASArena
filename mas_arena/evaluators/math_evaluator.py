@@ -3,9 +3,9 @@ Math Evaluator
 
 This module provides a standalone evaluator for mathematical problems using Math-Verify.
 """
-
+import asyncio
 import time
-from typing import Dict, Any
+from typing import Dict, Any, Optional, List, Callable
 from pathlib import Path
 
 from langsmith.evaluation import RunEvaluator
@@ -14,6 +14,8 @@ from langsmith.schemas import Run
 from mas_arena.evaluators.base_evaluator import BaseEvaluator
 from mas_arena.evaluators.registry import register_benchmark
 from mas_arena.evaluators.utils.math_equal import calculate_score
+from mas_arena.evaluators.utils.normalization import normalize_problem_keys
+
 
 @register_benchmark(
     name="math",
@@ -48,7 +50,21 @@ class MathEvaluator(BaseEvaluator):
         
         # Initialize run evaluator for LangSmith compatibility
         self.run_evaluator = RunEvaluator()
-    
+        self._train_data: Optional[List[dict]] = None
+        self._dev_data: Optional[List[dict]] = None
+        self._test_data: Optional[List[dict]] = None
+
+    def _load_data(self):
+        self._test_data = self._load_dateset_from_path(f"data/{self.name}_test.jsonl")
+        import numpy as np
+        np.random.seed(42)
+        permutation = np.random.permutation(len(self._test_data))
+        full_test_data = self._test_data
+        #self._dev_data = [full_test_data[idx] for idx in permutation[:50]]
+        #self._test_data = [full_test_data[idx] for idx in permutation[50:150]]
+        self._dev_data = [full_test_data[idx] for idx in permutation[:20]]
+        self._test_data = [full_test_data[idx] for idx in permutation[20:60]]
+
     @classmethod
     def from_config(cls, name: str, config: Dict[str, Any] = None):
         return cls(name, config)
@@ -75,6 +91,8 @@ class MathEvaluator(BaseEvaluator):
             final_answer = last_msg.content
         elif isinstance(last_msg, dict) and "content" in last_msg:
             final_answer = last_msg["content"]
+        elif isinstance(last_msg, str):
+            final_answer = last_msg
         
         return final_answer
     
@@ -137,3 +155,14 @@ class MathEvaluator(BaseEvaluator):
             "score": score,
             "extracted_answer": extracted_answer
         }
+
+    async def async_evaluate(self, graph: Callable, label: Any, i: int = None) -> dict:
+        from mas_arena.evaluators import BENCHMARKS
+        benchmark_config = BENCHMARKS.get(self.name, {})
+        key_mapping = benchmark_config.get("normalization_keys", {})
+        normalized_problem = normalize_problem_keys(label, key_mapping, i)
+
+        output = await graph(normalized_problem["problem"])
+        run_result = {"messages": [{"content": output}]}
+        result = await asyncio.to_thread(self.evaluate, normalized_problem, run_result)
+        return {"solve_rate": result["score"]}

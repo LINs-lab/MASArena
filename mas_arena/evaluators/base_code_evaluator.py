@@ -37,6 +37,9 @@ class BaseCodeEvaluator(BaseEvaluator):
             format="%(asctime)s - %(levelname)s - %(message)s",
         )
         self.logger = logging.getLogger(__name__)
+        self.SUCCESS = 0
+        self.FAILURE = 1
+        self.TIMEOUT = 2
 
     def extract_code(self, text: str) -> str:
         """

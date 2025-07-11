@@ -89,3 +89,7 @@ class SingleAgent(AgentSystem):
 
 # Register the agent system
 AgentSystemRegistry.register("single_agent", SingleAgent)
+
+# Register the agent as a component for workflow usage
+from mas_arena.core.registry import COMPONENT_REGISTRY
+COMPONENT_REGISTRY.register("SingleAgent", SingleAgent)

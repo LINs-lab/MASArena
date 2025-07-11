@@ -1,0 +1,68 @@
+name: LLMDebateWorkflow
+description: A multi-agent system where agents engage in multi-round debates to solve problems.
+
+# Global parameters for the workflow
+params:
+  agents_num: 3
+  rounds_num: 2
+  model_name: "gpt-4o-mini"
+  base_system_prompt: "You are a helpful AI assistant."
+
+nodes:
+  - id: generate_initial_answers
+    component: "LLMCall" # A generic component for calling an LLM
+    # This node runs for each agent in parallel (map/fan-out)
+    map_over: "range(params.agents_num)"
+    params:
+      model: "{{params.model_name}}"
+      system_prompt: "{{params.base_system_prompt}}"
+      user_prompt_template: |
+        The problem is: {{graph_input.problem.problem}}
+        Please provide your initial answer. Make sure to state your answer at the end of the response.
+    inputs:
+      graph_input: "problem"
+
+  - id: debate_round
+    component: "Loop" # A control flow component for looping
+    params:
+      count: "{{params.rounds_num}}"
+    nodes: # Nodes inside the loop
+      - id: construct_debate_prompt
+        component: "ConstructDebatePrompt" # A custom python component
+        map_over: "range(params.agents_num)"
+        inputs:
+          problem: "graph_input.problem"
+          round_index: "debate_round.current_iteration"
+          all_agent_contexts: "generate_initial_answers.outputs" # Or from previous loop iteration
+          current_agent_index: "debate_round.current_item"
+
+      - id: generate_rebuttals
+        component: "LLMCall"
+        map_over: "range(params.agents_num)"
+        params:
+          model: "{{params.model_name}}"
+          system_prompt: "{{params.base_system_prompt}}"
+        inputs:
+          # The prompt comes from the previous node in the loop
+          prompt: "construct_debate_prompt.output_prompt"
+
+  - id: aggregate_answers
+    component: "AggregateAnswers" # Another custom python component
+    params:
+      model: "{{params.model_name}}"
+    inputs:
+      problem: "graph_input.problem"
+      # Collects the final answers from the last debate round
+      final_answers: "debate_round.last_iteration.generate_rebuttals.outputs"
+
+inputs:
+  - name: problem
+    type: Dict[str, Any]
+
+outputs:
+  - name: final_answer
+    type: str
+    comes_from: aggregate_answers.final_answer
+  - name: all_messages
+    type: list
+    comes_from: [generate_initial_answers.messages, debate_round.all_messages, aggregate_answers.message] 

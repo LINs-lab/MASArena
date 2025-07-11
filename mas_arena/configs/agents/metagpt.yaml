@@ -1,0 +1,77 @@
+name: MetaGPTWorkflow
+description: A multi-agent workflow that mimics a software development team to generate code.
+
+params:
+  max_iterations: 3
+  model_name: "gpt-4o-mini"
+
+nodes:
+  - id: product_manager
+    component: "MetaGPTAgentRunner"
+    params:
+      agent_role: "product_manager" # Used to fetch the correct system prompt
+      model: "{{params.model_name}}"
+    inputs:
+      problem: "graph_input.problem" # Takes the initial problem
+
+  - id: architect
+    component: "MetaGPTAgentRunner"
+    params:
+      agent_role: "architect"
+      model: "{{params.model_name}}"
+    inputs:
+      # Depends on the output of the product_manager
+      requirements: "product_manager.output"
+
+  - id: project_manager
+    component: "MetaGPTAgentRunner"
+    params:
+      agent_role: "project_manager"
+      model: "{{params.model_name}}"
+    inputs:
+      # Depends on both PM and Architect
+      requirements: "product_manager.output"
+      architecture: "architect.output"
+
+  - id: code_test_loop
+    component: "Loop"
+    params:
+      count: "{{params.max_iterations}}"
+    nodes:
+      - id: engineer
+        component: "MetaGPTAgentRunner"
+        params:
+          agent_role: "engineer"
+          model: "{{params.model_name}}"
+        inputs:
+          task_assignment: "project_manager.output"
+          # On subsequent iterations, it will get feedback from the QA engineer
+          feedback: "code_test_loop.previous_iteration.qa_engineer.feedback"
+
+      - id: qa_engineer
+        component: "MetaGPTAgentRunner"
+        params:
+          agent_role: "qa_engineer"
+          model: "{{params.model_name}}"
+        inputs:
+          requirements: "product_manager.output"
+          code: "engineer.code"
+    # The loop should break if the QA engineer finds no more bugs
+    break_condition: "{{qa_engineer.bugs_found}} == 0"
+
+inputs:
+  - name: problem
+    type: Dict[str, Any]
+
+outputs:
+  - name: final_code
+    type: str
+    # The final code comes from the last successful QA validation
+    comes_from: code_test_loop.last_iteration.qa_engineer.validated_code
+  - name: all_messages
+    type: list
+    comes_from:
+      - product_manager.messages
+      - architect.messages
+      - project_manager.messages
+      - code_test_loop.all_messages 

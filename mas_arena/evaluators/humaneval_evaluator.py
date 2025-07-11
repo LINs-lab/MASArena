@@ -1,15 +1,21 @@
 """
 HumanEval Evaluator
 """
-
+import asyncio
 import time
 import re
 import traceback
 from threading import Thread
-from typing import Dict, Any, Tuple
+from typing import Dict, Any, Tuple, Callable, List, Optional
+
+import numpy as np
 from langsmith.evaluation import RunEvaluator
 from langsmith.schemas import Run
+
+from mas_arena.core.callbacks import timeout, TimeoutException
+from mas_arena.core.lcb_utils import estimate_pass_at_k
 from mas_arena.evaluators.base_code_evaluator import BaseCodeEvaluator
+from mas_arena.evaluators.utils.normalization import normalize_problem_keys
 from mas_arena.evaluators.utils.sanitize import sanitize, code_extract
 from mas_arena.evaluators.registry import register_benchmark
 
@@ -181,8 +187,12 @@ class HumanEvalEvaluator(BaseCodeEvaluator):
         Main entry point – keeps the outer interface unchanged.
         Consumes one *problem* dict and the model *run_result*, returns a detailed evaluation dict.
         """
-        final_answer = run_result.get("final_answer", "")
-        extracted_answer = self.extract_code(final_answer)
+        if "solution" in run_result and run_result["solution"]:
+            final_answer = run_result["solution"]
+            extracted_answer = run_result["solution"]
+        else:
+            final_answer = run_result.get("final_answer", "")
+            extracted_answer = self.extract_code(final_answer)
 
         score, extracted_answer, message = self.calculate_score(
             problem["test"], extracted_answer, problem["entry_point"]
@@ -198,3 +208,48 @@ class HumanEvalEvaluator(BaseCodeEvaluator):
             "message": message,
             "run_evaluation": run_evaluation,
         }
+
+    async def async_evaluate(self, graph: Callable, example: Any, i: int = None) -> float:
+        # generate solution
+        prompt, entry_point = example["prompt"], example["entry_point"]
+        solution = await graph(prompt, entry_point)
+        from mas_arena.evaluators import BENCHMARKS
+        benchmark_config = BENCHMARKS.get(self.name, {})
+        key_mapping = benchmark_config.get("normalization_keys", {})
+        normalized_problem = normalize_problem_keys(example,key_mapping,i)
+        run_result = {"solution":solution}
+        metrics = await asyncio.to_thread(self.evaluate, run_result=run_result, problem=normalized_problem)
+        return metrics["score"]
+
+    def extract_test_cases_with_entry_point(self, entry_point: str):
+        """
+        Extract test cases with the given entry point.
+        """
+
+        hardcoded_cases = {
+            "find_zero": "",
+            "decode_cyclic": "",
+            "decode_shift": "",
+            "by_length": "",
+            "add": "",
+            "triangle_area": "",
+            "correct_bracketing": "",
+            "solve": "",
+            "sum_squares": "",
+            "starts_one_ends": "",
+        }
+        if entry_point in hardcoded_cases:
+            return hardcoded_cases[entry_point]
+
+        for case in self._test_cases:
+            if case["entry_point"] == entry_point:
+                return case["test"]
+
+        return None
+
+    def _load_data(self):
+
+        self._train_data = []
+        self._dev_data = self._load_dateset_from_path(f"data/{self.name}_validate.jsonl")
+        self._test_data = self._load_dateset_from_path(f"data/{self.name}_test.jsonl")
+        self._test_cases = self._load_dateset_from_path(f"data/{self.name}_public_test.jsonl")
