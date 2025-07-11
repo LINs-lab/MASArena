@@ -311,9 +311,9 @@ class CodeManager:
         if not code:
             return ""
         
-        # 确保代码以函数定义开始，如果不是则尝试找到函数定义
+        # Ensure code starts with function definition, if not try to find function definition
         if not code.strip().startswith('def '):
-            # 尝试找到第一个函数定义
+            # Try to find the first function definition
             lines = code.split('\n')
             start_idx = -1
             for i, line in enumerate(lines):
@@ -324,10 +324,10 @@ class CodeManager:
             if start_idx >= 0:
                 code = '\n'.join(lines[start_idx:])
             else:
-                # 如果没有找到函数定义，返回原代码
+                # If no function definition found, return original code
                 return code.strip()
         
-        # 修复三引号docstring问题
+        # Fix triple quote docstring issues
         lines = code.split('\n')
         cleaned_lines = []
         in_triple_quote = False
@@ -335,16 +335,16 @@ class CodeManager:
         quote_start_line = -1
         
         for i, line in enumerate(lines):
-            # 检测三引号的开始和结束
+            # Detect start and end of triple quotes
             if '"""' in line:
                 if not in_triple_quote:
-                    # 开始三引号字符串
+                    # Start triple quote string
                     in_triple_quote = True
                     quote_type = '"""'
                     quote_start_line = i
                     cleaned_lines.append(line)
                 else:
-                    # 结束三引号字符串
+                    # End triple quote string
                     if quote_type == '"""':
                         in_triple_quote = False
                         quote_type = None
@@ -353,13 +353,13 @@ class CodeManager:
                         cleaned_lines.append(line)
             elif "'''" in line:
                 if not in_triple_quote:
-                    # 开始三引号字符串
+                    # Start triple quote string
                     in_triple_quote = True
                     quote_type = "'''"
                     quote_start_line = i
                     cleaned_lines.append(line)
                 else:
-                    # 结束三引号字符串
+                    # End triple quote string
                     if quote_type == "'''":
                         in_triple_quote = False
                         quote_type = None
@@ -369,21 +369,21 @@ class CodeManager:
             else:
                 cleaned_lines.append(line)
         
-        # 如果docstring未正确关闭，添加关闭标记
+        # If docstring not properly closed, add closing marker
         if in_triple_quote and quote_type:
-            # 找到正确的缩进级别
+            # Find correct indentation level
             indent = ""
             if quote_start_line >= 0 and quote_start_line < len(cleaned_lines):
-                # 获取docstring开始行的缩进
+                # Get indentation from docstring start line
                 start_line = cleaned_lines[quote_start_line]
                 if '"""' in start_line or "'''" in start_line:
-                    # 如果docstring在同一行开始，使用相同缩进
+                    # If docstring starts on same line, use same indentation
                     indent = re.match(r'^(\s*)', start_line).group(1)
                 else:
-                    # 否则找到函数体的缩进
+                    # Otherwise find function body indentation
                     for line in cleaned_lines:
                         if line.strip().startswith('def '):
-                            # 找到下一个非空行的缩进
+                            # Find indentation of next non-empty line
                             func_idx = cleaned_lines.index(line)
                             for j in range(func_idx + 1, len(cleaned_lines)):
                                 next_line = cleaned_lines[j]
@@ -392,16 +392,16 @@ class CodeManager:
                                     break
                             break
             
-            # 添加关闭的三引号
+            # Add closing triple quotes
             cleaned_lines.append(f'{indent}{quote_type}')
             print(f"[DEBUG] Added missing closing quote: {quote_type}")
         
         cleaned_code = '\n'.join(cleaned_lines)
         
-        # 检查是否需要添加必要的导入语句
+        # Check if missing imports need to be added
         cleaned_code = self._add_missing_imports(cleaned_code)
         
-        # 移除多余的空行
+        # Remove extra blank lines
         cleaned_code = re.sub(r'\n{3,}', '\n\n', cleaned_code)
         
         return cleaned_code.strip()
@@ -422,25 +422,25 @@ class CodeManager:
         lines = code.split('\n')
         imports_to_add = []
         
-        # 检查是否使用了typing相关的类型提示
+        # Check if typing related type hints are used
         if any(re.search(r'\b(List|Dict|Tuple|Optional|Union|Any)\[', line) or re.search(r'\bAny\b', line) for line in lines):
             if not any('from typing import' in line or 'import typing' in line for line in lines):
-                # 确定需要导入的类型
+                # Determine which types are needed
                 needed_types = set()
                 for line in lines:
                     for type_hint in ['List', 'Dict', 'Tuple', 'Optional', 'Union']:
                         if re.search(rf'\b{type_hint}\[', line):
                             needed_types.add(type_hint)
-                    # 单独检查Any，因为它可能不带方括号
+                    # Check Any separately, as it might not have brackets
                     if re.search(r'\bAny\b', line):
                         needed_types.add('Any')
                 
                 if needed_types:
                     imports_to_add.append(f"from typing import {', '.join(sorted(needed_types))}")
         
-        # 如果需要添加导入，将它们插入到函数定义之前
+        # If imports need to be added, insert them before function definitions
         if imports_to_add:
-            # 找到第一个函数定义的位置
+            # Find the position of the first function definition
             func_start_idx = -1
             for i, line in enumerate(lines):
                 if line.strip().startswith('def '):
@@ -448,14 +448,14 @@ class CodeManager:
                     break
             
             if func_start_idx >= 0:
-                # 在函数定义前插入导入语句
+                # Insert import statements before the function definition
                 new_lines = (lines[:func_start_idx] + 
                            imports_to_add + 
-                           [''] +  # 空行分隔
+                           [''] +  # Blank line to separate
                            lines[func_start_idx:])
                 return '\n'.join(new_lines)
             else:
-                # 如果没有找到函数定义，在开头添加导入
+                # If no function definition found, add imports at the beginning
                 return '\n'.join(imports_to_add + [''] + lines)
         
         return code
@@ -567,16 +567,16 @@ class WorkflowOrganizer:
         Args:
             response: LLM response text
         """
-        # 首先尝试标准的COMPOSITION格式
+        # First try standard COMPOSITION format
         composition_match = re.search(
             r'COMPOSITION[:\s]*\n?\s*(.*?)(?=WORKFLOW:|$)', 
             response, 
             re.DOTALL | re.IGNORECASE
         )
         
-        # 如果标准格式失败，尝试其他格式
+        # If standard format fails, try other formats
         if not composition_match:
-            # 尝试查找<answer>标签内的COMPOSITION
+            # Try to find COMPOSITION inside <answer> tags
             answer_match = re.search(r'<answer>(.*?)</answer>', response, re.DOTALL | re.IGNORECASE)
             if answer_match:
                 answer_content = answer_match.group(1)
@@ -586,12 +586,12 @@ class WorkflowOrganizer:
                     re.DOTALL | re.IGNORECASE
                 )
         
-        # 如果还是没有找到，检查是否是纯文本响应需要创建单个任务
+        # If still not found, check if response is pure text that needs single task
         if not composition_match:
-            # 检查响应是否看起来像一个实现或解释
+            # Check if response looks like an implementation or explanation
             if ('implement' in response.lower() or 'function' in response.lower() or 
                 'test' in response.lower() or 'case' in response.lower()):
-                # 创建单个任务
+                # Create single task
                 self.composition = {"Task_1": "Complete the implementation based on requirements"}
                 return
         
@@ -599,7 +599,7 @@ class WorkflowOrganizer:
             comp_text = composition_match.group(1).strip()
             self.composition = {}
             
-            # 移除可能的markdown代码块标记
+            # Remove possible markdown code block markers
             comp_text = re.sub(r'^```.*?\n', '', comp_text, flags=re.MULTILINE)
             comp_text = re.sub(r'\n```$', '', comp_text)
             
@@ -608,28 +608,28 @@ class WorkflowOrganizer:
                 if not line:
                     continue
                     
-                # 支持多种格式：
-                # 1. "- Task_1: description" (原格式)
-                # 2. "Task 1: description" (CTO prompt格式)
-                # 3. "Programmer 1: description" (updater格式)
+                # Support multiple formats:
+                # 1. "- Task_1: description" (original format)
+                # 2. "Task 1: description" (CTO prompt format)
+                # 3. "Programmer 1: description" (updater format)
                 task_match = None
                 
                 if line.startswith('- '):
-                    # 原格式: "- Task_1: description"
+                    # Original format: "- Task_1: description"
                     task_match = re.match(r'- (Task_?\d+): (.+)', line)
                 elif ':' in line and not line.endswith(':'):
-                    # 新格式: "Task 1: description" 或 "Programmer 1: description"
-                    # 但确保不是单独的"COMPOSITION:"这样的标题行
+                    # New format: "Task 1: description" or "Programmer 1: description"
+                    # But ensure it's not just a header line like "COMPOSITION:"
                     task_match = re.match(r'((?:Task|Programmer)\s*\d+):\s*(.+)', line)
                     
                 if task_match:
-                    task_name = task_match.group(1).replace(' ', '_')  # 统一格式：Task_1
+                    task_name = task_match.group(1).replace(' ', '_')  # Unified format: Task_1
                     task_desc = task_match.group(2).strip()
-                    # 过滤掉无效的任务描述
+                    # Filter out invalid task descriptions
                     if task_desc and task_desc != '[]' and len(task_desc) > 2:
                         self.composition[task_name] = task_desc
         
-        # 如果没有解析到有效的composition，输出调试信息
+        # If no valid composition parsed, output debug info
         if not self.composition:
             print(f"[DEBUG] Failed to parse composition. Response preview: {response[:300]}...")
     
@@ -640,20 +640,20 @@ class WorkflowOrganizer:
         Args:
             response: LLM response text
         """
-        # 首先尝试标准的WORKFLOW格式
+        # First try standard WORKFLOW format
         workflow_match = re.search(r'WORKFLOW[:\s]*\n?\s*(.*)', response, re.DOTALL | re.IGNORECASE)
         
-        # 如果标准格式失败，尝试其他格式
+        # If standard format fails, try other formats
         if not workflow_match:
-            # 尝试查找<answer>标签内的WORKFLOW
+            # Try to find WORKFLOW inside <answer> tags
             answer_match = re.search(r'<answer>(.*?)</answer>', response, re.DOTALL | re.IGNORECASE)
             if answer_match:
                 answer_content = answer_match.group(1)
                 workflow_match = re.search(r'WORKFLOW[:\s]*\n?\s*(.*)', answer_content, re.DOTALL | re.IGNORECASE)
         
-        # 如果还是没有找到，为composition中的任务创建简单的workflow
+        # If still not found, create simple workflow for existing composition tasks
         if not workflow_match and self.composition:
-            # 为现有的composition创建简单的线性workflow
+            # Create simple linear workflow for existing composition
             self.workflow = {}
             task_names = list(self.composition.keys())
             for i, task_name in enumerate(task_names):
@@ -667,7 +667,7 @@ class WorkflowOrganizer:
             workflow_text = workflow_match.group(1).strip()
             self.workflow = {}
             
-            # 移除可能的markdown代码块标记
+            # Remove possible markdown code block markers
             workflow_text = re.sub(r'^```.*?\n', '', workflow_text, flags=re.MULTILINE)
             workflow_text = re.sub(r'\n```$', '', workflow_text)
             
@@ -678,12 +678,12 @@ class WorkflowOrganizer:
                     
                 if ':' in line:
                     task, deps_str = line.split(':', 1)
-                    task = task.strip().replace(' ', '_')  # 统一格式：Task_1
+                    task = task.strip().replace(' ', '_')  # Unified format: Task_1
                     deps_str = deps_str.strip()
                     
                     # Parse dependencies from [dep1, dep2] format
                     dependencies = self._parse_dependencies(deps_str)
-                    # 同样统一依赖项的格式
+                    # Also unify dependency formats
                     dependencies = [dep.replace(' ', '_') for dep in dependencies]
                     self.workflow[task] = dependencies
     
@@ -701,7 +701,7 @@ class WorkflowOrganizer:
             deps_content = deps_str[1:-1].strip()
             if deps_content:
                 deps = [dep.strip() for dep in deps_content.split(',')]
-                # 统一格式化依赖项名称 (Task 1 -> Task_1)
+                # Normalize dependency names (Task 1 -> Task_1)
                 normalized_deps = []
                 for dep in deps:
                     if re.match(r'Task\s+\d+', dep):
