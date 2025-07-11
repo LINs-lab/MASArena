@@ -43,3 +43,4 @@ nav:
   - Extending: extending.md
   - Tool Integration: tools/tool_integration.md
   - Supported: supported.md
+  - Failure Attribution: failure_attribution.md

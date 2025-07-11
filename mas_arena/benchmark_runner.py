@@ -339,15 +339,16 @@ class BenchmarkRunner:
             print("-" * 80)
             print(f"python {failure_inference_script} \\")
             print(f"    --method binary_search \\")
-            print(f"    --model gpt-4o \\")
+            print(f"    --model gpt-4.1 \\")
             print(f"    --directory_path {failed_responses_dir} \\")
             print(f"    --output_dir {failure_output_dir}")
             # print("-" * 80)
             rprint("\n[bold]Alternative analysis methods:[/bold]")
             print(f"# For comprehensive analysis:")
-            print(f"python {failure_inference_script} --method binary_search --model gpt-4o --directory_path {failed_responses_dir} --output_dir {failure_output_dir}")
+            print(f"python {failure_inference_script} --method binary_search --model gpt-4.1 --directory_path {failed_responses_dir} --output_dir {failure_output_dir}")
             print(f"\n# For step-by-step analysis:")
-            print(f"python {failure_inference_script} --method step_by_step --model gpt-4o --directory_path {failed_responses_dir} --output_dir {failure_output_dir}")
+            print(f"python {failure_inference_script} --method step_by_step --model gpt-4.1 --directory_path {failed_responses_dir} --output_dir {failure_output_dir}")
+
             print("=" * 80)
 
     def run(self, benchmark_name="math", data_path=None, limit=None, agent_system="single_agent", agent_config=None, verbose=True):

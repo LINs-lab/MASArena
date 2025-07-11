@@ -1,12 +1,13 @@
+# This code is adapted from the Agents_Failure_Attribution project
+# Original repository: https://github.com/microsoft/autogen/tree/main/notebook/agentchat_contrib
+# We acknowledge the original authors and contributors for their work
+
 import argparse
 import contextlib
 import sys
 import os
 import datetime
 from dotenv import load_dotenv
-from tqdm import tqdm
-import torch
-from transformers import pipeline, AutoModelForCausalLM, AutoTokenizer
 from openai import AzureOpenAI, OpenAI
 
 from lib.utils import (
@@ -17,25 +18,9 @@ from lib.utils import (
     generate_timestamped_filename
 )
 
-from lib.local_model import (
-    analyze_all_at_once_local,
-    analyze_step_by_step_local,
-    analyze_binary_search_local
-)
 
-
-KNOWN_GPT_MODELS = {"gpt-4o", "gpt-4", "gpt-4o-mini"}
-LOCAL_LLAMA_ALIASES = {"llama-8b", "llama-70b"}
-LOCAL_QWEN_ALIASES = {"qwen-7b", "qwen-72b"}
-LOCAL_MODEL_ALIASES = LOCAL_LLAMA_ALIASES | LOCAL_QWEN_ALIASES
-ALL_MODELS = list(KNOWN_GPT_MODELS | LOCAL_MODEL_ALIASES)
-
-LOCAL_MODEL_MAP = {
-    "llama-8b": "meta-llama/Llama-3.1-8B-Instruct",
-    "llama-70b": "meta-llama/Llama-3.1-70B-Instruct",
-    "qwen-7b": "Qwen/Qwen2.5-7B-Instruct",
-    "qwen-72b": "Qwen/Qwen2.5-72B-Instruct",
-}
+KNOWN_GPT_MODELS = {"gpt-4o", "gpt-4", "gpt-4o-mini", "gpt-4.1"}
+ALL_MODELS = list(KNOWN_GPT_MODELS)
 
 def main():
     load_dotenv()
@@ -54,7 +39,7 @@ def main():
         type=str,
         required=True,
         choices=ALL_MODELS,
-        help=f"Model identifier. Choose from: {', '.join(ALL_MODELS)}"
+        help=f"GPT model identifier. Choose from: {', '.join(ALL_MODELS)}"
     )
     parser.add_argument(
         "--directory_path",
@@ -83,16 +68,11 @@ def main():
     )
     parser.add_argument(
         "--api_version", type=str, default="2024-08-01-preview",
-        help="Azure OpenAI API Version. Used only for GPT models."
+        help="Azure OpenAI API Version."
     )
     parser.add_argument(
         "--max_tokens", type=int, default=1024,
-        help="Maximum number of tokens for GPT API response. Used only for GPT models."
-    )
-
-    parser.add_argument(
-        "--device", type=str, default="cuda:0" if torch.cuda.is_available() else "cpu",
-        help="Device for local model inference (e.g., 'cuda', 'cuda:0', 'cpu'). Default: 'cuda' if available, else 'cpu'."
+        help="Maximum number of tokens for GPT API response."
     )
 
     args = parser.parse_args()
@@ -105,87 +85,36 @@ def main():
     if not args.openai_base_url:
         args.openai_base_url = os.getenv('OPENAI_API_BASE', '')
 
-    client_or_model_obj = None
-    model_type = None  # gpt, llama, qwen
-    model_family = None 
-    model_id_or_deployment = args.model
+    if args.model not in KNOWN_GPT_MODELS:
+        print(f"Error: Invalid model '{args.model}' specified. Only GPT models are supported.")
+        sys.exit(1)
 
-    if args.model in KNOWN_GPT_MODELS:
-        model_type = 'gpt'
-        model_family = 'gpt'
-        print(f"Selected GPT model: {args.model}")
-       
-        if not args.api_key:
-            print("Error: --api_key or OPENAI_API_KEY/AZURE_OPENAI_API_KEY environment variable is required for GPT models")
-            sys.exit(1)
-        
-        try:
-            if args.azure_endpoint:
-                # Use Azure OpenAI
-                client_or_model_obj = AzureOpenAI(
-                    api_key=args.api_key,
-                    api_version=args.api_version,
-                    azure_endpoint=args.azure_endpoint,
-                )
-                print(f"Successfully initialized AzureOpenAI client for endpoint: {args.azure_endpoint}")
-            else:
-                # Use standard OpenAI API
-                openai_kwargs = {"api_key": args.api_key}
-                if args.openai_base_url:
-                    openai_kwargs["base_url"] = args.openai_base_url
-                    print(f"Using custom OpenAI base URL: {args.openai_base_url}")
-                
-                client_or_model_obj = OpenAI(**openai_kwargs)
-                print(f"Successfully initialized OpenAI client")
-        except Exception as e:
-            print(f"Error initializing OpenAI client: {e}")
-            sys.exit(1)
-
-    elif args.model in LOCAL_MODEL_ALIASES:
-        model_type = 'local'
-        model_id_or_deployment = LOCAL_MODEL_MAP[args.model]
-
-        if args.model in LOCAL_LLAMA_ALIASES:
-            model_family = 'llama'
-            print(f"Selected local Llama model: {args.model} ({model_id_or_deployment}) on device {args.device}")
-            if not pipeline:
-                 print("Error: transformers library not found or pipeline could not be imported.")
-                 sys.exit(1)
-            try:
-                 print(f"Initializing Llama pipeline for {model_id_or_deployment}...")
-                 client_or_model_obj = pipeline(
-                     "text-generation",
-                     model=model_id_or_deployment,
-                     model_kwargs={"torch_dtype": torch.bfloat16},
-                     device=args.device,
-                 )
-                 print(f"Successfully initialized Llama pipeline on {args.device}.")
-            except Exception as e:
-                print(f"Error initializing Llama pipeline for {model_id_or_deployment}: {e}")
-                sys.exit(1)
-
-        elif args.model in LOCAL_QWEN_ALIASES:
-            model_family = 'qwen'
-            print(f"Selected local Qwen model: {args.model} ({model_id_or_deployment}) on device {args.device}")
-            if not AutoModelForCausalLM or not AutoTokenizer:
-                 print("Error: transformers library not found or specific classes could not be imported.")
-                 sys.exit(1)
-            try:
-                 print(f"Initializing Qwen model and tokenizer for {model_id_or_deployment}...")
-                 qwen_model = AutoModelForCausalLM.from_pretrained(
-                    model_id_or_deployment,
-                    torch_dtype="auto",
-                    device_map=args.device
-                 )
-                 qwen_tokenizer = AutoTokenizer.from_pretrained(model_id_or_deployment)
-                 client_or_model_obj = (qwen_model, qwen_tokenizer)
-                 print(f"Successfully initialized Qwen model and tokenizer on {args.device}.")
-            except Exception as e:
-                print(f"Error initializing Qwen model/tokenizer for {model_id_or_deployment}: {e}")
-                print("Make sure you have sufficient VRAM/RAM and necessary libraries (transformers, torch, accelerate).")
-                sys.exit(1)
-    else:
-        print(f"Error: Invalid model '{args.model}' specified.")
+    print(f"Selected GPT model: {args.model}")
+   
+    if not args.api_key:
+        print("Error: --api_key or OPENAI_API_KEY/AZURE_OPENAI_API_KEY environment variable is required")
+        sys.exit(1)
+    
+    try:
+        if args.azure_endpoint:
+            # Use Azure OpenAI
+            client = AzureOpenAI(
+                api_key=args.api_key,
+                api_version=args.api_version,
+                azure_endpoint=args.azure_endpoint,
+            )
+            print(f"Successfully initialized AzureOpenAI client for endpoint: {args.azure_endpoint}")
+        else:
+            # Use standard OpenAI API
+            openai_kwargs = {"api_key": args.api_key}
+            if args.openai_base_url:
+                openai_kwargs["base_url"] = args.openai_base_url
+                print(f"Using custom OpenAI base URL: {args.openai_base_url}")
+            
+            client = OpenAI(**openai_kwargs)
+            print(f"Successfully initialized OpenAI client")
+    except Exception as e:
+        print(f"Error initializing OpenAI client: {e}")
         sys.exit(1)
 
     output_dir = args.output_dir
@@ -200,7 +129,7 @@ def main():
     json_filepath = os.path.join(output_dir, json_filename)
 
     print(f"Analysis method: {args.method}")
-    print(f"Model Alias: {args.model} (Family: {model_family})")
+    print(f"Model: {args.model}")
     print(f"TXT output will be saved to: {txt_filepath}")
     print(f"JSON output will be saved to: {json_filepath}")
 
@@ -208,55 +137,31 @@ def main():
         with open(txt_filepath, 'w', encoding='utf-8') as output_file, contextlib.redirect_stdout(output_file):
             print(f"--- Starting Analysis: {args.method} ---")
             print(f"Timestamp: {datetime.datetime.now()}")
-            print(f"Model Family: {model_family}")
-            print(f"Model Used: {model_id_or_deployment}")
+            print(f"Model Used: {args.model}")
             print(f"Input Directory: {args.directory_path}")
             print("-" * 20)
 
-            if model_type == 'gpt':
-                if args.method == "all_at_once":
-                    gpt_all_at_once(
-                        client=client_or_model_obj,
-                        directory_path=args.directory_path,
-                        model=args.model,
-                        max_tokens=args.max_tokens
-                    )
-                elif args.method == "step_by_step":
-                    gpt_step_by_step(
-                        client=client_or_model_obj,
-                        directory_path=args.directory_path,
-                        model=args.model,
-                        max_tokens=args.max_tokens
-                    )
-                elif args.method == "binary_search":
-                    gpt_binary_search(
-                        client=client_or_model_obj,
-                        directory_path=args.directory_path,
-                        model=args.model,
-                        max_tokens=args.max_tokens
-                    )
-            elif model_type == 'local':
-                if args.method == "all_at_once":
-                    analyze_all_at_once_local(
-                        model_obj=client_or_model_obj,
-                        directory_path=args.directory_path,
-                        model_family=model_family
-                    )
-                elif args.method == "step_by_step":
-                    analyze_step_by_step_local(
-                        model_obj=client_or_model_obj,
-                        directory_path=args.directory_path,
-                        model_family=model_family
-                    )
-                elif args.method == "binary_search":
-                    analyze_binary_search_local(
-                        model_obj=client_or_model_obj,
-                        directory_path=args.directory_path,
-                        model_family=model_family
-                    )
-
-            else:
-                 print(f"Internal Error: Unknown model_type '{model_type}' during function call.")
+            if args.method == "all_at_once":
+                gpt_all_at_once(
+                    client=client,
+                    directory_path=args.directory_path,
+                    model=args.model,
+                    max_tokens=args.max_tokens
+                )
+            elif args.method == "step_by_step":
+                gpt_step_by_step(
+                    client=client,
+                    directory_path=args.directory_path,
+                    model=args.model,
+                    max_tokens=args.max_tokens
+                )
+            elif args.method == "binary_search":
+                gpt_binary_search(
+                    client=client,
+                    directory_path=args.directory_path,
+                    model=args.model,
+                    max_tokens=args.max_tokens
+                )
 
             print("-" * 20)
             print(f"--- Analysis Complete ---")
