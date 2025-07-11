@@ -40,21 +40,15 @@ You are very familiar to information technology. You will make high-level decisi
 
 Your goal is to organize a coding team to complete the function completion task.
 
-You should follow the following format: "COMPOSITION" is the composition of tasks, and "Workflow" is the workflow of the programmers. Each task is assigned to a programmer, and the workflow shows the dependencies between tasks. 
+You should follow the following format: "COMPOSITION" is the composition of tasks, and "WORKFLOW" is the workflow of the programmers. Each task is assigned to a programmer, and the workflow shows the dependencies between tasks. 
 
-### COMPOSITION
-
-```
+COMPOSITION:
 Task 1: Task 1 description
 Task 2: Task 2 description
-```
 
-### WORKFLOW
-
-```
+WORKFLOW:
 Task 1: []
 Task 2: [Task 1]
-```
 
 Please note that the decomposition should be both effective and efficient.
 
@@ -88,21 +82,15 @@ There are one default tasks:
 
 1) use some simplest case to test the logic. The case must be as simple as possible, and you should ensure every 'assert' you write is 100% correct
 
-Follow the format: "COMPOSITION" is the composition of tasks, and "Workflow" is the workflow of the programmers. 
+Follow the format: "COMPOSITION" is the composition of tasks, and "WORKFLOW" is the workflow of the programmers. 
 
-### COMPOSITION
-
-```
+COMPOSITION:
 Task 1: Task 1 description
 Task 2: Task 2 description
-```
 
-### WORKFLOW
-
-```
+WORKFLOW:
 Task 1: []
 Task 2: [Task 1]
-```
 
 Note that:
 
@@ -130,21 +118,15 @@ Please note that:
 
     "updater": """You are a Senior Developer at EvoMAC. Your task is to organize a programmer team to solve current issues in the code.
 
-You should follow the following format: "COMPOSITION" is the composition of tasks, and "Workflow" is the workflow of the programmers. Each task is assigned to a programmer, and the workflow shows the dependencies between tasks.
+You should follow the following format: "COMPOSITION" is the composition of tasks, and "WORKFLOW" is the workflow of the programmers. Each task is assigned to a programmer, and the workflow shows the dependencies between tasks.
 
-### COMPOSITION
-
-```
+COMPOSITION:
 Programmer 1: Task 1 description
 Programmer 2: Task 2 description
-```
 
-### WORKFLOW
-
-```
+WORKFLOW:
 Programmer 1: []
 Programmer 2: [Programmer 1]
-```
 
 Please note that:
 
@@ -288,12 +270,14 @@ class CodeManager:
             re.IGNORECASE
         )
         if validated_match:
-            return validated_match.group(1).strip()
+            code = validated_match.group(1).strip()
+            return self._clean_extracted_code(code)
         
         # Strategy 2: Extract from standard Python code blocks
         block_match = re.search(r"```python\s*([\s\S]*?)```", text, re.IGNORECASE)
         if block_match:
-            return block_match.group(1).strip()
+            code = block_match.group(1).strip()
+            return self._clean_extracted_code(code)
         
         # Strategy 3: Find function definition patterns
         function_match = re.search(
@@ -301,16 +285,180 @@ class CodeManager:
             text
         )
         if function_match:
-            return function_match.group(1).strip()
+            code = function_match.group(1).strip()
+            return self._clean_extracted_code(code)
         
         # Strategy 4: Parse filename + code patterns (legacy support)
         filename_pattern = r'([a-z_]+\.py)\s*\n\s*```python\s*(.*?)```'
         filename_matches = re.findall(filename_pattern, text, re.DOTALL)
         if filename_matches:
-            return filename_matches[0][1].strip()
+            code = filename_matches[0][1].strip()
+            return self._clean_extracted_code(code)
         
         # Strategy 5: Last resort - find Python-like content
         return self._extract_python_like_content(text)
+    
+    def _clean_extracted_code(self, code: str) -> str:
+        """
+        Clean extracted code to fix common syntax issues.
+        
+        Args:
+            code: Raw extracted code
+            
+        Returns:
+            Cleaned code string
+        """
+        if not code:
+            return ""
+        
+        # 确保代码以函数定义开始，如果不是则尝试找到函数定义
+        if not code.strip().startswith('def '):
+            # 尝试找到第一个函数定义
+            lines = code.split('\n')
+            start_idx = -1
+            for i, line in enumerate(lines):
+                if line.strip().startswith('def '):
+                    start_idx = i
+                    break
+            
+            if start_idx >= 0:
+                code = '\n'.join(lines[start_idx:])
+            else:
+                # 如果没有找到函数定义，返回原代码
+                return code.strip()
+        
+        # 修复三引号docstring问题
+        lines = code.split('\n')
+        cleaned_lines = []
+        in_triple_quote = False
+        quote_type = None
+        quote_start_line = -1
+        
+        for i, line in enumerate(lines):
+            # 检测三引号的开始和结束
+            if '"""' in line:
+                if not in_triple_quote:
+                    # 开始三引号字符串
+                    in_triple_quote = True
+                    quote_type = '"""'
+                    quote_start_line = i
+                    cleaned_lines.append(line)
+                else:
+                    # 结束三引号字符串
+                    if quote_type == '"""':
+                        in_triple_quote = False
+                        quote_type = None
+                        cleaned_lines.append(line)
+                    else:
+                        cleaned_lines.append(line)
+            elif "'''" in line:
+                if not in_triple_quote:
+                    # 开始三引号字符串
+                    in_triple_quote = True
+                    quote_type = "'''"
+                    quote_start_line = i
+                    cleaned_lines.append(line)
+                else:
+                    # 结束三引号字符串
+                    if quote_type == "'''":
+                        in_triple_quote = False
+                        quote_type = None
+                        cleaned_lines.append(line)
+                    else:
+                        cleaned_lines.append(line)
+            else:
+                cleaned_lines.append(line)
+        
+        # 如果docstring未正确关闭，添加关闭标记
+        if in_triple_quote and quote_type:
+            # 找到正确的缩进级别
+            indent = ""
+            if quote_start_line >= 0 and quote_start_line < len(cleaned_lines):
+                # 获取docstring开始行的缩进
+                start_line = cleaned_lines[quote_start_line]
+                if '"""' in start_line or "'''" in start_line:
+                    # 如果docstring在同一行开始，使用相同缩进
+                    indent = re.match(r'^(\s*)', start_line).group(1)
+                else:
+                    # 否则找到函数体的缩进
+                    for line in cleaned_lines:
+                        if line.strip().startswith('def '):
+                            # 找到下一个非空行的缩进
+                            func_idx = cleaned_lines.index(line)
+                            for j in range(func_idx + 1, len(cleaned_lines)):
+                                next_line = cleaned_lines[j]
+                                if next_line.strip():
+                                    indent = re.match(r'^(\s*)', next_line).group(1)
+                                    break
+                            break
+            
+            # 添加关闭的三引号
+            cleaned_lines.append(f'{indent}{quote_type}')
+            print(f"[DEBUG] Added missing closing quote: {quote_type}")
+        
+        cleaned_code = '\n'.join(cleaned_lines)
+        
+        # 检查是否需要添加必要的导入语句
+        cleaned_code = self._add_missing_imports(cleaned_code)
+        
+        # 移除多余的空行
+        cleaned_code = re.sub(r'\n{3,}', '\n\n', cleaned_code)
+        
+        return cleaned_code.strip()
+    
+    def _add_missing_imports(self, code: str) -> str:
+        """
+        Add missing import statements that are commonly needed.
+        
+        Args:
+            code: Code to check for missing imports
+            
+        Returns:
+            Code with necessary imports added
+        """
+        if not code:
+            return code
+        
+        lines = code.split('\n')
+        imports_to_add = []
+        
+        # 检查是否使用了typing相关的类型提示
+        if any(re.search(r'\b(List|Dict|Tuple|Optional|Union|Any)\[', line) or re.search(r'\bAny\b', line) for line in lines):
+            if not any('from typing import' in line or 'import typing' in line for line in lines):
+                # 确定需要导入的类型
+                needed_types = set()
+                for line in lines:
+                    for type_hint in ['List', 'Dict', 'Tuple', 'Optional', 'Union']:
+                        if re.search(rf'\b{type_hint}\[', line):
+                            needed_types.add(type_hint)
+                    # 单独检查Any，因为它可能不带方括号
+                    if re.search(r'\bAny\b', line):
+                        needed_types.add('Any')
+                
+                if needed_types:
+                    imports_to_add.append(f"from typing import {', '.join(sorted(needed_types))}")
+        
+        # 如果需要添加导入，将它们插入到函数定义之前
+        if imports_to_add:
+            # 找到第一个函数定义的位置
+            func_start_idx = -1
+            for i, line in enumerate(lines):
+                if line.strip().startswith('def '):
+                    func_start_idx = i
+                    break
+            
+            if func_start_idx >= 0:
+                # 在函数定义前插入导入语句
+                new_lines = (lines[:func_start_idx] + 
+                           imports_to_add + 
+                           [''] +  # 空行分隔
+                           lines[func_start_idx:])
+                return '\n'.join(new_lines)
+            else:
+                # 如果没有找到函数定义，在开头添加导入
+                return '\n'.join(imports_to_add + [''] + lines)
+        
+        return code
     
     def _extract_python_like_content(self, text: str) -> str:
         """
@@ -403,6 +551,11 @@ class WorkflowOrganizer:
         try:
             self._parse_composition(response)
             self._parse_workflow(response)
+            
+            if not self.composition or not self.workflow:
+                print("Warning: Empty composition or workflow, using fallback")
+                self._set_fallback_organization()
+                
         except Exception as e:
             print(f"Warning: Failed to parse organization structure: {e}")
             self._set_fallback_organization()
@@ -414,25 +567,71 @@ class WorkflowOrganizer:
         Args:
             response: LLM response text
         """
+        # 首先尝试标准的COMPOSITION格式
         composition_match = re.search(
-            r'COMPOSITION:\s*(.*?)(?=WORKFLOW:|$)', 
+            r'COMPOSITION[:\s]*\n?\s*(.*?)(?=WORKFLOW:|$)', 
             response, 
-            re.DOTALL
+            re.DOTALL | re.IGNORECASE
         )
+        
+        # 如果标准格式失败，尝试其他格式
+        if not composition_match:
+            # 尝试查找<answer>标签内的COMPOSITION
+            answer_match = re.search(r'<answer>(.*?)</answer>', response, re.DOTALL | re.IGNORECASE)
+            if answer_match:
+                answer_content = answer_match.group(1)
+                composition_match = re.search(
+                    r'COMPOSITION[:\s]*\n?\s*(.*?)(?=WORKFLOW:|$)', 
+                    answer_content, 
+                    re.DOTALL | re.IGNORECASE
+                )
+        
+        # 如果还是没有找到，检查是否是纯文本响应需要创建单个任务
+        if not composition_match:
+            # 检查响应是否看起来像一个实现或解释
+            if ('implement' in response.lower() or 'function' in response.lower() or 
+                'test' in response.lower() or 'case' in response.lower()):
+                # 创建单个任务
+                self.composition = {"Task_1": "Complete the implementation based on requirements"}
+                return
         
         if composition_match:
             comp_text = composition_match.group(1).strip()
             self.composition = {}
             
+            # 移除可能的markdown代码块标记
+            comp_text = re.sub(r'^```.*?\n', '', comp_text, flags=re.MULTILINE)
+            comp_text = re.sub(r'\n```$', '', comp_text)
+            
             for line in comp_text.split('\n'):
                 line = line.strip()
+                if not line:
+                    continue
+                    
+                # 支持多种格式：
+                # 1. "- Task_1: description" (原格式)
+                # 2. "Task 1: description" (CTO prompt格式)
+                # 3. "Programmer 1: description" (updater格式)
+                task_match = None
+                
                 if line.startswith('- '):
-                    # Parse "- Task_1: description" format
+                    # 原格式: "- Task_1: description"
                     task_match = re.match(r'- (Task_?\d+): (.+)', line)
-                    if task_match:
-                        task_name = task_match.group(1)
-                        task_desc = task_match.group(2)
+                elif ':' in line and not line.endswith(':'):
+                    # 新格式: "Task 1: description" 或 "Programmer 1: description"
+                    # 但确保不是单独的"COMPOSITION:"这样的标题行
+                    task_match = re.match(r'((?:Task|Programmer)\s*\d+):\s*(.+)', line)
+                    
+                if task_match:
+                    task_name = task_match.group(1).replace(' ', '_')  # 统一格式：Task_1
+                    task_desc = task_match.group(2).strip()
+                    # 过滤掉无效的任务描述
+                    if task_desc and task_desc != '[]' and len(task_desc) > 2:
                         self.composition[task_name] = task_desc
+        
+        # 如果没有解析到有效的composition，输出调试信息
+        if not self.composition:
+            print(f"[DEBUG] Failed to parse composition. Response preview: {response[:300]}...")
     
     def _parse_workflow(self, response: str) -> None:
         """
@@ -441,21 +640,51 @@ class WorkflowOrganizer:
         Args:
             response: LLM response text
         """
-        workflow_match = re.search(r'WORKFLOW:\s*(.*)', response, re.DOTALL)
+        # 首先尝试标准的WORKFLOW格式
+        workflow_match = re.search(r'WORKFLOW[:\s]*\n?\s*(.*)', response, re.DOTALL | re.IGNORECASE)
+        
+        # 如果标准格式失败，尝试其他格式
+        if not workflow_match:
+            # 尝试查找<answer>标签内的WORKFLOW
+            answer_match = re.search(r'<answer>(.*?)</answer>', response, re.DOTALL | re.IGNORECASE)
+            if answer_match:
+                answer_content = answer_match.group(1)
+                workflow_match = re.search(r'WORKFLOW[:\s]*\n?\s*(.*)', answer_content, re.DOTALL | re.IGNORECASE)
+        
+        # 如果还是没有找到，为composition中的任务创建简单的workflow
+        if not workflow_match and self.composition:
+            # 为现有的composition创建简单的线性workflow
+            self.workflow = {}
+            task_names = list(self.composition.keys())
+            for i, task_name in enumerate(task_names):
+                if i == 0:
+                    self.workflow[task_name] = []
+                else:
+                    self.workflow[task_name] = [task_names[i-1]]
+            return
         
         if workflow_match:
             workflow_text = workflow_match.group(1).strip()
             self.workflow = {}
             
+            # 移除可能的markdown代码块标记
+            workflow_text = re.sub(r'^```.*?\n', '', workflow_text, flags=re.MULTILINE)
+            workflow_text = re.sub(r'\n```$', '', workflow_text)
+            
             for line in workflow_text.split('\n'):
                 line = line.strip()
+                if not line:
+                    continue
+                    
                 if ':' in line:
                     task, deps_str = line.split(':', 1)
-                    task = task.strip()
+                    task = task.strip().replace(' ', '_')  # 统一格式：Task_1
                     deps_str = deps_str.strip()
                     
                     # Parse dependencies from [dep1, dep2] format
                     dependencies = self._parse_dependencies(deps_str)
+                    # 同样统一依赖项的格式
+                    dependencies = [dep.replace(' ', '_') for dep in dependencies]
                     self.workflow[task] = dependencies
     
     def _parse_dependencies(self, deps_str: str) -> List[str]:
@@ -471,7 +700,16 @@ class WorkflowOrganizer:
         if deps_str.startswith('[') and deps_str.endswith(']'):
             deps_content = deps_str[1:-1].strip()
             if deps_content:
-                return [dep.strip() for dep in deps_content.split(',')]
+                deps = [dep.strip() for dep in deps_content.split(',')]
+                # 统一格式化依赖项名称 (Task 1 -> Task_1)
+                normalized_deps = []
+                for dep in deps:
+                    if re.match(r'Task\s+\d+', dep):
+                        dep = dep.replace(' ', '_')
+                    elif re.match(r'Programmer\s+\d+', dep):
+                        dep = dep.replace(' ', '_')
+                    normalized_deps.append(dep)
+                return normalized_deps
         return []
     
     def _set_fallback_organization(self) -> None:
@@ -801,20 +1039,29 @@ class EvoMAC(AgentSystem):
         workflow = self.workflow_organizer.get_workflow()
         
         if not composition or not workflow:
-            print("Warning: No valid workflow to execute")
-            return
+            print("Warning: No valid workflow to execute, using fallback single task")
+            # 设置fallback workflow
+            self.workflow_organizer._set_fallback_organization()
+            composition = self.workflow_organizer.get_composition()
+            workflow = self.workflow_organizer.get_workflow()
         
         try:
             # Get execution order using dependency resolution
             execution_order = DependencyResolver.get_execution_order(workflow)
+            print(f"Execution order: {execution_order}")
             
             # Execute each task in dependency order
             for task_name in execution_order:
                 if task_name in composition:
+                    print(f"Executing task: {task_name}")
                     await self._execute_single_task(problem_statement, task_name, composition[task_name])
+                else:
+                    print(f"Warning: Task {task_name} not found in composition")
                     
         except ValueError as e:
             print(f"Workflow execution failed: {e}")
+            # 在失败时，至少执行一个默认任务
+            await self._execute_single_task(problem_statement, "Task_1", "Complete the implementation")
     
     async def _execute_single_task(self, problem_statement: str, task_name: str, task_description: str) -> None:
         """
