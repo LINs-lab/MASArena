@@ -270,14 +270,6 @@ You are the Critical Thinking Expert, focused on providing multi-angle perspecti
         # add evaluator message
         if "message" in extractor_result and extractor_result["message"]:
             all_messages.append(extractor_result["message"])
-
-        if extractor_result["message"] is None:
-            print(f"Error extracting final answer")
-            return {
-                "messages": all_messages,
-                "final_answer": "Error extracting final answer"
-            }
-        
         return {
             "messages": all_messages,  # contains all LLM response objects
             "final_answer": extractor_result["message"].content
