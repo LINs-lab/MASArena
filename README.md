@@ -72,7 +72,7 @@ OPENAI_API_BASE=https://api.openai.com/v1
   * Reasoning: `drop`, `bbh`, `mmlu_pro`, `ifeval`
 * Supported agent systems: 
   * Single Agent: `single_agent`
-  * Multi-Agent: `supervisor_mas`, `swarm`, `agentverse`, `chateval`, `evoagent`, `jarvis`, `metagpt`
+  * Multi-Agent: `supervisor_mas`, `swarm`, `agentverse`, `chateval`, `evoagent`, `jarvis`, `metagpt`, `evomac`, `chatdev`, `chateval`
 
 ## 📚 Documentation
 
