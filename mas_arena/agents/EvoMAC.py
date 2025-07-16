@@ -15,10 +15,7 @@ Authors: EvoMAC Development Team
 
 
 import os
-import asyncio
 import re
-import tempfile
-import sys
 from collections import defaultdict, deque
 from typing import Dict, Any, List, Tuple, Optional
 
@@ -416,7 +413,6 @@ class WorkflowOrganizer:
         
         # If the standard format fails, try other formats
         if not composition_match:
-            # 尝试查找<answer>标签内的COMPOSITION
             # Try to find COMPOSITION inside <answer> tags
             answer_match = re.search(r'<answer>(.*?)</answer>', response, re.DOTALL | re.IGNORECASE)
             if answer_match:
