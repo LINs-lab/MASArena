@@ -25,3 +25,5 @@
 | `evoagent`       | `evoagent.py`       | Evolutionary agent system           |
 | `jarvis`         | `jarvis.py`         | Task-planning agent system          |
 | `metagpt`        | `metagpt.py`        | Code generation agent system        |
+| `chatdev`        | `chatdev.py`        | Code generation agent system        |
+| `evomac`         | `evomac.py`         | Evolutionary agent Code system      |
