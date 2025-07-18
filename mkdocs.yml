@@ -39,7 +39,10 @@ nav:
     - Installation: quick_start/installation.md
     - Usage: quick_start/usage.md
     - Visualization: quick_start/visualization.md
+    - Contributing: quick_start/CONTRIBUTING.md
   - System Architecture: system_overview.md
   - Extending: extending.md
+  - Failure Attribution: failure_attribution.md
   - Tool Integration: tools/tool_integration.md
   - Supported: supported.md
+  - Failure Attribution: failure_attribution.md

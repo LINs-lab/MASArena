@@ -551,6 +551,7 @@ class AgentSystem(abc.ABC):
                 )
             
             return {
+                "status": "success",
                 **eval_result,
                 "messages": messages,
                 "execution_time_ms": execution_time_ms,
@@ -574,7 +575,20 @@ class AgentSystem(abc.ABC):
                         "run_id": run_id
                     }
                 )
-            raise  # Re-raise the exception
+            
+            # Return a failure result instead of re-raising
+            return {
+                "status": "error",
+                "score": 0.0,
+                "is_correct": False,
+                "reasoning": f"Evaluation failed with error: {str(e)}",
+                "messages": [],
+                "execution_time_ms": 0,
+                "llm_usage": {"total_tokens": 0, "message_count": 0, "agent_usage": []},
+                "response_file": None,
+                "visualization_file": None,
+                "run_id": run_id
+            }
     
     def with_timing(self, func_name: str, tags: Dict[str, str] = None) -> Callable:
         """
@@ -697,7 +711,10 @@ def create_agent_system(name: str, config: Dict[str, Any] = None) -> Optional[Ag
     config = config or {}
 
     # Get an instance of the agent system from the registry
-    agent_system = AgentSystemRegistry.get(name, config=config)
+    try:
+        agent_system = AgentSystemRegistry.get(name, config=config)
+    except KeyError:
+        return None
 
     if not agent_system:
         return None

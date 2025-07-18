@@ -42,6 +42,7 @@ dependencies = [
     "tika",
     "xmltodict",
     "aiofiles>=24.1.0",
+    "rich>=14.0.0",
 ]
 
 [tool.ruff]
@@ -57,3 +58,7 @@ ignore = ["F401"]
 quote-style = "double"
 indent-style = "space"
 docstring-code-format = true
+
+[[tool.uv.index]]
+url = "https://mirrors.aliyun.com/pypi/simple"
+default = true

@@ -3,7 +3,6 @@ from typing import Dict, List, Any, TypedDict
 from dataclasses import dataclass
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
-from langchain_community.callbacks.openai_info import OpenAICallbackHandler
 from mas_arena.agents.base import AgentSystem, AgentSystemRegistry
 
 # define structured output class, use TypedDict instead of Pydantic
@@ -42,24 +41,13 @@ class Agent:
         
         # Use structured output
         try:
-            callback_handler = OpenAICallbackHandler()
-            config = {"callbacks": [callback_handler]}
             llm_with_schema = self.llm.with_structured_output(schema=AgentResponse, include_raw=True)
-            response = await llm_with_schema.ainvoke(messages, config=config)
+            response = await llm_with_schema.ainvoke(messages)
             
             # Get structured data and raw response
             structured_data = response["parsed"]
             raw_response = response["raw"]
             
-            # Attach usage metadata
-            if isinstance(raw_response, AIMessage):
-                raw_response.usage_metadata = {
-                    "input_tokens": callback_handler.prompt_tokens,
-                    "output_tokens": callback_handler.completion_tokens,
-                    "total_tokens": callback_handler.total_tokens,
-                    "input_token_details": {},
-                    "output_token_details": {"reasoning": callback_handler.completion_tokens}
-                }
             
             # Ensure structured_data is a dictionary, not an object
             if hasattr(structured_data, "dict"):
@@ -80,7 +68,7 @@ class Agent:
                 "ai": raw_response.content
             })
             
-            # Return raw response object, preserving usage_metadata
+            # Return raw response object
             return {
                 "message": raw_response,
                 "structured_solution": structured_data,
@@ -91,20 +79,8 @@ class Agent:
             print(f"Structured output failed: {str(e)}, falling back to standard output")
             
             # Fallback to standard output
-            callback_handler = OpenAICallbackHandler()
-            config = {"callbacks": [callback_handler]}
-            response = await self.llm.ainvoke(messages, config=config)
+            response = await self.llm.ainvoke(messages)
             response.name = self.name
-            
-            # Attach usage metadata for fallback
-            if isinstance(response, AIMessage):
-                response.usage_metadata = {
-                    "input_tokens": callback_handler.prompt_tokens,
-                    "output_tokens": callback_handler.completion_tokens,
-                    "total_tokens": callback_handler.total_tokens,
-                    "input_token_details": {},
-                    "output_token_details": {"reasoning": callback_handler.completion_tokens}
-                }
             
             self.chat_history.append({
                 "role": "human",
@@ -155,21 +131,9 @@ Please analyze the above discussions and provide a final answer. Requirements:
         ]
         
         try:
-            callback_handler = OpenAICallbackHandler()
-            config = {"callbacks": [callback_handler]}
-            response = await self.llm.ainvoke(messages, config=config)
+            response = await self.llm.ainvoke(messages)
             response.name = "evaluator"
             
-            # Attach usage metadata
-            if isinstance(response, AIMessage):
-                response.usage_metadata = {
-                    "input_tokens": callback_handler.prompt_tokens,
-                    "output_tokens": callback_handler.completion_tokens,
-                    "total_tokens": callback_handler.total_tokens,
-                    "input_token_details": {},
-                    "output_token_details": {"reasoning": callback_handler.completion_tokens}
-                }
-                
             return {
                 "message": response
             }

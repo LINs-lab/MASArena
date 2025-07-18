@@ -152,7 +152,7 @@ class BenchmarkRunner:
 
             duration_ms = results.get("execution_time_ms", problem_duration_ms)
             score = results.get("score", 0)
-            is_correct = score == 1
+            is_correct = results.get("is_correct", score == 1)
 
             self.metrics_collector.record_metric("mas_arena.problem.result", score, {"problem_id": problem_id, "correct": is_correct, "duration_ms": duration_ms})
 
@@ -162,13 +162,17 @@ class BenchmarkRunner:
                 "expected": normalized_problem["solution"],
                 "prediction": results.get("extracted_answer", ""),
                 "score": score,
+                "is_correct": is_correct,
+                "status": results.get("status"),
+                "reasoning": results.get("reasoning", ""),
                 "duration_ms": duration_ms,
                 "agent_system": agent.name,
                 "llm_usage": results.get("llm_usage", {}),
                 "summary": {"correct": is_correct, "score": score, "duration_ms": duration_ms},
             }
             if verbose:
-                print(f"Result: {'✓' if is_correct else '✗'} ({duration_ms:.0f}ms)")
+                status_char = "E" if results.get("status") == "error" else "✓" if is_correct else "✗"
+                print(f"Result: {status_char} ({duration_ms:.0f}ms)")
             return result_entry
         except Exception as e:
             self.metrics_collector.stop_timer(f"mas_arena.problem.{problem_id}")
@@ -176,22 +180,38 @@ class BenchmarkRunner:
             if verbose:
                 print(f"Error processing problem {problem_id}: {e}")
                 traceback.print_exc()
-            return {"problem_id": problem_id, "problem": normalized_problem.get("problem"), "error": str(e)}
+            return {"problem_id": problem_id, "problem": normalized_problem.get("problem"), "status": "error", "error": str(e), "score": 0}
 
     def _finalize_benchmark(self, all_results, benchmark_name, agent_system, output_file, verbose):
         total = len(all_results)
+        if total == 0:
+            print("No results to finalize.")
+            return {}
+
         correct = sum(1 for r in all_results if r.get("score", 0) == 1)
-        accuracy = correct / total if total > 0 else 0
+        errored = sum(1 for r in all_results if r.get("status") == "error")
+        
+        # Calculate accuracy only on non-errored problems
+        valid_runs = total - errored
+        accuracy = correct / valid_runs if valid_runs > 0 else 0
+
         total_duration = sum(r.get("duration_ms", 0) for r in all_results)
+        
+        # Calculate avg_tokens only on successful (non-errored) runs
+        successful_runs = [r for r in all_results if r.get("status") != "error"]
+        total_tokens_successful = sum(r.get("llm_usage", {}).get("total_tokens", 0) for r in successful_runs)
+        avg_tokens = total_tokens_successful / len(successful_runs) if successful_runs else 0
 
         summary = {
             "benchmark": benchmark_name,
             "agent_system": agent_system,
             "total_problems": total,
             "correct": correct,
+            "errored": errored,
             "accuracy": accuracy,
             "total_duration_ms": total_duration,
             "avg_duration_ms": total_duration / total if total > 0 else 0,
+            "avg_tokens_per_successful_problem": avg_tokens,
             "results_file": str(output_file),
             # "metrics_dir": str(metrics_output),
             "timestamp": self.timestamp,
@@ -339,15 +359,16 @@ class BenchmarkRunner:
             print("-" * 80)
             print(f"python {failure_inference_script} \\")
             print(f"    --method binary_search \\")
-            print(f"    --model gpt-4o \\")
+            print(f"    --model gpt-4.1 \\")
             print(f"    --directory_path {failed_responses_dir} \\")
             print(f"    --output_dir {failure_output_dir}")
             # print("-" * 80)
             rprint("\n[bold]Alternative analysis methods:[/bold]")
             print(f"# For comprehensive analysis:")
-            print(f"python {failure_inference_script} --method binary_search --model gpt-4o --directory_path {failed_responses_dir} --output_dir {failure_output_dir}")
+            print(f"python {failure_inference_script} --method binary_search --model gpt-4.1 --directory_path {failed_responses_dir} --output_dir {failure_output_dir}")
             print(f"\n# For step-by-step analysis:")
-            print(f"python {failure_inference_script} --method step_by_step --model gpt-4o --directory_path {failed_responses_dir} --output_dir {failure_output_dir}")
+            print(f"python {failure_inference_script} --method step_by_step --model gpt-4.1 --directory_path {failed_responses_dir} --output_dir {failure_output_dir}")
+
             print("=" * 80)
 
     def run(self, benchmark_name="math", data_path=None, limit=None, agent_system="single_agent", agent_config=None, verbose=True):

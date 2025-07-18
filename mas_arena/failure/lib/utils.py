@@ -1,3 +1,7 @@
+# This code is adapted from the Agents_Failure_Attribution project
+# Original repository: https://github.com/microsoft/autogen/tree/main/notebook/agentchat_contrib
+# We acknowledge the original authors and contributors for their work
+
 import json
 import os
 from typing import List, Dict, Any, Optional, Tuple
@@ -83,7 +87,7 @@ def _format_agent_responses(responses: List[Dict[str, Any]]) -> str:
     """
     formatted_responses = []
     
-    for i, response in enumerate(responses, 1):
+    for i, response in enumerate(responses):
         agent_id = response.get('agent_id', 'Unknown')
         content = response.get('content', '')
         timestamp = response.get('timestamp', '')
@@ -219,6 +223,8 @@ def convert_txt_to_json(txt_filepath: str, json_filepath: str, method: str, mode
         
         current_file = None
         current_file_data = None
+        collecting_reason = False
+        reason_lines = []
         
         for line in lines:
             line = line.strip()
@@ -227,6 +233,10 @@ def convert_txt_to_json(txt_filepath: str, json_filepath: str, method: str, mode
             if line.startswith("=== File:") and line.endswith("==="):
                 # Save previous file if exists
                 if current_file_data:
+                    # Finalize reason collection if needed
+                    if collecting_reason and reason_lines:
+                        current_file_data["analysis_result"]["error_reason"] = " ".join(reason_lines).strip()
+                        current_file_data["analysis_result"]["error_detected"] = True
                     result["files_analyzed"].append(current_file_data)
                 
                 # Start new file
@@ -242,18 +252,22 @@ def convert_txt_to_json(txt_filepath: str, json_filepath: str, method: str, mode
                     }
                 }
                 current_file = filename
+                collecting_reason = False
+                reason_lines = []
             
             # Collect analysis content for current file
             elif current_file_data and line and not line.startswith("==="):
                 
-                # Parse specific error information
+                # Parse specific error information for all_at_once method
                 if line.startswith("Error Agent:"):
+                    collecting_reason = False
                     error_agent = line.replace("Error Agent:", "").strip()
                     if error_agent.lower() not in ["no error", "none", ""]:
                         current_file_data["analysis_result"]["error_detected"] = True
                         current_file_data["analysis_result"]["error_agent"] = error_agent
                 
                 elif line.startswith("Error Step:"):
+                    collecting_reason = False
                     error_step = line.replace("Error Step:", "").strip()
                     if error_step.lower() not in ["no error", "none", ""]:
                         try:
@@ -262,16 +276,40 @@ def convert_txt_to_json(txt_filepath: str, json_filepath: str, method: str, mode
                             current_file_data["analysis_result"]["error_step"] = error_step
                 
                 elif line.startswith("Error Type:"):
+                    collecting_reason = False
                     error_type = line.replace("Error Type:", "").strip()
                     if error_type.lower() not in ["no error", "none", ""]:
                         current_file_data["analysis_result"]["error_type"] = error_type
+                        # If we have error_type, it means error is detected
+                        current_file_data["analysis_result"]["error_detected"] = True
                 
                 elif line.startswith("Reason:") or line.startswith("Error Description:"):
                     reason = line.replace("Reason:", "").replace("Error Description:", "").strip()
                     if reason.lower() not in ["no error", "none", ""]:
                         current_file_data["analysis_result"]["error_reason"] = reason
+                        # If we have error_reason, it means error is detected
+                        current_file_data["analysis_result"]["error_detected"] = True
+                        collecting_reason = False
+                    else:
+                        # Start collecting multi-line reason content
+                        collecting_reason = True
+                        reason_lines = []
+                
+                # Parse step_by_step method output format: "Error detected at Step X by Agent Y"
+                elif "Error detected at Step" in line and "by Agent" in line:
+                    collecting_reason = False
+                    current_file_data["analysis_result"]["error_detected"] = True
+                    # Extract step number and agent
+                    try:
+                        step_part = line.split("Step")[1].split("by")[0].strip()
+                        current_file_data["analysis_result"]["error_step"] = int(step_part)
+                        agent_part = line.split("by Agent")[1].strip()
+                        current_file_data["analysis_result"]["error_agent"] = agent_part
+                    except (IndexError, ValueError):
+                        pass
                 
                 elif "Error found at Step" in line:
+                    collecting_reason = False
                     current_file_data["analysis_result"]["error_detected"] = True
                     # Extract step number
                     try:
@@ -281,10 +319,23 @@ def convert_txt_to_json(txt_filepath: str, json_filepath: str, method: str, mode
                         pass
                 
                 elif "No errors detected" in line or "No Error" in line:
+                    collecting_reason = False
                     current_file_data["analysis_result"]["error_detected"] = False
+                
+                # Collect multi-line reason content
+                elif collecting_reason and line and not line.startswith("**"):
+                    reason_lines.append(line)
+            
+            # Handle empty lines or lines starting with ** when collecting reason
+            elif current_file_data and collecting_reason and (not line or line.startswith("**")):
+                continue
         
         # Add the last file if exists
         if current_file_data:
+            # Finalize reason collection if needed for the last file
+            if collecting_reason and reason_lines:
+                current_file_data["analysis_result"]["error_reason"] = " ".join(reason_lines).strip()
+                current_file_data["analysis_result"]["error_detected"] = True
             result["files_analyzed"].append(current_file_data)
         
         # Calculate summary statistics
@@ -362,7 +413,7 @@ def step_by_step(client, directory_path: str, model: str, max_tokens: int = 1024
         conversation_so_far = ""
         error_found = False
         
-        for i, response in enumerate(responses, 1):
+        for i, response in enumerate(responses):
             agent_id = response.get('agent_id', 'Unknown')
             content = response.get('content', '')
             timestamp = response.get('timestamp', '')
@@ -372,20 +423,13 @@ def step_by_step(client, directory_path: str, model: str, max_tokens: int = 1024
             
             # Ask if there's an error at this step
             prompt = f"""
-You are analyzing a multi-agent conversation step by step to identify errors that could lead to task failure.
-
-Problem ID: {problem_id}
-Agent System: {agent_system}
-Problem: {question}
-Ground Truth Answer: {ground_truth}
-
-Here is the conversation history up to step {i}:
-
+You are an AI assistant tasked with evaluating the correctness of each step in an ongoing multi-agent conversation aimed at solving a real-world problem. The problem being addressed is: {question}. 
+The Answer for the problem is: {ground_truth}\n
+Here is the conversation history up to the current step::
 {conversation_so_far}
-
-Question: Is there an error or failure in the most recent step (Step {i}) by Agent {agent_id}? 
-
-Please answer with:
+The most recent step ({i}) was by '{agent_id}'.
+Your task is to determine whether this most recent agent's action (Step {i}) contains an error that could hinder the problem-solving process or lead to an incorrect solution.
+Please respond with:
 - "YES" if there is an error in this step that could lead to incorrect solutions or task failure
 - "NO" if this step is correct or contains only minor issues
 
@@ -399,7 +443,7 @@ Note: Focus on identifying clear errors that would derail the problem-solving pr
 """
             
             messages = [
-                {"role": "system", "content": "You are an expert analyst for multi-agent systems."},
+                {"role": "system", "content": "You are a precise step-by-step conversation evaluator."},
                 {"role": "user", "content": prompt}
             ]
             
@@ -438,33 +482,19 @@ def _construct_binary_search_prompt(conversation_segment: str, start_step: int, 
         Formatted prompt for binary search
     """
     mid_point = (start_step + end_step) // 2
+    range_description = f"from step {start_step} to step {end_step}"
+    upper_half_desc = f"from step {start_step} to step {mid_point}"
+    lower_half_desc = f"from step {mid_point + 1} to step {end_step}"
     
-    prompt = f"""
-You are analyzing a multi-agent conversation to locate errors using binary search.
-
-Problem ID: {problem_id}
-Agent System: {agent_system}
-Problem: {question}
-Ground Truth Answer: {ground_truth}
-
-Conversation segment (Steps {start_step} to {end_step}):
-{conversation_segment}
-
-This segment contains {end_step - start_step + 1} steps. The middle point is around step {mid_point}.
-
-Question: If there is an error in this segment that could lead to task failure, is it more likely in:
-A) The UPPER HALF (steps {start_step} to {mid_point})
-B) The LOWER HALF (steps {mid_point + 1} to {end_step})
-
-Please respond with exactly:
-- "UPPER HALF" if the error is in the first half
-- "LOWER HALF" if the error is in the second half  
-- "NO ERROR" if no error is detected in this segment
-
-If you detect an error, also provide a brief reason.
-
-Note: Focus on identifying clear errors that would lead to incorrect solutions or task failures. Avoid being overly critical of minor issues.
-"""
+    prompt = (
+        "You are an AI assistant tasked with analyzing a segment of a multi-agent conversation. Multiple agents are collaborating to address a user query, with the goal of resolving the query through their collective dialogue.\n"
+        "Your primary task is to identify the location of the most critical mistake within the provided segment. Determine which half of the segment contains the single step where this crucial error occurs, ultimately leading to the failure in resolving the user's query.\n"
+        f"The problem to address is as follows: {question}\n"
+        f"The Answer for the problem is: {ground_truth}\n"
+        f"Review the following conversation segment {range_description}:\n\n{conversation_segment}\n\n"
+        f"Based on your analysis, predict whether the most critical error is more likely to be located in the upper half ({upper_half_desc}) or the lower half ({lower_half_desc}) of this segment.\n"
+        "Please provide your prediction by responding with ONLY 'upper half' or 'lower half'. Remember, your answer should be based on identifying the mistake that directly contributes to the failure in resolving the user's query. If no single clear error is evident, consider the step you believe is most responsible for the failure, allowing for subjective judgment, and base your answer on that."
+    )
     
     return prompt
 
@@ -507,14 +537,18 @@ Agent System: {agent_system}
 Problem: {question}
 Ground Truth Answer: {ground_truth}
 
-Step {start_idx + 1}: Agent {agent_id}
+Step {start_idx}: Agent {agent_id}
 Content: {content}
 
-Is there an error in this step that could lead to task failure? Respond with:
-- "ERROR" if there is an error, followed by the error description
-- "NO ERROR" if this step is correct or contains only minor issues
+Is there an error in this step that could lead to task failure? 
 
-Note: Focus on identifying clear errors that would lead to incorrect solutions or task failures.
+If there is an error, respond in this exact format:
+ERROR: [Detailed description of the specific error, including what went wrong, why it's problematic, and how it could lead to task failure]
+
+If there is no error, respond with:
+NO ERROR
+
+Note: Focus on identifying clear errors that would lead to incorrect solutions or task failures. Provide specific and detailed explanations for any errors found.
 """
         
         messages = [
@@ -525,7 +559,7 @@ Note: Focus on identifying clear errors that would lead to incorrect solutions o
         response_text = _make_api_call(client, model, messages, max_tokens)
         
         if response_text and "ERROR" in response_text.upper() and "NO ERROR" not in response_text.upper():
-            return (start_idx + 1, response_text)
+            return (start_idx, response_text)
         else:
             return None
     
@@ -533,7 +567,7 @@ Note: Focus on identifying clear errors that would lead to incorrect solutions o
     segment_responses = responses[start_idx:end_idx + 1]
     conversation_segment = _format_agent_responses(segment_responses)
     
-    prompt = _construct_binary_search_prompt(conversation_segment, start_idx + 1, end_idx + 1, problem_id, agent_system, question, ground_truth)
+    prompt = _construct_binary_search_prompt(conversation_segment, start_idx, end_idx, problem_id, agent_system, question, ground_truth)
     
     messages = [
         {"role": "system", "content": "You are an expert analyst for multi-agent systems."},
@@ -547,9 +581,9 @@ Note: Focus on identifying clear errors that would lead to incorrect solutions o
     
     mid_idx = (start_idx + end_idx) // 2
     
-    if "UPPER HALF" in response_text.upper():
+    if "upper half" in response_text.lower():
         return _find_error_in_segment_recursive(client, model, responses, start_idx, mid_idx, max_tokens, problem_id, agent_system, question, ground_truth)
-    elif "LOWER HALF" in response_text.upper():
+    elif "lower half" in response_text.lower():
         return _find_error_in_segment_recursive(client, model, responses, mid_idx + 1, end_idx, max_tokens, problem_id, agent_system, question, ground_truth)
     else:
         return None
@@ -564,8 +598,8 @@ def _report_binary_search_error(error_step: int, error_description: str, respons
         error_description: Description of the error
         responses: List of all responses
     """
-    if error_step <= len(responses):
-        error_response = responses[error_step - 1]
+    if error_step < len(responses):
+        error_response = responses[error_step]
         agent_id = error_response.get('agent_id', 'Unknown')
         
         print(f"Error found at Step {error_step} by Agent {agent_id}")
@@ -631,10 +665,10 @@ Agent {agent_id}: {content}
 
 Is there an error that could lead to task failure? Provide analysis in format:
 Error Agent: [Agent ID or "No Error"]
-Error Step: [1 or "No Error"]
-Reason: [Explanation]
+Error Step: ["Step 0 (brief description of the step content)" or "No Error"]
+Reason: [Detailed explanation of the specific error, including what went wrong, why it's problematic, and how it could lead to task failure. If no error, state "No error detected"]
 
-Note: Focus on identifying clear errors that would lead to incorrect solutions or task failures.
+Note: Focus on identifying clear errors that would lead to incorrect solutions or task failures. Provide specific and detailed explanations for any errors found.
 """
             
             messages = [

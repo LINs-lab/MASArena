@@ -88,6 +88,8 @@ For comprehensive guides, tutorials, and API references, visit our complete [doc
 
 We warmly welcome contributions from the community!
 
+**📋 For detailed contribution guidelines, testing procedures, and development setup, please see [CONTRIBUTING.md](docs/quick_start/CONTRIBUTING.md).**
+
 You can contribute in many ways:
 
 * 🧠 **New Agent Systems (MAS):**
@@ -101,3 +103,13 @@ You can contribute in many ways:
 
 * ⚙️ **Improvements & Utilities:**
   Help with performance optimization, failure handling, asynchronous processing, or new visualizations.
+
+### Quick Start for Contributors
+
+1. **Fork and Clone**: Fork the repository and clone it locally
+2. **Setup Environment**: Install dependencies with `pip install -r requirements.txt`
+3. **Run Tests**: Execute `pytest tests/` to ensure everything works
+4. **Make Changes**: Implement your feature with corresponding tests
+5. **Submit PR**: Create a pull request with a clear description
+
+Our automated CI/CD pipeline will run tests on every pull request to ensure code quality and reliability.
