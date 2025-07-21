@@ -821,6 +821,8 @@ class EvoMAC(AgentSystem):
         # Initialize LLM client
         self.model_name = self.config.get("model_name") or os.getenv("MODEL_NAME", "gpt-4o-mini")
         self.llm_client = self._initialize_llm_client()
+        # 初始化 conversation_history 用于记录所有 agent 消息
+        self.conversation_history: List[AIMessage] = []
     
     def _initialize_llm_client(self) -> ChatOpenAI:
         """
@@ -970,6 +972,8 @@ class EvoMAC(AgentSystem):
         )
         response_content, response_obj = await self._call_llm_async(messages)
         
+        # 保存 programmer 阶段的消息
+        self.conversation_history.append(self._create_message_record(response_content, 'programmer', response_obj))
         # Update implementation with new code
         self.code_manager.update_from_response(response_content)
     
@@ -985,6 +989,8 @@ class EvoMAC(AgentSystem):
         """
         # Generate test organization
         test_organization_response_content, test_organization_response_obj = await self._organize_testing(problem_statement)
+        # 保存 test_organizer 阶段的消息
+        self.conversation_history.append(self._create_message_record(test_organization_response_content, 'test_organizer', test_organization_response_obj))
         self.test_workflow_organizer.update_from_response(test_organization_response_content)
         
         # Execute test tasks
@@ -1062,6 +1068,8 @@ class EvoMAC(AgentSystem):
             prompt
         )
         test_response_content, test_response_obj = await self._call_llm_async(messages)
+        # 保存 test_engineer 阶段的消息
+        self.conversation_history.append(self._create_message_record(test_response_content, 'test_engineer', test_response_obj))
         
         # Extract and execute test code
         test_code_match = re.search(r'```python\s*(.*?)```', test_response_content, re.DOTALL)
@@ -1088,6 +1096,8 @@ class EvoMAC(AgentSystem):
         for iteration in range(self.max_iterations - 1):
             # Generate update organization
             update_response_content, update_response_obj = await self._organize_updates(problem_statement, current_reports)
+            # 保存 updater 阶段的消息
+            self.conversation_history.append(self._create_message_record(update_response_content, 'updater', update_response_obj))
             self.workflow_organizer.update_from_response(update_response_content)
             
             # Execute update workflow
@@ -1169,14 +1179,15 @@ class EvoMAC(AgentSystem):
             - final_answer: Final implementation code
         """
         problem_statement = problem["problem"]
-        conversation_history = []
+        # 初始化此次运行的 conversation_history
+        self.conversation_history = []
         
         try:
             # Phase 1: Generate initial implementation
             print("Phase 1: Generating initial implementation...")
             initial_response_content, initial_response_obj = await self._generate_initial_implementation(problem_statement)
             self.code_manager.update_from_response(initial_response_content)
-            conversation_history.append(
+            self.conversation_history.append(
                 self._create_message_record(initial_response_content, 'initial_coder', initial_response_obj)
             )
             
@@ -1184,7 +1195,7 @@ class EvoMAC(AgentSystem):
             print("Phase 2: Organizing workflow...")
             organization_response_content, organization_response_obj = await self._organize_workflow(problem_statement)
             self.workflow_organizer.update_from_response(organization_response_content)
-            conversation_history.append(
+            self.conversation_history.append(
                 self._create_message_record(organization_response_content, 'workflow_organizer', organization_response_obj)
             )
             
@@ -1210,7 +1221,7 @@ class EvoMAC(AgentSystem):
             print(f"EvoMAC execution completed. Final implementation has {len(final_implementation)} characters.")
             
             return {
-                "messages": conversation_history,
+                "messages": self.conversation_history,
                 "final_answer": final_implementation
             }
             
@@ -1219,12 +1230,12 @@ class EvoMAC(AgentSystem):
                 f"EvoMAC execution failed: {str(e)}", 
                 'error_handler'
             )
-            conversation_history.append(error_message)
+            self.conversation_history.append(error_message)
             
             print(f"EvoMAC execution failed: {e}")
             
             return {
-                "messages": conversation_history,
+                "messages": self.conversation_history,
                 "final_answer": f"Error: {str(e)}"
             }
 
