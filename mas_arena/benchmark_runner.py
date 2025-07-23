@@ -8,17 +8,13 @@ This module provides a simplified interface for running benchmarks on multi-agen
 import os
 import json
 import random
-import subprocess
-import sys
 import shutil
-import tempfile
 from pathlib import Path
 from datetime import datetime
 import asyncio
 from tqdm.asyncio import tqdm
 from openai.types.completion_usage import CompletionUsage
 import traceback
-from concurrent.futures import ThreadPoolExecutor
 from rich import print as rprint
 
 from mas_arena.metrics import (
