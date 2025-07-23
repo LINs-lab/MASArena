@@ -294,16 +294,13 @@ class ChatDev(AgentSystem):
             # Store all LLM response messages
             all_messages = []
             
-            # Check if it's a humaneval task
-            is_humaneval = self.evaluator_name == "humaneval"
             
             modality = "Application"  # Fixed
             language = "Python"      # Fixed
             
-            if not is_humaneval:
-                # 1. Demand Analysis phase (skip for humaneval tasks)
-                modality = await self._demand_analysis_phase(task, all_messages)
-                self.project_state["modality"] = modality
+            # 1. Demand Analysis phase (skip for humaneval tasks)
+            modality = await self._demand_analysis_phase(task, all_messages)
+            self.project_state["modality"] = modality
             
             self.project_state["language"] = language
             
