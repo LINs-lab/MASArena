@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 import argparse
 import datetime
 import sys
@@ -138,7 +139,7 @@ def main():
         if not args.mcp_config_file:
             parser.error("--use-mcp-tools requires --mcp-config-file")
         try:
-            with open(args.mcp_config_file, "r") as f:
+            with open(args.mcp_config_file, "r", encoding="utf-8") as f:
                 agent_config["mcp_servers"] = json.load(f)
                 
             # Store the config file path for reference

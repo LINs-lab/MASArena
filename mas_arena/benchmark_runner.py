@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
-Simple Benchmark Runner Interface
+Benchmark Runner
 
-This module provides a simplified interface for running benchmarks on multi-agent systems.
+This module provides functionality for running benchmarks on agent systems.
 """
 
 import os
@@ -126,7 +127,7 @@ class BenchmarkRunner:
         agent.set_metrics_registry(self.metrics_registry)
 
         try:
-            with open(data_path, "r") as f:
+            with open(data_path, "r", encoding="utf-8") as f:
                 problems = [json.loads(line) for line in f]
         except FileNotFoundError:
             raise FileNotFoundError(f"Data file not found: {data_path}")
