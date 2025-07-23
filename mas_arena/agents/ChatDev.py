@@ -1,6 +1,7 @@
 import asyncio
 import os
 import re
+import uuid
 from typing import Dict, Any, List, Tuple, Optional
 from dataclasses import dataclass
 from threading import Thread
@@ -54,6 +55,9 @@ class ChatDevAgent:
             
             # Call LLM
             response = await self.llm.ainvoke(messages)
+            
+            response.id = f"{self.role}_{uuid.uuid4()}"
+            response.name = self.role
             
             # Update history
             self.chat_history.append({"role": "user", "content": context})
