@@ -1,3 +1,4 @@
+import asyncio
 import os
 import re
 from typing import Dict, Any, List, Tuple, Optional
@@ -35,7 +36,7 @@ class ChatDevAgent:
         """Clear the agent's conversation history"""
         self.chat_history = []
 
-    def generate_response(self, context: str) -> Dict[str, Any]:
+    async def generate_response(self, context: str) -> Dict[str, Any]:
         """Generate response"""
         try:
             # Build messages
@@ -52,7 +53,7 @@ class ChatDevAgent:
             messages.append(HumanMessage(content=context))
             
             # Call LLM
-            response = self.llm.invoke(messages)
+            response = await self.llm.ainvoke(messages)
             
             # Update history
             self.chat_history.append({"role": "user", "content": context})
@@ -351,7 +352,7 @@ class ChatDev(AgentSystem):
         context = f"Task: {task}\n\n{' '.join(phase_prompt)}"
         
         # CPO as assistant role provides suggestions
-        cpo_response = self.agents["workers"][1].generate_response(context)  # CPO
+        cpo_response = await self.agents["workers"][1].generate_response(context)  # CPO
         all_messages.append(cpo_response["message"])
         
         # Extract product form
@@ -412,7 +413,7 @@ class ChatDev(AgentSystem):
         context = ' '.join(phase_prompt)
 
         # Round 1: Initial coding by Programmer
-        programmer_response = self.agents["workers"][3].generate_response(context)  # Programmer
+        programmer_response = await self.agents["workers"][3].generate_response(context)  # Programmer
         all_messages.append(programmer_response["message"])
         current_code = programmer_response["content"]
         
@@ -436,7 +437,7 @@ class ChatDev(AgentSystem):
             ]
             
             cto_context = ' '.join(review_prompt)
-            cto_response = self.agents["workers"][2].generate_response(cto_context)  # CTO
+            cto_response = await self.agents["workers"][2].generate_response(cto_context)  # CTO
             all_messages.append(cto_response["message"])
             
             # If CTO approves code, end debate
@@ -458,7 +459,7 @@ class ChatDev(AgentSystem):
             ]
             
             improvement_context = ' '.join(improvement_prompt)
-            improved_response = self.agents["workers"][3].generate_response(improvement_context)  # Programmer
+            improved_response = await self.agents["workers"][3].generate_response(improvement_context)  # Programmer
             all_messages.append(improved_response["message"])
             current_code = improved_response["content"]
         
@@ -492,7 +493,7 @@ class ChatDev(AgentSystem):
             ]
             
             context = ' '.join(phase_prompt)
-            programmer_response = self.agents["workers"][3].generate_response(context)  # Programmer
+            programmer_response = await self.agents["workers"][3].generate_response(context)  # Programmer
             all_messages.append(programmer_response["message"])
             current_codes = programmer_response["content"]
         
@@ -525,7 +526,7 @@ class ChatDev(AgentSystem):
             ]
             
             context = ' '.join(review_prompt)
-            reviewer_response = self.agents["workers"][4].generate_response(context)  # Code Reviewer
+            reviewer_response = await self.agents["workers"][4].generate_response(context)  # Code Reviewer
             all_messages.append(reviewer_response["message"])
             
             # If review complete, break loop
@@ -549,7 +550,7 @@ class ChatDev(AgentSystem):
             ]
             
             context = ' '.join(modify_prompt)
-            programmer_response = self.agents["workers"][3].generate_response(context)  # Programmer
+            programmer_response = await self.agents["workers"][3].generate_response(context)  # Programmer
             all_messages.append(programmer_response["message"])
             current_codes = programmer_response["content"]
         
@@ -575,7 +576,7 @@ class ChatDev(AgentSystem):
             extracted_code = self.extract_code_from_response(current_codes)
             
             # Execute real test
-            passed, error_message, test_output = self.check_solution(extracted_code, test_code, entry_point)
+            passed, error_message, test_output = await asyncio.to_thread(self.check_solution, extracted_code, test_code, entry_point)
             
             if passed:
                 # Test passed, let Programmer review output and confirm
@@ -603,7 +604,7 @@ class ChatDev(AgentSystem):
                 ]
                 
                 context = '\n'.join(review_prompt)
-                programmer_response = self.agents["workers"][3].generate_response(context)  # Programmer
+                programmer_response = await self.agents["workers"][3].generate_response(context)  # Programmer
                 all_messages.append(programmer_response["message"])
                 
                 # Return Programmer's final response regardless of confirmation
@@ -634,7 +635,7 @@ class ChatDev(AgentSystem):
             ]
             
             context = '\n'.join(fix_prompt)
-            programmer_response = self.agents["workers"][3].generate_response(context)  # Programmer
+            programmer_response = await self.agents["workers"][3].generate_response(context)  # Programmer
             all_messages.append(programmer_response["message"])
             current_codes = programmer_response["content"]
         
