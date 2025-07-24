@@ -383,7 +383,8 @@ class BenchmarkRunner:
         ))
 
     async def arun(self, benchmark_name="math", data_path=None, limit=None, agent_system="single_agent", agent_config=None, verbose=True, concurrency=10):
-        agent, problems, benchmark_config, output_file = self._prepare_benchmark(
+        # Prepare benchmark; we only need problems and config here
+        _, problems, benchmark_config, output_file = self._prepare_benchmark(
             benchmark_name, data_path, limit, agent_system, agent_config, verbose
         )
 
@@ -398,12 +399,12 @@ class BenchmarkRunner:
 
         async def process_with_semaphore(i, p):
             async with semaphore:
-                return await self._process_one_problem(i, p, agent, benchmark_config, verbose)
+                # Create a fresh agent instance per problem to isolate state
+                new_agent = create_agent_system(agent_system, self.agent_config)
+                new_agent.set_metrics_registry(self.metrics_registry)
+                return await self._process_one_problem(i, p, new_agent, benchmark_config, verbose)
 
-        tasks = [
-            process_with_semaphore(i, p)
-            for i, p in enumerate(problems)
-        ]
+        tasks = [process_with_semaphore(i, p) for i, p in enumerate(problems)]
         
         all_results = await tqdm.gather(*tasks, desc="Processing Problems")
 

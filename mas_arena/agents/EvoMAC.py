@@ -23,6 +23,7 @@ from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 from mas_arena.agents.base import AgentSystem, AgentSystemRegistry
+from asyncio import Lock
 
 # Load environment variables for configuration
 load_dotenv(override=True)
@@ -180,7 +181,7 @@ def function_name(parameters):
     return result
 ```
 
-Use docstrings where appropriate to explain complex logic or important sections of code.
+Use docstrings where appropriate to explain complex logic or important sections of code. Be careful with triple-quoted strings (docstrings or multiline strings) to ensure they are always correctly closed.（if not necessary, do not use triple-quoted）
 
 {format_prompt}""",
 
@@ -807,8 +808,13 @@ class EvoMAC(AgentSystem):
         """
         super().__init__(name, config)
         
-        # System configuration
-        self.config = config or {}
+        # System configuration (instance-specific)
+        self.config = config.copy() if config else {}
+        # Instance isolation: unique identifier for this EvoMAC instance
+        self.instance_id = f"evomac_{id(self)}"
+        # Lock to serialize state initialization per instance
+        self.task_lock = Lock()
+
         self.max_iterations = self.config.get("iteration", 5)
         self.programming_language = self.config.get("language", "python")
         
@@ -831,10 +837,11 @@ class EvoMAC(AgentSystem):
         Returns:
             Configured ChatOpenAI client
         """
-        return ChatOpenAI(
+        client = ChatOpenAI(
             model=self.model_name,
             temperature=0.7
         )
+        return client
     
     def _format_messages_for_llm(self, system_prompt: str, user_content: str) -> List:
         """
@@ -1178,9 +1185,15 @@ class EvoMAC(AgentSystem):
             - messages: List of all agent interactions
             - final_answer: Final implementation code
         """
-        problem_statement = problem["problem"]
-        # 初始化此次运行的 conversation_history
-        self.conversation_history = []
+        # Ensure state initialization is serialized per instance
+        async with self.task_lock:
+            problem_statement = problem["problem"]
+            # 初始化此次运行的状态
+            self.code_manager = CodeManager()
+            self.test_code_manager = CodeManager()
+            self.workflow_organizer = WorkflowOrganizer()
+            self.test_workflow_organizer = WorkflowOrganizer()
+            self.conversation_history = []
         
         try:
             # Phase 1: Generate initial implementation
