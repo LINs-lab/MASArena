@@ -496,27 +496,27 @@ if __name__ == "__main__":
                 function_name = input_data.get("function_name", input_data.get("name", ""))
                 arguments = input_data.get("arguments", {})
                 
-                if function_name == "new_game":
+                if function_name == "mcp_new_game":
                     result = asyncio.run(service.mcp_new_game())
-                elif function_name == "load_fen":
+                elif function_name == "mcp_load_fen":
                     result = asyncio.run(service.mcp_load_fen(
                         fen_string=arguments.get("fen_string", "")
                     ))
-                elif function_name == "make_move":
+                elif function_name == "mcp_make_move":
                     result = asyncio.run(service.mcp_make_move(
                         move_str=arguments.get("move_str", "")
                     ))
-                elif function_name == "get_legal_moves":
+                elif function_name == "mcp_get_legal_moves":
                     result = asyncio.run(service.mcp_get_legal_moves(
                         output_format=arguments.get("output_format", "markdown")
                     ))
-                elif function_name == "get_board_state":
+                elif function_name == "mcp_get_board_state":
                     result = asyncio.run(service.mcp_get_board_state(
                         output_format=arguments.get("output_format", "markdown")
                     ))
-                elif function_name == "get_game_status":
+                elif function_name == "mcp_get_game_status":
                     result = asyncio.run(service.mcp_get_game_status())
-                elif function_name == "get_chess_capabilities":
+                elif function_name == "mcp_get_chess_capabilities":
                     result = service.mcp_get_chess_capabilities()
                 else:
                     result = ActionResponse(

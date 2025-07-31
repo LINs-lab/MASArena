@@ -29,9 +29,11 @@ except Exception as e:
     sys.stderr.write(f"Failed to import browser tool: {traceback.format_exc()}\n")
     raise e
 
+# Suppress browser_use library logging
+logging.getLogger("browser_use").setLevel(logging.CRITICAL)
 
-# Debug logging
-print(f"Browser tool sys.path: {sys.path}")
+
+
 
 
 class BrowserMetadata(BaseModel):
@@ -123,6 +125,7 @@ class BrowserActionCollection(ActionCollection):
         Returns:
             Configured Agent instance
         """
+        os.environ["TELEMETRY_ENABLED"] = "false"
         return Agent(
             task=task,
             llm=self.llm_config,
@@ -131,6 +134,7 @@ class BrowserActionCollection(ActionCollection):
             enable_memory=False,
             browser_profile=self.browser_profile,
             save_conversation_path=f"{self.trace_log_dir}/trace.log",
+            telemetry_enabled=False,
         )
 
     def _extract_visited_urls(self, extracted_content: list[str]) -> list[str]:
@@ -213,11 +217,15 @@ class BrowserActionCollection(ActionCollection):
 
             browser_execution: AgentHistoryList = await agent.run(max_steps=max_steps)
 
+            # Poll for completion
+            while not browser_execution.is_done():
+                await asyncio.sleep(1)
+
+
             execution_time = time.time() - start_time
 
             if (
-                browser_execution is not None
-                and browser_execution.is_done()
+                browser_execution.is_done()
                 and browser_execution.is_successful()
             ):
                 # Extract and format content
@@ -354,11 +362,9 @@ if __name__ == "__main__":
     import json
     import asyncio
     
-    # Check if we're being called directly for testing
     if len(sys.argv) > 1 and sys.argv[1] == "--test":
         load_dotenv()
         
-        # Test parameters
         test_task = "Visit https://example.com and extract the main content"
         test_max_steps = 10
         test_format = "markdown"
@@ -378,8 +384,15 @@ if __name__ == "__main__":
     # Standard MCP server mode
     is_mcp_mode = len(sys.argv) == 1
     if is_mcp_mode:
+        # Shut down any existing logging handlers to ensure clean stdout
+        logging.shutdown()
+        
         original_print = print
+        # Redirect print to stderr to avoid interfering with stdout
         print = lambda *args, **kwargs: original_print(*args, file=sys.stderr, **kwargs)
+    
+    # Disable telemetry through environment variable
+    os.environ["TELEMETRY_ENABLED"] = "false"
     
     load_dotenv()
     
@@ -398,10 +411,10 @@ if __name__ == "__main__":
                 function_name = input_data.get("function_name", input_data.get("name", "browser_use"))
                 arguments = input_data.get("arguments", {})
                 
-                if function_name == "browser_use":
+                if function_name ==  "mcp_browser_use":
                     result = asyncio.run(service.mcp_browser_use(
                         task=arguments.get("task", ""),
-                        max_steps=arguments.get("max_steps", 50),
+                        max_steps=arguments.get("max_steps", 10),
                         extract_format=arguments.get("extract_format", "markdown")
                     ))
                 elif function_name == "get_browser_capabilities":

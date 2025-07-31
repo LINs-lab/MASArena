@@ -563,13 +563,13 @@ if __name__ == "__main__":
                 function_name = input_data.get("function_name", input_data.get("name", ""))
                 arguments = input_data.get("arguments", {})
                 
-                if function_name == "download_youtube_video":
+                if function_name == "mcp_download_youtube_video":
                     result = youtube_service.mcp_download_youtube_video(
                         url=arguments.get("url", ""),
                         timeout=arguments.get("timeout", 180),
                         output_format=arguments.get("output_format", "markdown")
                     )
-                elif function_name == "extract_youtube_transcript":
+                elif function_name == "mcp_extract_youtube_transcript":
                     result = youtube_service.mcp_extract_youtube_transcript(
                         video_id=arguments.get("video_id", ""),
                         language_code=arguments.get("language_code", "en"),

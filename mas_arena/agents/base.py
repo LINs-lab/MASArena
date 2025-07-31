@@ -750,7 +750,7 @@ class AgentSystem(abc.ABC):
         function_name = None
         
         for tool in self.tools:
-            if tool.get("name") == tool_name:
+            if tool.get("function_name") == tool_name:
                 server_name = tool.get("server_name")
                 function_name = tool.get("function_name")
                 break
@@ -760,7 +760,7 @@ class AgentSystem(abc.ABC):
             args_dict = json.loads(tool_args) if isinstance(tool_args, str) else tool_args
             
             # Execute tool using tool_manager
-            result = await self.tool_manager.call_tool(server_name, function_name or tool_name, args_dict)
+            result = await self.tool_manager.call_tool(server_name, function_name, args_dict)
             return {"result": result}
             
         except Exception as e:
@@ -852,20 +852,6 @@ async def create_agent_system(name: str, config: Dict[str, Any] = None) -> Optio
 
     if not agent_system:
         return None
-    # Check if any tool integration should be applied
-    if config and  config.get("use_mcp_tools"):
-        try:
-            from mas_arena.tools.tool_integration import ToolIntegrationWrapper
-
-            # Wrap the agent system
-            # The wrapper will now be responsible for initializing the ToolManager
-            agent_system = ToolIntegrationWrapper(agent_system, config)
-
-        except ImportError as e:
-            import traceback
-            print("Warning: ToolIntegrationWrapper not found. Tool integration is disabled.")
-            print("Underlying ImportError:")
-            traceback.print_exc()
 
     # Initialize the agent system by calling setup()
     if hasattr(agent_system, 'setup'):

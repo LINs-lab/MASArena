@@ -688,7 +688,7 @@ if __name__ == "__main__":
                 function_name = input_data.get("function_name", input_data.get("name", "search_papers"))
                 arguments = input_data.get("arguments", {})
                 
-                if function_name == "search_papers":
+                if function_name == "mcp_search_papers":
                     result = asyncio.run(service.mcp_search_papers(
                         query=arguments.get("query", ""),
                         sort_by=arguments.get("sort_by", "relevance"),
@@ -696,22 +696,22 @@ if __name__ == "__main__":
                         category=arguments.get("category", None),
                         output_format=arguments.get("output_format", "markdown")
                     ))
-                elif function_name == "get_paper_details":
+                elif function_name == "mcp_get_paper_details":
                     result = asyncio.run(service.mcp_get_paper_details(
                         paper_id=arguments.get("paper_id", ""),
                         output_format=arguments.get("output_format", "markdown")
                     ))
-                elif function_name == "download_paper":
+                elif function_name == "mcp_download_paper":
                     result = asyncio.run(service.mcp_download_paper(
                         paper_id=arguments.get("paper_id", ""),
                         extract_text=arguments.get("extract_text", True),
                         output_format=arguments.get("output_format", "markdown")
                     ))
-                elif function_name == "get_categories":
+                elif function_name == "mcp_get_categories":
                     result = service.mcp_get_categories(
                         output_format=arguments.get("output_format", "markdown")
                     )
-                elif function_name == "get_arxiv_capabilities":
+                elif function_name == "mcp_get_arxiv_capabilities":
                     result = service.mcp_get_arxiv_capabilities()
                 else:
                     result = ActionResponse(

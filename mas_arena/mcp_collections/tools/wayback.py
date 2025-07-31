@@ -517,7 +517,7 @@ if __name__ == "__main__":
                 function_name = input_data.get("function_name", input_data.get("name", ""))
                 arguments = input_data.get("arguments", {})
                 
-                if function_name == "list_archived_versions":
+                if function_name == "mcp_list_archived_versions":
                     result = asyncio.run(service.mcp_list_archived_versions(
                         url=arguments.get("url", ""),
                         limit=arguments.get("limit", 10),
@@ -525,7 +525,7 @@ if __name__ == "__main__":
                         to_date=arguments.get("to_date", None),
                         output_format=arguments.get("output_format", "markdown")
                     ))
-                elif function_name == "get_archived_content":
+                elif function_name == "mcp_get_archived_content":
                     result = asyncio.run(service.mcp_get_archived_content(
                         url=arguments.get("url", ""),
                         timestamp=arguments.get("timestamp", ""),
@@ -533,7 +533,7 @@ if __name__ == "__main__":
                         truncate_content=arguments.get("truncate_content", False),
                         output_format=arguments.get("output_format", "markdown")
                     ))
-                elif function_name == "get_wayback_capabilities":
+                elif function_name == "mcp_get_wayback_capabilities":
                     result = service.mcp_get_wayback_capabilities()
                 else:
                     result = ActionResponse(

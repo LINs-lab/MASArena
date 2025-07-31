@@ -61,8 +61,10 @@ class ActionCollection:
           2. environment variable AWORLD_WORKSPACE
           3. home directory
         """
-        path = Path(workspace) if workspace else os.getenv("MASARENA_WORKSPACE", "~")
-        if path and path.expanduser().is_dir():
+        path_str = workspace if workspace else os.getenv("MASARENA_WORKSPACE", "~")
+        path = Path(path_str)
+
+        if path.expanduser().is_dir():
             return path.expanduser().resolve()
 
         return Path.home().expanduser().resolve()

@@ -323,7 +323,7 @@ if __name__ == "__main__":
                 function_name = input_data.get("function_name", input_data.get("name", ""))
                 arguments = input_data.get("arguments", {})
                 
-                if function_name == "generate_python_code":
+                if function_name == "mcp_generate_python_code":
                     result = service.mcp_generate_python_code(
                         task_description=arguments.get("task_description", ""),
                         requirements=arguments.get("requirements", ""),
@@ -332,7 +332,7 @@ if __name__ == "__main__":
                         code_style=arguments.get("code_style", "documented"),
                         save_to_file_path=arguments.get("save_to_file_path", None)
                     )
-                elif function_name == "get_code_capabilities":
+                elif function_name == "mcp_get_code_capabilities":
                     result = service.mcp_get_code_capabilities()
                 else:
                     result = ActionResponse(

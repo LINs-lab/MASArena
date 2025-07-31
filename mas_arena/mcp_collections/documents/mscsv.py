@@ -366,7 +366,7 @@ if __name__ == "__main__":
                 function_name = input_data.get("function_name", input_data.get("name", "extract_csv_content"))
                 arguments = input_data.get("arguments", {})
                 
-                if function_name == "extract_csv_content":
+                if function_name == "mcp_extract_csv_content":
                     result = service.mcp_extract_csv_content(
                         file_path=arguments.get("file_path", ""),
                         output_format=arguments.get("output_format", "markdown"),
@@ -376,7 +376,7 @@ if __name__ == "__main__":
                         encoding=arguments.get("encoding", None),
                         delimiter=arguments.get("delimiter", None)
                     )
-                elif function_name == "list_supported_formats":
+                elif function_name == "mcp_list_supported_formats":
                     result = service.mcp_list_supported_formats()
                 else:
                     result = ActionResponse(

@@ -980,14 +980,14 @@ if __name__ == "__main__":
                 function_name = input_data.get("function_name", input_data.get("name", ""))
                 arguments = input_data.get("arguments", {})
                 
-                if function_name == "search_wikipedia":
+                if function_name == "mcp_search_wikipedia":
                     result = service.mcp_search_wikipedia(
                         query=arguments.get("query", ""),
                         limit=arguments.get("limit", 10),
                         language=arguments.get("language", "en"),
                         output_format=arguments.get("output_format", "markdown")
                     )
-                elif function_name == "get_article_content":
+                elif function_name == "mcp_get_article_content":
                     result = service.mcp_get_article_content(
                         title=arguments.get("title", ""),
                         auto_suggest=arguments.get("auto_suggest", False),
@@ -996,7 +996,7 @@ if __name__ == "__main__":
                         output_format=arguments.get("output_format", "markdown"),
                         include_full_content=arguments.get("include_full_content", True)
                     )
-                elif function_name == "get_article_summary":
+                elif function_name == "mcp_get_article_summary":
                     result = service.mcp_get_article_summary(
                         title=arguments.get("title", ""),
                         sentences=arguments.get("sentences", 5),
@@ -1005,19 +1005,19 @@ if __name__ == "__main__":
                         language=arguments.get("language", "en"),
                         output_format=arguments.get("output_format", "markdown")
                     )
-                elif function_name == "get_article_categories":
+                elif function_name == "mcp_get_article_categories":
                     result = service.mcp_get_article_categories(
                         title=arguments.get("title", ""),
                         language=arguments.get("language", "en"),
                         output_format=arguments.get("output_format", "markdown")
                     )
-                elif function_name == "get_article_links":
+                elif function_name == "mcp_get_article_links":
                     result = service.mcp_get_article_links(
                         title=arguments.get("title", ""),
                         language=arguments.get("language", "en"),
                         output_format=arguments.get("output_format", "markdown")
                     )
-                elif function_name == "get_article_history":
+                elif function_name == "mcp_get_article_history":
                     result = service.mcp_get_article_history(
                         title=arguments.get("title", ""),
                         date=arguments.get("date", ""),
@@ -1025,7 +1025,7 @@ if __name__ == "__main__":
                         auto_suggest=arguments.get("auto_suggest", False),
                         output_format=arguments.get("output_format", "markdown")
                     )
-                elif function_name == "get_wikipedia_capabilities":
+                elif function_name == "mcp_get_wikipedia_capabilities":
                     result = service.mcp_get_wikipedia_capabilities()
                 else:
                     result = ActionResponse(

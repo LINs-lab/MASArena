@@ -48,7 +48,7 @@ class AudioCollection(ActionCollection):
 
     def __init__(self, arguments: ActionArguments) -> None:
         super().__init__(arguments)
-        self._audio_output_dir =  "processed_audio"
+        self._audio_output_dir = self.workspace / "processed_audio"
         self._audio_output_dir.mkdir(exist_ok=True)
 
         # Supported audio formats
@@ -176,11 +176,11 @@ class AudioCollection(ActionCollection):
                     "codec": audio_stream.get("codec_name"),
                 }
             else:
-                self.logger.warning(f"Failed to extract metadata: {result.stderr}")
+                print(f"Failed to extract metadata: {result.stderr}")
                 return {}
 
         except Exception as e:
-            self.logger.error(f"Error extracting audio metadata: {str(e)}")
+            print(f"Error extracting audio metadata: {str(e)}")
             return {}
 
     def _trim_audio(self, input_path: Path, start_time: float, duration: float | None = None) -> Path:
@@ -535,23 +535,23 @@ if __name__ == "__main__":
                 function_name = input_data.get("function_name", input_data.get("name", ""))
                 arguments = input_data.get("arguments", {})
                 
-                if function_name == "transcribe_audio" or function_name == "transcribe":
+                if function_name == "mcp_transcribe_audio":
                     result = service.mcp_transcribe_audio(
                         file_path=arguments.get("file_path", ""),
                         model_size=arguments.get("model_size", "base"),
                         output_format=arguments.get("output_format", "text")
                     )
-                elif function_name == "extract_audio_metadata":
+                elif function_name == "mcp_extract_audio_metadata":
                     result = service.mcp_extract_audio_metadata(
                         file_path=arguments.get("file_path", "")
                     )
-                elif function_name == "trim_audio":
+                elif function_name == "mcp_trim_audio":
                     result = service.mcp_trim_audio(
                         file_path=arguments.get("file_path", ""),
                         start_time=arguments.get("start_time", 0),
                         duration=arguments.get("duration", None)
                     )
-                elif function_name == "list_supported_formats":
+                elif function_name == "mcp_list_supported_formats":
                     result = service.mcp_list_supported_formats()
                 else:
                     result = ActionResponse(

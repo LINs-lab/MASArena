@@ -3,12 +3,15 @@ import logging
 import json
 import traceback
 import os
+import re
 import asyncio
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any, Optional, get_origin, get_args
 import time
 import importlib.util
 import inspect
 from pydantic.fields import FieldInfo
+from pydantic_core import PydanticUndefined
+from types import NoneType, UnionType
 
 from mas_arena.mcp_collections.base import ActionCollection
 
@@ -17,18 +20,59 @@ logger = logging.getLogger(__name__)
 
 def _get_pydantic_field_type(field: FieldInfo) -> str:
     """Gets the JSON schema type for a Pydantic field."""
-    if issubclass(field.annotation, str):
-        return "string"
-    if issubclass(field.annotation, int):
-        return "integer"
-    if issubclass(field.annotation, float):
-        return "number"
-    if issubclass(field.annotation, bool):
-        return "boolean"
-    if issubclass(field.annotation, list):
+    annotation = field.annotation
+    if annotation is None or annotation is NoneType:
+        return "string"  # Treat None as string or handle as needed
+
+    origin = get_origin(annotation)
+    args = get_args(annotation)
+
+    if origin in (list, List):
         return "array"
-    if issubclass(field.annotation, dict):
+    if origin in (dict, Dict):
         return "object"
+    if origin in (UnionType,): # For int | None
+        # Filter out NoneType and take the first remaining type
+        non_none_args = [arg for arg in args if arg is not NoneType]
+        if non_none_args:
+            # Recursively get the type of the first non-None argument
+            # This is a simplification; you might need more complex logic
+            # for Unions of multiple non-None types.
+            temp_field = FieldInfo(annotation=non_none_args[0])
+            return _get_pydantic_field_type(temp_field)
+        else:
+            return "string" # or whatever default you want if only NoneType is present
+
+    # Handle Literal by inspecting its arguments
+    if origin is not None and "Literal" in str(origin):
+        if args:
+            # Take the type of the first literal value as representative
+            first_arg_type = type(args[0])
+            temp_field = FieldInfo(annotation=first_arg_type)
+            return _get_pydantic_field_type(temp_field)
+        return "string"  # Default for empty Literal
+
+    # For non-generic types or types without a clear origin handled above
+    check_type = annotation if origin is None else origin
+
+    if not inspect.isclass(check_type):
+        # If it's still not a class, it could be a forward reference string or something else.
+        # Handle as string as a fallback.
+        return "string"
+
+    if issubclass(check_type, str):
+        return "string"
+    if issubclass(check_type, int):
+        return "integer"
+    if issubclass(check_type, float):
+        return "number"
+    if issubclass(check_type, bool):
+        return "boolean"
+    if issubclass(check_type, list):
+        return "array"
+    if issubclass(check_type, dict):
+        return "object"
+        
     return "string"
 
 
@@ -97,7 +141,7 @@ def _discover_tools_from_collections() -> Dict[str, Dict[str, Any]]:
                                                     "type": param_type,
                                                     "description": param_desc
                                                 }
-                                                if param_default is not ... and param_default is not None:
+                                                if param_default is not ... and param_default is not None and param_default is not PydanticUndefined:
                                                     parameters["properties"][param_name]["default"] = param_default
                                                 else:
                                                     parameters["required"].append(param_name)
@@ -165,189 +209,6 @@ async def mcp_tool_desc_transform(mcp_servers: List[str], mcp_config: Dict[str, 
     return tool_descriptions
 
 
-async def get_server_instance(server_name: str, mcp_config: Dict[str, Any]) -> Optional[Any]:
-    """
-    Get or create MCP server instance
-    
-    Args:
-        server_name: Server name
-        mcp_config: MCP configuration
-        
-    Returns:
-        Server instance
-    """
-    if not mcp_config or "mcpServers" not in mcp_config or server_name not in mcp_config["mcpServers"]:
-        logger.warning(f"Server {server_name} not found in MCP config")
-        return None
-        
-    try:
-        # Get server configuration
-        server_config = mcp_config["mcpServers"][server_name]
-        
-        # Skip disabled servers
-        if server_config.get("disabled", False):
-            logger.info(f"Server {server_name} is disabled, skipping")
-            return None
-            
-        # API type servers don't need persistent connections
-        if server_config.get("type", "") == "api":
-            logger.info(f"API server {server_name} doesn't need persistent connection")
-            return None
-            
-        # Create server process
-        command = server_config.get("command", "")
-        args = server_config.get("args", [])
-        env = server_config.get("env", {})
-        cwd = server_config.get("cwd")
-        timeout = server_config.get("timeout", 60.0)
-        
-        # Process environment variables placeholders
-        processed_env = {}
-        for key, value in env.items():
-            if isinstance(value, str) and value.startswith("${") and value.endswith("}"):
-                env_var_name = value[2:-1]
-                env_value = os.environ.get(env_var_name)
-                if env_value is None:
-                    logger.warning(f"Environment variable {env_var_name} not found for server {server_name}")
-                    processed_env[key] = ""
-                else:
-                    processed_env[key] = env_value
-            else:
-                processed_env[key] = value
-        
-        # Merge environment variables
-        full_env = os.environ.copy()
-        full_env.update(processed_env)
-        
-        # Build full command
-        full_command = [command] + args
-        
-        logger.info(f"Starting server {server_name} with command: {full_command}")
-        
-        # Create server process
-        try:
-            process = await asyncio.create_subprocess_exec(
-                *full_command,
-                stdin=asyncio.subprocess.PIPE,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-                env=full_env,
-                cwd=cwd
-            )
-            
-            # Check if process started successfully
-            if process.returncode is not None:
-                logger.error(f"Failed to start server {server_name}: process exited with code {process.returncode}")
-                return None
-                
-            # Wait a bit to make sure process starts properly
-            await asyncio.sleep(0.5)
-            
-            # Check again if process is still running
-            if process.returncode is not None:
-                stderr_data = await process.stderr.read()
-                logger.error(f"Server {server_name} exited prematurely with code {process.returncode}: {stderr_data.decode('utf-8', errors='replace')}")
-                return None
-                
-            # Create server instance object
-            server_instance = {
-                "name": server_name,
-                "process": process,
-                "config": server_config,
-                "type": server_config.get("type", "stdio"),
-                "start_time": time.time()
-            }
-            
-            # Add timeout from client_session_timeout_seconds if available
-            if "client_session_timeout_seconds" in server_config:
-                server_instance["timeout"] = server_config["client_session_timeout_seconds"]
-            elif "timeout" in server_config:
-                server_instance["timeout"] = server_config["timeout"]
-            else:
-                server_instance["timeout"] = 60.0
-            
-            logger.info(f"Created server instance for {server_name}")
-            return server_instance
-            
-        except FileNotFoundError:
-            logger.error(f"Command not found: {command}")
-            return None
-        except PermissionError:
-            logger.error(f"Permission denied when executing: {command}")
-            return None
-        
-    except Exception as e:
-        logger.error(f"Error creating server instance for {server_name}: {e}")
-        traceback.print_exc()
-        return None
-
-async def cleanup_server(server: Any) -> None:
-    """
-    Clean up server instance
-    
-    Args:
-        server: Server instance
-    """
-    if not server:
-        return
-        
-    try:
-        server_name = server.get("name", "unknown")
-        logger.info(f"Cleaning up server {server_name}")
-        
-        # Get process
-        process = server.get("process")
-        if not process:
-            logger.warning(f"No process found for server {server_name}")
-            return
-            
-        # Check if process is still running
-        if process.returncode is not None:
-            logger.info(f"Process for server {server_name} already terminated with code {process.returncode}")
-            return
-            
-        # Try graceful termination first
-        try:
-            logger.info(f"Sending terminate signal to server {server_name}")
-            process.terminate()
-            
-            # Wait for process to terminate with timeout
-            try:
-                await asyncio.wait_for(process.wait(), timeout=5.0)
-                logger.info(f"Server {server_name} terminated gracefully")
-            except asyncio.TimeoutError:
-                # Force kill if process doesn't terminate within timeout
-                logger.warning(f"Server {server_name} did not terminate gracefully, forcing kill")
-                process.kill()
-                await process.wait()
-                logger.info(f"Server {server_name} killed forcefully")
-        except ProcessLookupError:
-            logger.info(f"Process for server {server_name} already gone")
-        
-        # Close pipes
-        if process.stdin:
-            if not process.stdin.is_closing():
-                process.stdin.close()
-            await process.stdin.wait_closed()
-            
-        if process.stdout:
-            if not process.stdout.is_closing():
-                process.stdout.close()
-                
-        if process.stderr:
-            if not process.stderr.is_closing():
-                process.stderr.close()
-                
-        # Log cleanup duration
-        if "start_time" in server:
-            duration = time.time() - server["start_time"]
-            logger.info(f"Server {server_name} ran for {duration:.2f} seconds")
-            
-        logger.info(f"Cleaned up server {server_name}")
-    except Exception as e:
-        logger.error(f"Error cleaning up server {server.get('name', 'unknown')}: {e}")
-        traceback.print_exc()
-    
 async def call_api(server_name: str, function_name: str, parameters: Dict[str, Any], mcp_config: Dict[str, Any]) -> Dict[str, Any]:
     """
     Call API type MCP tool
@@ -531,7 +392,7 @@ async def call_function_tool(server_name: str, function_name: str, parameters: D
         traceback.print_exc()
         return {"error": str(e)}
 
-async def call_mcp_tool(server_name: str, function_name: str, parameters: Dict[str, Any], mcp_config: Dict[str, Any]) -> Dict[str, Any]:
+async def call_mcp_tool(server_name: str, function_name: str, parameters: Dict[str, Any], mcp_config: Dict[str, Any], sandbox: Any) -> Dict[str, Any]:
     """
     Call MCP tool, choosing appropriate call method based on server type
     
@@ -540,6 +401,7 @@ async def call_mcp_tool(server_name: str, function_name: str, parameters: Dict[s
         function_name: Function name to call
         parameters: Tool parameters
         mcp_config: MCP configuration
+        sandbox: The sandbox instance for process management
         
     Returns:
         Tool call result
@@ -554,107 +416,89 @@ async def call_mcp_tool(server_name: str, function_name: str, parameters: Dict[s
     logger.info(f"Calling function {function_name} on server {server_name} with type {server_type}")
     
     try:
-        # Choose call method based on server type
         if server_type == "api":
             return await call_api(server_name, function_name, parameters, mcp_config)
         elif server_type == "function_tool":
             return await call_function_tool(server_name, function_name, parameters, mcp_config)
-        else:
-            # For stdio type servers, start process and communicate via stdin/stdout
-            server_instance = await get_server_instance(server_name, mcp_config)
-            if not server_instance:
-                logger.error(f"Failed to create server instance for {server_name}")
-                return {"error": f"Failed to create server instance for {server_name}"}
-                
+        else: # stdio
+            process = await sandbox.get_server_process(server_name)
+            if not process:
+                logger.error(f"Failed to get server process for {server_name} from sandbox")
+                return {"error": f"Failed to get server process for {server_name}"}
+
             try:
-                process = server_instance.get("process")
-                if not process:
-                    logger.error(f"No process found for server {server_name}")
-                    return {"error": f"No process found for server {server_name}"}
-                
-                # Prepare input data
                 input_data = {
                     "function_name": function_name,
-                    "name": function_name,  # Keep name for backward compatibility
+                    "name": function_name,
                     "arguments": parameters
                 }
-                
-                # Send input data
                 input_json = json.dumps(input_data)
                 logger.debug(f"Sending to {server_name}: {input_json}")
                 input_bytes = (input_json + "\n").encode()
+                
                 process.stdin.write(input_bytes)
                 await process.stdin.drain()
                 
-                # Read output data with timeout
-                try:
-                    # Get timeout from server instance or config
-                    timeout = server_instance.get("timeout", server_config.get("timeout", 60.0))
-                    logger.info(f"Setting timeout for {server_name} to {timeout} seconds")
-                    
-                    # Set a timeout for reading response
-                    output_line = await asyncio.wait_for(
-                        process.stdout.readline(),
-                        timeout=timeout
-                    )
-                    output_text = output_line.decode().strip()
-                    logger.debug(f"Received from {server_name}: {output_text[:200]}...")
-                    
-                    # Check if output is empty
-                    if not output_text:
-                        logger.error(f"Empty response from {server_name}")
-                        
-                        # Try to read stderr for error information
-                        stderr_data = await asyncio.wait_for(
-                            process.stderr.read(1024),  # Read up to 1KB of stderr
-                            timeout=1.0
-                        )
-                        stderr_text = stderr_data.decode(errors='replace') if stderr_data else ""
-                        
-                        if stderr_text:
-                            logger.error(f"Stderr from {server_name}: {stderr_text}")
-                            return {"error": f"Empty response from {server_name}. Stderr: {stderr_text[:200]}..."}
-                        else:
-                            return {"error": f"Empty response from {server_name}"}
-                    
+                timeout = server_config.get("timeout", 9999.0)
+                
+                timeout = server_config.get("timeout", 300.0)
+                
+                output_lines = []
+                start_time = time.time()
+                
+                # Read lines until we have a response or timeout
+                while time.time() - start_time < timeout:
                     try:
-                        output_data = json.loads(output_text)
-                        logger.info(f"Received response from {server_name}.{function_name}")
+                        line_bytes = await asyncio.wait_for(process.stdout.readline(), timeout=2.0)
+                        if not line_bytes: # EOF
+                            break
                         
-                        # Check for error in response
-                        if isinstance(output_data, dict) and "error" in output_data:
-                            logger.warning(f"Error in tool response: {output_data['error']}")
-                            return {"error": output_data["error"]}
-                        
-                        return {"result": output_data}
-                    except json.JSONDecodeError as e:
-                        logger.error(f"Error parsing output from {server_name}: {e}")
-                        logger.error(f"Raw output: {output_text[:500]}")
-                        
-                        # Try to extract content if it looks like debug output with JSON
-                        json_start = output_text.find('{')
-                        json_end = output_text.rfind('}')
-                        
-                        if json_start >= 0 and json_end > json_start:
-                            # Try to extract JSON from the output
-                            try:
-                                json_part = output_text[json_start:json_end+1]
-                                extracted_data = json.loads(json_part)
-                                logger.info(f"Successfully extracted JSON from output")
-                                return {"result": extracted_data}
-                            except json.JSONDecodeError:
-                                pass
-                        
-                        return {"error": f"Failed to parse output: {output_text[:200]}..."}
-                except asyncio.TimeoutError:
-                    logger.error(f"Timeout waiting for response from {server_name}")
-                    return {"error": f"Timeout waiting for response from {server_name}"}
+                        line = line_bytes.decode(errors='replace').strip()
+                        if line:
+                            output_lines.append(line)
+                            # Heuristic: if a line looks like a final JSON response, stop reading.
+                            # This is an optimization to avoid waiting for the timeout.
+                            if line.startswith('{') and line.endswith('}'):
+                                break
+                    except asyncio.TimeoutError:
+                        # No new line for 2 seconds, assume the tool has finished responding
+                        break
+
+                output_text = "\n".join(output_lines)
+                logger.debug(f"Received from {server_name}: {output_text[:500]}...")
+
+                if not output_text:
+                    stderr_data = await asyncio.wait_for(process.stderr.read(1024), timeout=1.0)
+                    stderr_text = stderr_data.decode(errors='replace') if stderr_data else ""
+                    logger.error(f"Empty response from {server_name}. Stderr: {stderr_text}")
+                    return {"error": f"Empty response from {server_name}. Stderr: {stderr_text[:200]}..."}
+
+                try:
+                    # Find all non-overlapping JSON object strings (non-greedy)
+                    json_matches = re.findall(r'\{.*?\}', output_text, re.DOTALL)
                     
+                    if not json_matches:
+                        raise json.JSONDecodeError("No JSON object found in output", output_text, 0)
+
+                    # Try to parse the last found JSON object as it's the most likely to be the final result
+                    last_json_str = json_matches[-1]
+                    output_data = json.loads(last_json_str)
+
+                    if isinstance(output_data, dict) and "error" in output_data:
+                        logger.warning(f"Tool returned an error: {output_data['error']}")
+                        return {"error": output_data["error"]}
+                    
+                    return {"result": output_data}
+                except json.JSONDecodeError:
+                    logger.error(f"Failed to parse JSON from {server_name} output: {output_text[:500]}")
+                    return {"error": f"Failed to parse JSON from output: {output_text[:200]}..."}
+
+            except asyncio.TimeoutError:
+                logger.error(f"Timeout waiting for response from {server_name}")
+                return {"error": f"Timeout waiting for response from {server_name}"}
             except Exception as e:
-                logger.error(f"Error calling function {function_name} on {server_name}: {e}")
-                traceback.print_exc()
+                logger.error(f"Error communicating with {server_name}: {e}", exc_info=True)
                 return {"error": str(e)}
     except Exception as e:
-        logger.error(f"Unexpected error calling function {function_name} on {server_name}: {e}")
-        traceback.print_exc()
+        logger.error(f"Unexpected error calling tool {function_name} on {server_name}: {e}", exc_info=True)
         return {"error": f"Unexpected error: {str(e)}"}

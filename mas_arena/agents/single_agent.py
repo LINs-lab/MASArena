@@ -31,18 +31,23 @@ class SingleAgent(AgentSystem):
         super().__init__(name, config, mcp_config)
         self.config = config or {}
 
-        self.model_name = self.config.get("model_name") or os.getenv("MODEL_NAME", "gpt-4o-mini")
+        # Default model name can be overridden by config
+        self.model_name = self.config.get("llm_config", {}).get("model") or os.getenv("MODEL_NAME", "gpt-4-1106-preview")
+
+        # System prompt can be customized
         self.system_prompt = self.config.get("system_prompt", "") + self.format_prompt
-        self.max_steps = self.config.get("max_steps", 5)
+
+        # Agent's state
+        self.max_steps = self.config.get("max_steps", 10)
         self.current_step = 0
         self.message_history = []
-        self.tools = []
+        self.tools = [] # This will be populated by the ToolIntegrationWrapper
 
-        # Initialize evaluator and metrics collector through base class methods
-        if "api_key" in config and config["api_key"] and "api_base" in config and config["api_base"]:
-            self.client = AsyncOpenAI(api_key=config["api_key"], base_url=config["api_base"])
-        else:
-            self.client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"), base_url=os.getenv("OPENAI_API_BASE"))
+        # Set up the OpenAI client
+        llm_config = self.config.get("llm_config", {})
+        api_key = llm_config.get("api_key") or os.getenv("OPENAI_API_KEY")
+        base_url = llm_config.get("api_base") or os.getenv("OPENAI_API_BASE")
+        self.client = AsyncOpenAI(api_key=api_key, base_url=base_url)
 
     async def run_agent(self, problem: Dict[str, Any], **kwargs) -> Dict[str, Any]:
         """
@@ -74,13 +79,17 @@ class SingleAgent(AgentSystem):
             self.current_step += 1
 
             llm_input = self.prepare_llm_input(self.message_history, self.tools)
-
-            response = await self.client.chat.completions.create(
-                model=self.model_name,
-                messages=llm_input["messages"],
-                tools=llm_input.get("tools", None),
-                tool_choice=llm_input.get("tool_choice", None)
-            )
+            try:
+                print(f"llm_input: {llm_input}")
+                response = await self.client.chat.completions.create(
+                    model=self.model_name,
+                    messages=llm_input["messages"],
+                    tools=llm_input.get("tools", None),
+                    tool_choice=llm_input.get("tool_choice", None)
+                )
+            except Exception as e:
+                print(f"call llm_input: {llm_input}")
+                print(e)
 
             response_content = response.choices[0].message.content
             response_content = response_content.replace('\r\n', '\n').replace('\r',

@@ -188,9 +188,7 @@ def main():
     if args.use_mcp_tools:
         agent_config["use_mcp_tools"] = True
         
-        # 使用load_mcp_config函数加载MCP配置
         if not args.mcp_config_file:
-            # 使用默认路径
             mcp_servers = load_mcp_config()
         else:
             mcp_servers = load_mcp_config(args.mcp_config_file)

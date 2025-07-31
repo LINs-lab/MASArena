@@ -489,7 +489,7 @@ if __name__ == "__main__":
                 tool_name = input_data.get("name", "download_file")
                 arguments = input_data.get("arguments", {})
                 
-                if tool_name == "download_file":
+                if tool_name == "mcp_download_file":
                     result = asyncio.run(service.mcp_download_file(
                         url=arguments.get("url", ""),
                         output_file_path=arguments.get("output_file_path", ""),
@@ -497,7 +497,7 @@ if __name__ == "__main__":
                         timeout=arguments.get("timeout", 60),
                         output_format=arguments.get("output_format", "markdown")
                     ))
-                elif tool_name == "get_download_capabilities":
+                elif tool_name == "mcp_get_download_capabilities":
                     result = service.mcp_get_download_capabilities()
                 else:
                     result = ActionResponse(

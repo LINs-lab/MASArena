@@ -20,6 +20,7 @@ from rich import print as rprint
 
 # Import browser cleanup utility
 from mas_arena.tools.browser_cleanup import cleanup_browser_processes
+from mas_arena.tools.tool_integration import ToolIntegrationWrapper
 
 from mas_arena.metrics import (
     MetricsRegistry,
@@ -62,24 +63,17 @@ class BenchmarkRunner:
 
         Args:
             results_dir: Directory to save results
-            metrics_dir: Directory to save metrics data
         """
         self.results_dir = results_dir
         self.timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         self.results = []
-        self.agent_config = None  # Store agent configuration
-        self.metrics_registry = None
-        self.metrics_collector = None
-
-        # Create directories
-        os.makedirs(results_dir, exist_ok=True)
-        # os.makedirs(metrics_dir, exist_ok=True)
-
-        # Set up metrics
+        self.agent_config = None
         self.metrics_registry = self._setup_metrics()
-        
-        # Create centralized metrics collector
         self.metrics_collector = MetricsCollector(self.metrics_registry)
+        self.sandbox = None  # Centralized Sandbox
+        self.tool_manager = None  # Centralized ToolManager
+
+        os.makedirs(results_dir, exist_ok=True)
 
     def _setup_metrics(self):
         """Set up metrics collection"""
@@ -87,43 +81,21 @@ class BenchmarkRunner:
         return registry
 
     async def _prepare_benchmark(self, benchmark_name, data_path, limit, agent_system, agent_config, verbose, data_id=None):
-        """
-        Run a benchmark with the specified configuration.
-
-        Args:
-            benchmark_name: Name of the benchmark (math, drop, gsm8k, hotpotqa, humaneval, mbpp)
-            data_path: Custom path to benchmark data file (optional)
-            limit: Maximum number of problems to process
-            agent_system: Agent system to use (single_agent, supervisor_mas, swarm)
-            agent_config: Configuration for the agent system
-            verbose: Whether to print progress information
-
-        Returns:
-            Dictionary of benchmark results
-        """
-        # Validate benchmark name
         if benchmark_name not in BENCHMARKS:
             raise ValueError(f"Unknown benchmark: {benchmark_name}. Supported: {', '.join(BENCHMARKS.keys())}")
         
         benchmark_config = BENCHMARKS[benchmark_name]
 
         if verbose:
-                print(f"Available agent systems: {', '.join(AVAILABLE_AGENT_SYSTEMS.keys())}")
+            print(f"Available agent systems: {', '.join(AVAILABLE_AGENT_SYSTEMS.keys())}")
+        
         self.agent_config = agent_config or {}
-
-        # Ensure the agent knows which evaluator to use by setting it in the config
         self.agent_config['evaluator'] = benchmark_name
 
         if not data_path:
             data_path = benchmark_config.get("data_path", f"data/{benchmark_name}_test.jsonl")
 
         output_file = Path(self.results_dir) / f"{benchmark_name}_{agent_system}_{self.timestamp}.json"
-
-        agent = await create_agent_system(agent_system, self.agent_config)
-        if agent is None:
-            raise ValueError(f"Unknown agent system: {agent_system}. Available: {', '.join(AVAILABLE_AGENT_SYSTEMS.keys())}")
-
-        agent.set_metrics_registry(self.metrics_registry)
 
         try:
             with open(data_path, "r", encoding="utf-8") as f:
@@ -132,18 +104,14 @@ class BenchmarkRunner:
             raise FileNotFoundError(f"Data file not found: {data_path}")
 
         if data_id:
-            primary_id = benchmark_config.get("normalization_keys", {}).get("id", None)
-            if primary_id is not None:
-                for problem in problems:
-                    if str(problem[primary_id]) == data_id:
-                        problems = [problem]
-                        break
-
+            primary_id_key = benchmark_config.get("normalization_keys", {}).get("id")
+            if primary_id_key:
+                problems = [p for p in problems if str(p.get(primary_id_key)) == data_id]
 
         if limit and limit < len(problems):
             problems = random.sample(problems, limit)
 
-        return agent, problems, benchmark_config, output_file
+        return problems, benchmark_config, output_file
 
     async def _process_one_problem(self, i, p, agent, benchmark_config, verbose=True):
         key_mapping = benchmark_config.get("normalization_keys", {})
@@ -398,66 +366,80 @@ class BenchmarkRunner:
         ))
 
     async def arun(self, benchmark_name="math", data_path=None, limit=None, agent_system="single_agent", agent_config=None, verbose=True, data_id=None, concurrency=10):
-        # Prepare benchmark; we only need problems and config here
-        _, problems, benchmark_config, output_file = await self._prepare_benchmark(
+        # Import necessary components here to avoid circular dependencies
+        from mas_arena.sandbox.sandbox import Sandbox
+        from mas_arena.tools.tool_manager import ToolManager
+
+        # This now returns problems, benchmark_config, and output_file
+        problems, benchmark_config, output_file = await self._prepare_benchmark(
             benchmark_name, data_path, limit, agent_system, agent_config, verbose, data_id
         )
-
-        if verbose:
-            print(f"Running {benchmark_name} benchmark asynchronously with {agent_system} agent system...")
-            print(f"Processing {len(problems)} problems with concurrency {concurrency}.")
-
-        self.metrics_registry.start_all_collectors()
-        self.metrics_collector.start_timer("mas_arena.execution")
-
-        semaphore = asyncio.Semaphore(concurrency)
         
-        # a list to hold created agent instances
-        created_agents = []
-
-        async def process_with_semaphore(i, p):
-            async with semaphore:
-                # Create a fresh agent instance per problem to isolate state
-                new_agent = await create_agent_system(agent_system, self.agent_config)
-                new_agent.set_metrics_registry(self.metrics_registry)
-                created_agents.append(new_agent)
-                return await self._process_one_problem(i, p, new_agent, benchmark_config, verbose)
-
-        tasks = [process_with_semaphore(i, p) for i, p in enumerate(problems)]
-        
-        all_results = await tqdm.gather(*tasks, desc="Processing Problems")
-        
-        # Clean up all created agents
-        if verbose:
-            print("Cleaning up agent resources...")
-        
-        for agent in created_agents:
-            if hasattr(agent, 'teardown'):
-                try:
-                    await agent.teardown()
-                except Exception as e:
-                    print(f"Error cleaning up agent: {e}")
-        
-        if verbose:
-            print(f"Cleaned up {len(created_agents)} agent instances")
+        # Setup Sandbox and ToolManager
+        if self.agent_config.get("use_mcp_tools"):
+            mcp_config = self.agent_config.get("mcp_servers", {})
+            self.sandbox = Sandbox(mcp_config=mcp_config)
             
-        # Clean up any MCP browser processes that might still be running
+            self.tool_manager = ToolManager(mcp_servers=mcp_config, use_mcp_tools=True, sandbox=self.sandbox)
+            await self.tool_manager.setup()
+
         try:
             if verbose:
-                print("Checking for MCP browser processes to clean up...")
-            # Use the more aggressive approach first to ensure parent processes are terminated
-            from mas_arena.tools.browser_cleanup import kill_mcp_browser_processes
-            kill_mcp_browser_processes(verbose=verbose)
-            # Then use the regular cleanup for any remaining processes and temp directories
-            killed_count = cleanup_browser_processes(verbose=verbose, force=True, cleanup_temp=True, mcp_only=True)
-            if killed_count > 0 and verbose:
-                print(f"Successfully cleaned up {killed_count} MCP browser processes")
-        except Exception as e:
-            if verbose:
-                print(f"Error cleaning up MCP browser processes: {e}")
-                traceback.print_exc()
+                print(f"Running {benchmark_name} benchmark asynchronously with {agent_system} agent system...")
+                print(f"Processing {len(problems)} problems with concurrency {concurrency}.")
 
-        return self._finalize_benchmark(all_results, benchmark_name, agent_system, output_file, verbose)
+            self.metrics_registry.start_all_collectors()
+            self.metrics_collector.start_timer("mas_arena.execution")
+
+            semaphore = asyncio.Semaphore(concurrency)
+            created_agents = []
+
+            async def process_with_semaphore(i, p):
+                async with semaphore:
+                    new_agent = await create_agent_system(agent_system, self.agent_config)
+                    
+                    if self.agent_config.get("use_mcp_tools"):
+                        # Pass the shared tool_manager to the wrapper
+                        new_agent = ToolIntegrationWrapper(new_agent, self.agent_config, self.tool_manager)
+                        await new_agent.setup()
+
+                    new_agent.set_metrics_registry(self.metrics_registry)
+                    created_agents.append(new_agent)
+                    return await self._process_one_problem(i, p, new_agent, benchmark_config, verbose)
+
+            tasks = [process_with_semaphore(i, p) for i, p in enumerate(problems)]
+            all_results = await tqdm.gather(*tasks, desc="Processing Problems")
+            
+            if verbose:
+                print("Cleaning up agent resources...")
+            
+            for agent in created_agents:
+                if hasattr(agent, 'teardown'):
+                    try:
+                        await agent.teardown()
+                    except Exception as e:
+                        print(f"Error cleaning up agent: {e}")
+            
+            if verbose:
+                print(f"Cleaned up {len(created_agents)} agent instances")
+
+            return self._finalize_benchmark(all_results, benchmark_name, agent_system, output_file, verbose)
+
+        finally:
+            # This block will always execute, ensuring cleanup happens
+            if self.sandbox:
+                if verbose:
+                    print("Cleaning up sandbox resources (tool processes)...")
+                await self.sandbox.cleanup_all_processes()
+                if verbose:
+                    print("Sandbox cleanup complete.")
+            # Explicitly cleanup browser processes as a final safety measure
+            if any(server == "browser" for server in self.agent_config.get("mcp_servers", [])):
+                if verbose:
+                    print("Running final browser cleanup...")
+                cleanup_browser_processes()
+                if verbose:
+                    print("Final browser cleanup complete.")
 
     def visualize_results(self, output_dir=None):
         """

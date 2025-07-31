@@ -602,18 +602,18 @@ if __name__ == "__main__":
                 function_name = input_data.get("function_name", input_data.get("name", ""))
                 arguments = input_data.get("arguments", {})
                 
-                if function_name == "search_compounds":
+                if function_name == "mcp_search_compounds":
                     result = service.mcp_search_compounds(
                         query=arguments.get("query", ""),
                         search_type=arguments.get("search_type", "name"),
                         max_results=arguments.get("max_results", 10)
                     )
-                elif function_name == "get_compound_synonyms":
+                elif function_name == "mcp_get_compound_synonyms":
                     result = service.mcp_get_compound_synonyms(
                         cid=arguments.get("cid", 0),
                         max_synonyms=arguments.get("max_synonyms", 20)
                     )
-                elif function_name == "get_compound_properties":
+                elif function_name == "mcp_get_compound_properties":
                     result = service.mcp_get_compound_properties(
                         cid=arguments.get("cid", 0),
                         properties=arguments.get("properties", [
@@ -621,13 +621,13 @@ if __name__ == "__main__":
                             "InChI", "XLogP", "TPSA", "HBondDonorCount", "HBondAcceptorCount"
                         ])
                     )
-                elif function_name == "search_similar_compounds":
+                elif function_name == "mcp_search_similar_compounds":
                     result = service.mcp_search_similar_compounds(
                         cid=arguments.get("cid", 0),
                         similarity_threshold=arguments.get("similarity_threshold", 0.9),
                         max_results=arguments.get("max_results", 10)
                     )
-                elif function_name == "get_pubchem_capabilities":
+                elif function_name == "mcp_get_pubchem_capabilities":
                     result = service.mcp_get_pubchem_capabilities()
                 else:
                     result = ActionResponse(

@@ -994,7 +994,7 @@ if __name__ == "__main__":
                 function_name = input_data.get("function_name", input_data.get("name", ""))
                 arguments = input_data.get("arguments", {})
                 
-                if function_name == "analyze_video":
+                if function_name == "mcp_analyze_video":
                     result = service.mcp_analyze_video(
                         video_url=arguments.get("video_url", ""),
                         question=arguments.get("question", "Describe what is happening in this video"),
@@ -1004,7 +1004,7 @@ if __name__ == "__main__":
                         output_format=arguments.get("output_format", "markdown"),
                         max_workers=arguments.get("max_workers", 4)
                     )
-                elif function_name == "summarize_video":
+                elif function_name == "mcp_summarize_video":
                     result = service.mcp_summarize_video(
                         video_url=arguments.get("video_url", ""),
                         sample_rate=arguments.get("sample_rate", 1),
@@ -1012,7 +1012,7 @@ if __name__ == "__main__":
                         end_time=arguments.get("end_time", None),
                         output_format=arguments.get("output_format", "markdown")
                     )
-                elif function_name == "extract_keyframes":
+                elif function_name == "mcp_extract_keyframes":
                     result = service.mcp_extract_keyframes(
                         video_path=arguments.get("video_path", ""),
                         target_time=arguments.get("target_time", 0),
@@ -1020,7 +1020,7 @@ if __name__ == "__main__":
                         output_dir=arguments.get("output_dir", None),
                         output_format=arguments.get("output_format", "markdown")
                     )
-                elif function_name == "list_supported_formats":
+                elif function_name == "mcp_list_supported_formats":
                     result = service.mcp_list_supported_formats()
                 else:
                     result = ActionResponse(

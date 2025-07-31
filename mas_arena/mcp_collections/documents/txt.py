@@ -645,14 +645,14 @@ if __name__ == "__main__":
                 function_name = input_data.get("function_name", input_data.get("name", "extract_text_content"))
                 arguments = input_data.get("arguments", {})
                 
-                if function_name == "extract_text_content":
+                if function_name == "mcp_extract_text_content":
                     result = service.mcp_extract_text_content(
                         file_path=arguments.get("file_path", ""),
                         output_format=arguments.get("output_format", "markdown"),
                         encoding=arguments.get("encoding", None),
                         max_content_length=arguments.get("max_content_length", None)
                     )
-                elif function_name == "list_supported_formats":
+                elif function_name == "mcp_list_supported_formats":
                     result = service.mcp_list_supported_formats()
                 else:
                     result = ActionResponse(

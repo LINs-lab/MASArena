@@ -935,11 +935,11 @@ if __name__ == "__main__":
                 input_data = json.loads(input_line)
                 
                 # Extract tool name and arguments
-                function_name = input_data.get("function_name", "extract_xlsx_content")
+                function_name = input_data.get("function_name", "mcp_extract_excel_content")
                 arguments = input_data.get("arguments", {})
                 
-                # Call the appropriate tool - ensure create_screenshot is False by default
-                if function_name == "extract_xlsx_content":
+                # Call the appropriate tool
+                if function_name == "mcp_extract_excel_content":
                     # Force create_screenshot to False for safety in server environments
                     if "create_screenshot" not in arguments:
                         arguments["create_screenshot"] = False
@@ -957,7 +957,7 @@ if __name__ == "__main__":
                     sys.stdout.write(json.dumps(result.model_dump()) + "\n")
                     sys.stdout.flush()
                 
-                elif function_name == "extract_cell_colors":
+                elif function_name == "mcp_extract_cell_colors":
                     result = service.mcp_extract_cell_colors(
                         file_path=arguments.get("file_path", ""),
                         sheet_name=arguments.get("sheet_name", None)
@@ -965,7 +965,7 @@ if __name__ == "__main__":
                     sys.stdout.write(json.dumps(result.model_dump()) + "\n")
                     sys.stdout.flush()
                     
-                elif function_name == "list_supported_formats":
+                elif function_name == "mcp_list_supported_formats":
                     result = service.mcp_list_supported_formats()
                     sys.stdout.write(json.dumps(result.model_dump()) + "\n")
                     sys.stdout.flush()

@@ -586,11 +586,11 @@ if __name__ == "__main__":
                 function_name = input_data.get("function_name", input_data.get("name", ""))
                 arguments = input_data.get("arguments", {})
                 
-                if function_name == "get_stock_quote":
+                if function_name == "mcp_get_stock_quote":
                     result = service.mcp_get_stock_quote(
                         symbol=arguments.get("symbol", "")
                     )
-                elif function_name == "get_historical_data":
+                elif function_name == "mcp_get_historical_data":
                     result = service.mcp_get_historical_data(
                         symbol=arguments.get("symbol", ""),
                         start=arguments.get("start", ""),
@@ -598,11 +598,11 @@ if __name__ == "__main__":
                         interval=arguments.get("interval", "1d"),
                         max_rows_preview=arguments.get("max_rows_preview", 10)
                     )
-                elif function_name == "get_company_info":
+                elif function_name == "mcp_get_company_info":
                     result = service.mcp_get_company_info(
                         symbol=arguments.get("symbol", "")
                     )
-                elif function_name == "get_financial_statements":
+                elif function_name == "mcp_get_financial_statements":
                     result = service.mcp_get_financial_statements(
                         symbol=arguments.get("symbol", ""),
                         statement_type=arguments.get("statement_type", ""),

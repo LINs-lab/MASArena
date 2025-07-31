@@ -502,22 +502,22 @@ if __name__ == "__main__":
                 function_name = input_data.get("function_name", input_data.get("name", ""))
                 arguments = input_data.get("arguments", {})
                 
-                if function_name == "extract_text_ocr" or function_name == "ocr":
+                if function_name == "mcp_extract_text_ocr":
                     result = service.mcp_extract_text_ocr(
                         file_path=arguments.get("file_path", ""),
                         language=arguments.get("language", "eng"),
                         preprocess=arguments.get("preprocess", True)
                     )
-                elif function_name == "analyze_image_ai" or function_name == "process":
+                elif function_name == "mcp_analyze_image_ai":
                     result = service.mcp_analyze_image_ai(
                         file_path=arguments.get("file_path", ""),
                         task=arguments.get("task", "Describe what you see in this image")
                     )
-                elif function_name == "get_image_metadata":
+                elif function_name == "mcp_get_image_metadata":
                     result = service.mcp_get_image_metadata(
                         file_path=arguments.get("file_path", "")
                     )
-                elif function_name == "list_supported_formats":
+                elif function_name == "mcp_list_supported_formats":
                     result = service.mcp_list_supported_formats()
                 else:
                     result = ActionResponse(

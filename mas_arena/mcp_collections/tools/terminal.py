@@ -504,18 +504,18 @@ if __name__ == "__main__":
                 function_name = input_data.get("function_name", input_data.get("name", ""))
                 arguments = input_data.get("arguments", {})
                 
-                if function_name == "execute_command":
+                if function_name == "mcp_execute_command":
                     result = asyncio.run(service.mcp_execute_command(
                         command=arguments.get("command", ""),
                         timeout=arguments.get("timeout", 30),
                         output_format=arguments.get("output_format", "markdown")
                     ))
-                elif function_name == "get_command_history":
+                elif function_name == "mcp_get_command_history":
                     result = service.mcp_get_command_history(
                         count=arguments.get("count", 10),
                         output_format=arguments.get("output_format", "markdown")
                     )
-                elif function_name == "get_terminal_capabilities":
+                elif function_name == "mcp_get_terminal_capabilities":
                     result = service.mcp_get_terminal_capabilities()
                 else:
                     result = ActionResponse(
