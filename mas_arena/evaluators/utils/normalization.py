@@ -72,6 +72,7 @@ def normalize_problem_keys(problem: Dict[str, Any], key_mapping: Dict[str, str],
     key_definitions = {
         "id": "id",
         "problem": "problem",
+        "context": "context",
         "solution": "solution",
         "test": "test",
         "entry_point": "entry_point",

@@ -8,17 +8,16 @@ Standalone evaluator for DROP (Discrete Reasoning Over Paragraphs) problems.
 from __future__ import annotations
 
 import re
-import string
 import time
 from pathlib import Path
-from collections import Counter
-from typing import Dict, Any, List
+from typing import Dict, Any
 
 from langsmith.evaluation import RunEvaluator
 from langsmith.schemas import Run
 
 from mas_arena.evaluators.base_evaluator import BaseEvaluator
 from mas_arena.evaluators.registry import register_benchmark
+from mas_arena.evaluators.utils import calculate_f1_score, normalize_answer
 
 _ANS_TAG_RE   = re.compile(r"<answer>\s*([\s\S]*?)\s*</answer>", re.IGNORECASE)
 _FINAL_RE     = re.compile(r"(?:^|\n)\s*(?:final\s+answer|answer)\s*[:\-]?\s*([\s\S]+)", re.IGNORECASE)
@@ -73,38 +72,11 @@ class DROPEvaluator(BaseEvaluator):
     @staticmethod
     def _normalize(s: Any) -> str:
         """DROP normalization: lowercase -> remove articles/punctuation -> collapse whitespace."""
-        s = str(s)
-
-        def remove_articles(t: str) -> str:
-            return re.sub(r"\b(a|an|the)\b", " ", t)
-
-        def white_space_fix(t: str) -> str:
-            return " ".join(t.split())
-
-        def remove_punc(t: str) -> str:
-            return "".join(ch for ch in t if ch not in string.punctuation)
-
-        return white_space_fix(remove_articles(remove_punc(s.lower())))
-
+        return normalize_answer(s)
 
     def _f1(self, gold: str, pred: str) -> float:
         """Calculates token-level F1 score (AllenNLP-style)."""
-        gold_toks: List[str] = self._normalize(gold).split()
-        pred_toks: List[str] = self._normalize(pred).split()
-
-        if not gold_toks and not pred_toks:
-            return 1.0
-        if not gold_toks or not pred_toks:
-            return 0.0
-
-        common = Counter(gold_toks) & Counter(pred_toks)
-        num_same = sum(common.values())
-        if num_same == 0:
-            return 0.0
-
-        precision = num_same / len(pred_toks)
-        recall    = num_same / len(gold_toks)
-        return 2 * precision * recall / (precision + recall)
+        return calculate_f1_score(gold, pred, self._normalize)
 
 
     def _make_run(

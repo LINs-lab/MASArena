@@ -19,6 +19,7 @@ from langsmith.schemas import Run
 from mas_arena.evaluators.base_evaluator import BaseEvaluator
 from mas_arena.evaluators.registry import register_benchmark
 from mas_arena.evaluators.utils.math_equal import calculate_score
+from mas_arena.evaluators.utils import extract_answer_numeric
 
 
 @register_benchmark(
@@ -67,13 +68,7 @@ class AIMEEvaluator(BaseEvaluator):
         """
         Extract the answer from model output text (last number or string).
         """
-        # Try to extract the last number (int/float)
-        matches = re.findall(r"[-+]?\d+(?:,\d{3})*(?:\.\d+)?|\d+\.\d+", str(text))
-        if matches:
-            return matches[-1].replace(",", "").strip()
-        # Fallback: last non-empty line
-        lines = [line.strip() for line in str(text).splitlines() if line.strip()]
-        return lines[-1] if lines else str(text).strip()
+        return extract_answer_numeric(text)
 
     def simple_extract_answer(self, text: str) -> str:
         """

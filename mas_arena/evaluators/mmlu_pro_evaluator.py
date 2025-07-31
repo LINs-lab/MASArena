@@ -12,6 +12,7 @@ import re
 
 from mas_arena.evaluators.base_evaluator import BaseEvaluator
 from mas_arena.evaluators.registry import register_benchmark
+from mas_arena.evaluators.utils import extract_answer_simple_tags
 
 
 @register_benchmark(
@@ -134,13 +135,7 @@ class MMLU_ProEvaluator(BaseEvaluator):
         Returns:
             Extracted answer letter
         """
-        # Try to extract answer from <answer> tags, allowing for whitespace
-        match = re.search(r'<answer>\s*(.*?)\s*</answer>', response, re.DOTALL)
-        if match:
-            return match.group(1).strip()
-        
-        # If no tags found, return original response
-        return response.strip()
+        return extract_answer_simple_tags(response)
     
     def evaluate(self, problem: Dict[str, Any], run_result: Dict[str, Any]) -> Dict[str, Any]:
         """
