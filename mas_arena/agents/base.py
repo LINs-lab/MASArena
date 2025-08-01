@@ -679,20 +679,7 @@ class AgentSystem(abc.ABC):
         llm_input = {"messages": messages}
 
         if tools and len(tools) > 0:
-            # OpenAI tools format
-            openai_tools = []
-            for tool in tools:
-                openai_tools.append({
-                    "type": "function",
-                    "function": {
-                        "name": tool.get("function_name", tool.get("name", "unknown_tool")),
-                        "description": tool.get("description", ""),
-                        "parameters": tool.get("parameters", {"type": "object", "properties": {}})
-                    }
-                })
-
-            llm_input["tools"] = openai_tools
-            # Add tool choice instruction
+            llm_input["tools"] = tools
             llm_input["tool_choice"] = "auto"
         return llm_input
 
@@ -858,4 +845,3 @@ async def create_agent_system(name: str, config: Dict[str, Any] = None) -> Optio
         await agent_system.setup()
 
     return agent_system
-

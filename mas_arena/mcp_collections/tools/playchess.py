@@ -24,6 +24,9 @@ Main functions:
 
 import json
 import traceback
+import sys
+import os
+import asyncio
 from datetime import datetime
 from typing import Any
 
@@ -88,7 +91,7 @@ class ChessCollection(ActionCollection):
     Provides capabilities to manage chess games, make moves, analyze positions,
     and get game status, all formatted for LLM interaction.
     """
-    tool_name = "playchess"
+    tool_name = "chess"
 
     def __init__(self, arguments: ActionArguments) -> None:
         super().__init__(arguments)

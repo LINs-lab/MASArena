@@ -1,12 +1,14 @@
+import json
 import os
+import sys
 import time
 import traceback
-from typing import Literal, Dict, Any, List
+from typing import Literal
 
 from dotenv import load_dotenv
+from openai import OpenAI
 from pydantic import Field
 from pydantic.fields import FieldInfo
-from openai import OpenAI
 
 from ..base import ActionArguments, ActionCollection, ActionResponse
 
@@ -21,7 +23,8 @@ class ThinkCollection(ActionCollection):
     - Competition-level STEM problems
     - Multi-step analytical reasoning
     """
-    tool_name = "think"
+
+    tool_name = "reasoning"
 
     def __init__(self, arguments: ActionArguments) -> None:
         super().__init__(arguments)
@@ -241,14 +244,14 @@ if __name__ == "__main__":
                 function_name = input_data.get("function_name", input_data.get("name", ""))
                 arguments = input_data.get("arguments", {})
                 
-                if function_name == "complex_problem_reasoning" or function_name == "reason":
+                if function_name == "mcp_complex_problem_reasoning" or function_name == "reason":
                     result = service.mcp_complex_problem_reasoning(
                         question=arguments.get("question", ""),
                         original_task=arguments.get("original_task", ""),
                         temperature=arguments.get("temperature", 0.3),
                         reasoning_style=arguments.get("reasoning_style", "detailed")
                     )
-                elif function_name == "get_reasoning_capabilities":
+                elif function_name == "mcp_get_reasoning_capabilities":
                     result = service.mcp_get_reasoning_capabilities()
                 else:
                     result = ActionResponse(

@@ -1,7 +1,6 @@
 from typing import Dict, List, Any, Optional
 import logging
 import json
-import traceback
 from pathlib import Path
 
 from mas_arena.tools.mcp_tool_transform import mcp_tool_desc_transform, call_mcp_tool
@@ -16,7 +15,7 @@ class ToolManager:
         self.client = None
         self.tools: List[Any] = []
         self.use_mcp_tools = use_mcp_tools
-        self._tool_descriptions = []
+        self._tool_descriptions: List[Any] = []
         logger.info(f"ToolManager initialized with {len(self.mcp_servers.get('mcpServers', {}))} MCP servers")
 
     async def setup(self):
@@ -27,15 +26,16 @@ class ToolManager:
                 logger.info(f"Loading tool descriptions for servers: {server_names}")
                 
                 tool_descriptions = await mcp_tool_desc_transform(
-                    server_names, 
-                    {"mcpServers": self.mcp_servers.get("mcpServers", {})}
+                    server_names,
+                    {"mcpServers": self.mcp_servers.get("mcpServers", {})},
+                    self.sandbox
                 )
                 
                 self.tools.extend(tool_descriptions)
                 self._tool_descriptions = tool_descriptions
                 
                 logger.info(f"Loaded {len(tool_descriptions)} MCP tools")
-                tool_names = [tool.get('name', 'unnamed') for tool in tool_descriptions]
+                tool_names = [tool.get('function_name', {}) for tool in tool_descriptions]
                 logger.info(f"Loaded tools: {tool_names}")
                 
             except Exception as e:
@@ -92,4 +92,3 @@ class ToolManager:
         except Exception as e:
             logger.error(f"Error loading config file: {e}", exc_info=True)
             return cls({}, use_mcp_tools=True, sandbox=sandbox)
-

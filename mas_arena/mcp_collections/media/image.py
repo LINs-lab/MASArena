@@ -1,5 +1,7 @@
 import base64
+import json
 import os
+import sys
 import time
 import traceback
 from io import BytesIO
@@ -8,6 +10,7 @@ from typing import Any
 
 import pytesseract
 from dotenv import load_dotenv
+from openai import OpenAI
 from PIL import Image, ImageEnhance, ImageFilter
 from pydantic import BaseModel, Field
 from pydantic.fields import FieldInfo
@@ -47,7 +50,12 @@ class ImageCollection(ActionCollection):
 
     def __init__(self, arguments: ActionArguments) -> None:
         super().__init__(arguments)
-        self._image_output_dir =  "processed_images"
+        if hasattr(arguments, 'workspace') and arguments.workspace:
+            self.workspace = Path(os.path.expanduser(arguments.workspace))
+        else:
+            self.workspace = Path(os.path.expanduser("~"))
+
+        self._image_output_dir = self.workspace / "processed_images"
         self._image_output_dir.mkdir(exist_ok=True)
 
         # Supported image formats
@@ -63,13 +71,6 @@ class ImageCollection(ActionCollection):
             ".ico",
             ".svg",
         }
-
-        self._llm_config = AgentConfig(
-            llm_provider="openai",
-            llm_model_name=os.getenv("IMAGE_LLM_MODEL_NAME", "gpt-4o"),
-            llm_api_key=os.getenv("IMAGE_LLM_API_KEY"),
-            llm_base_url=os.getenv("IMAGE_LLM_BASE_URL"),
-        )
 
         print("Image Processing Service initialized")
         print(f"Image output directory: {self._image_output_dir}")
@@ -151,22 +152,25 @@ class ImageCollection(ActionCollection):
             AI analysis result
         """
         try:
+            client = OpenAI(
+                api_key=os.getenv("OPENAI_API_KEY"),
+                base_url=os.getenv("OPENAI_API_BASE")
+            )
             messages = [
                 {
                     "role": "user",
                     "content": [
-                        {"role": "text", "content": task},
+                        {"type": "text", "text": task},
                         {"type": "image_url", "image_url": {"url": image_base64}},
                     ],
                 },
             ]
-            response: ModelResponse = call_llm_model(
-                llm_model=get_llm_model(conf=self._llm_config),
+            response = client.chat.completions.create(
+                model=os.getenv("MODEL_NAME"),
                 messages=messages,
-                temperature=float(os.getenv("LLM_TEMPERATURE", "1.0")),
+                max_tokens=2048
             )
-            print(f"{response.content=}")
-            return response.content
+            return response.choices[0].message.content
         except Exception as e:
             return f"AI analysis failed: {str(e)}"
 

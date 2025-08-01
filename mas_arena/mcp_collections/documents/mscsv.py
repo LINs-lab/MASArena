@@ -1,4 +1,3 @@
-import json
 import os
 import time
 import traceback
@@ -21,6 +20,7 @@ class CSVExtractionCollection(ActionCollection):
     Supports extraction from CSV files with various encodings and delimiters.
     Provides LLM-friendly text output with structured metadata and data analysis.
     """
+
     tool_name = "csv"
 
     def __init__(self, arguments: ActionArguments) -> None:

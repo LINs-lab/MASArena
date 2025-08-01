@@ -49,6 +49,79 @@ class SingleAgent(AgentSystem):
         base_url = llm_config.get("api_base") or os.getenv("OPENAI_API_BASE")
         self.client = AsyncOpenAI(api_key=api_key, base_url=base_url)
 
+    def prepare_llm_input(self, messages: List[Dict[str, Any]], tools: List[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """Prepares the input for the LLM, including transforming tools to the expected format."""
+        llm_input = {"messages": messages}
+        if tools:
+            llm_tools = []
+            for tool in tools:
+                # Reconstruct the tool format expected by OpenAI.
+                # Our internal tool representation has function_name, description, etc. at the top level.
+                function_spec = {
+                    "name": tool.get("function_name"),
+                    "description": tool.get("description"),
+                    "parameters": tool.get("parameters")
+                }
+                
+                # Check if we have the essential parts for a valid tool definition.
+                if function_spec["name"] and function_spec["description"] and function_spec["parameters"]:
+                    llm_tools.append({
+                        "type": "function",
+                        "function": function_spec
+                    })
+
+            if llm_tools:
+                llm_input["tools"] = llm_tools
+                llm_input["tool_choice"] = "auto"
+        return llm_input
+
+    def extract_tool_calls(self, response: Any) -> (bool, List[Dict[str, Any]]):
+        """Extracts tool calls from the LLM response."""
+        if not response.choices or not response.choices[0].message.tool_calls:
+            return False, []
+
+        tool_calls = []
+        for tc in response.choices[0].message.tool_calls:
+            tool_calls.append({
+                "id": tc.id,
+                "name": tc.function.name,
+                "arguments": tc.function.arguments,
+            })
+        return True, tool_calls
+
+    async def execute_tool(self, tool_name: str, tool_args: str) -> Dict[str, Any]:
+        """Executes a tool call."""
+        # Find the tool details from the original tool list
+        tool_details = next((t for t in self.tools if t.get("function_name") == tool_name), None)
+        if not tool_details:
+            return {"error": f"Tool '{tool_name}' not found."}
+
+        server_name = tool_details.get("server_name")
+        function_name = tool_details.get("function_name")
+
+        if not server_name or not function_name:
+            return {"error": f"Invalid tool configuration for '{tool_name}'."}
+
+        try:
+            arguments = json.loads(tool_args)
+        except json.JSONDecodeError:
+            return {"error": f"Invalid JSON arguments for tool '{tool_name}': {tool_args}"}
+
+        # Use the ToolManager to call the tool
+        return await self.tool_manager.call_tool(server_name, function_name, arguments)
+
+    def parse_generated_text(self, generated_text: str, parser: Any, parse_mode: str) -> Any:
+        """
+        Parse the generated text using the provided parser.
+        """
+        with contextlib.suppress(Exception):
+            if parse_mode == "str":
+                return parser.parse(text=generated_text)
+            elif parse_mode == "json":
+                return parser.parse(json_str=generated_text)
+        return generated_text
+
+
     async def run_agent(self, problem: Dict[str, Any], **kwargs) -> Dict[str, Any]:
         """
         Run the agent system on a given problem.

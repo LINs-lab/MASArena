@@ -21,8 +21,11 @@ Main functions:
 - mcp_download_structure: Download 2D/3D structure files
 """
 
+import json
 import time
 import traceback
+import sys
+import os
 from datetime import datetime
 from typing import Literal
 from urllib.parse import quote

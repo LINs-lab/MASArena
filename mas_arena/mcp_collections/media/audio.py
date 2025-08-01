@@ -48,6 +48,10 @@ class AudioCollection(ActionCollection):
 
     def __init__(self, arguments: ActionArguments) -> None:
         super().__init__(arguments)
+        if hasattr(arguments, 'workspace') and arguments.workspace:
+            self.workspace = Path(os.path.expanduser(arguments.workspace))
+        else:
+            self.workspace = Path(os.path.expanduser("~"))
         self._audio_output_dir = self.workspace / "processed_audio"
         self._audio_output_dir.mkdir(exist_ok=True)
 
@@ -133,7 +137,11 @@ class AudioCollection(ActionCollection):
             Dictionary containing transcription results
         """
         try:
-            client: OpenAI = OpenAI(api_key=os.getenv("AUDIO_LLM_API_KEY"), base_url=os.getenv("AUDIO_LLM_BASE_URL"))
+            api_key = os.getenv("AUDIO_LLM_API_KEY")
+            base_url = os.getenv("AUDIO_LLM_BASE_URL")
+            if not api_key:
+                raise ValueError("AUDIO_LLM_API_KEY environment variable not set")
+            client: OpenAI = OpenAI(api_key=api_key, base_url=base_url)
 
             # Use the file for transcription
             with open(audio_path, "rb") as audio_file:

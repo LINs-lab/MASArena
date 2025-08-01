@@ -74,6 +74,7 @@ class ToolSelector:
             return []
 
         tool_summaries = self._create_tool_summaries()
+        print(f"Tool summaries: {tool_summaries}")
         prompt = LLM_TOOL_SELECTOR_PROMPT.format(
             task_description=task_description,
             tool_summaries=tool_summaries
@@ -82,7 +83,7 @@ class ToolSelector:
         try:
             logger.info("Asking LLM to select tools for the task...")
             response = await self.llm_client.chat.completions.create(
-                model="gpt-4-turbo",  # Or any other capable model
+                model="gpt-4-turbo",
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.0,
             )

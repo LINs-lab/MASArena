@@ -1,16 +1,17 @@
 {
     "mcpServers": {
         "audio": {
+            "type": "stdio",
             "command": "python",
             "args": [
                 "-m",
                 "mas_arena.mcp_collections.media.audio"
             ],
-            "env": {
-            },
+            "env": {},
             "client_session_timeout_seconds": 10.0
         },
         "browser": {
+            "type": "stdio",
             "command": "python",
             "args": [
                 "-m",
@@ -24,13 +25,13 @@
             "client_session_timeout_seconds": 9999.0
         },
         "chess": {
+            "type": "stdio",
             "command": "python",
             "args": [
                 "-m",
                 "mas_arena.mcp_collections.tools.playchess"
             ],
-            "env": {
-            },
+            "env": {},
             "client_session_timeout_seconds": 10.0
         },
         "code": {
@@ -44,97 +45,98 @@
             }
         },
         "csv": {
+            "type": "stdio",
             "command": "python",
             "args": [
                 "-m",
                 "mas_arena.mcp_collections.documents.mscsv"
             ],
-            "env": {
-            },
+            "env": {},
             "client_session_timeout_seconds": 10.0
         },
         "docx": {
+            "type": "stdio",
             "command": "python",
             "args": [
                 "-m",
                 "mas_arena.mcp_collections.documents.msdocx"
             ],
-            "env": {
-            },
+            "env": {},
             "client_session_timeout_seconds": 10.0
         },
         "download": {
+            "type": "stdio",
             "command": "python",
             "args": [
                 "-m",
                 "mas_arena.mcp_collections.tools.download"
             ],
-            "env": {
-            },
+            "env": {},
             "client_session_timeout_seconds": 10.0
         },
         "xlsx": {
+            "type": "stdio",
             "command": "python",
             "args": [
                 "-m",
                 "mas_arena.mcp_collections.documents.msxlsx"
             ],
-            "env": {
-            },
+            "env": {},
             "client_session_timeout_seconds": 1000.0,
             "timeout": 1000.0
         },
         "image": {
+            "type": "stdio",
             "command": "python",
             "args": [
                 "-m",
                 "mas_arena.mcp_collections.media.image"
             ],
-            "env": {
-            },
+            "env": {},
             "client_session_timeout_seconds": 10.0
         },
         "pdf": {
+            "type": "stdio",
             "command": "python",
             "args": [
                 "-m",
                 "mas_arena.mcp_collections.documents.pdf"
             ],
-            "env": {
-            },
+            "env": {},
             "client_session_timeout_seconds": 10.0
         },
         "pptx": {
+            "type": "stdio",
             "command": "python",
             "args": [
                 "-m",
                 "mas_arena.mcp_collections.documents.mspptx"
             ],
-            "env": {
-            },
+            "env": {},
             "client_session_timeout_seconds": 10.0
         },
         "pubchem": {
+            "type": "stdio",
             "command": "python",
             "args": [
                 "-m",
                 "mas_arena.mcp_collections.tools.pubchem"
             ],
-            "env": {
-            },
+            "env": {},
             "client_session_timeout_seconds": 10.0
         },
         "reasoning": {
+            "type": "stdio",
             "command": "python",
             "args": [
                 "-m",
                 "mas_arena.mcp_collections.intelligence.think"
             ],
-            "env": {
-            },
+            "env": {},
             "client_session_timeout_seconds": 10.0
         },
         "search": {
+            "type": "stdio",
             "command": "python",
             "args": [
                 "-m",
@@ -147,6 +149,7 @@
             "client_session_timeout_seconds": 10.0
         },
         "terminal": {
+            "type": "stdio",
             "command": "python",
             "args": [
                 "-m",
@@ -154,53 +157,53 @@
             ]
         },
         "video": {
+            "type": "stdio",
             "command": "python",
             "args": [
                 "-m",
                 "mas_arena.mcp_collections.media.video"
             ],
-            "env": {
-            },
+            "env": {},
             "client_session_timeout_seconds": 10.0
         },
         "wayback": {
+            "type": "stdio",
             "command": "python",
             "args": [
                 "-m",
                 "mas_arena.mcp_collections.tools.wayback"
             ],
-            "env": {
-            },
+            "env": {},
             "client_session_timeout_seconds": 10.0
         },
         "wikipedia": {
+            "type": "stdio",
             "command": "python",
             "args": [
                 "-m",
                 "mas_arena.mcp_collections.tools.wiki"
             ],
-            "env": {
-            },
+            "env": {},
             "client_session_timeout_seconds": 10.0
         },
         "youtube": {
+            "type": "stdio",
             "command": "python",
             "args": [
                 "-m",
                 "mas_arena.mcp_collections.tools.youtube"
             ],
-            "env": {
-            },
+            "env": {},
             "client_session_timeout_seconds": 10.0
         },
         "txt": {
+            "type": "stdio",
             "command": "python",
             "args": [
                 "-m",
                 "mas_arena.mcp_collections.documents.txt"
             ],
-            "env": {
-            },
+            "env": {},
             "client_session_timeout_seconds": 10.0
         }
     }

@@ -16,6 +16,7 @@ import time
 import traceback
 import logging
 from pathlib import Path
+import asyncio
 
 try:
     from browser_use import Agent, AgentHistoryList, BrowserProfile
@@ -89,9 +90,9 @@ class BrowserActionCollection(ActionCollection):
 
         # Initialize LLM configuration
         self.llm_config = ChatOpenAI(
-            model=os.getenv("LLM_MODEL_NAME"),
-            api_key=os.getenv("LLM_API_KEY"),
-            base_url=os.getenv("LLM_BASE_URL"),
+            model=os.getenv("MODEL_NAME"),
+            api_key=os.getenv("OPENAI_API_KEY"),
+            base_url=os.getenv("OPENAI_API_BASE"),
             temperature=1.0,
         )
         
@@ -99,7 +100,10 @@ class BrowserActionCollection(ActionCollection):
         print(f"Browser llm_config: {self.llm_config}")
 
         # Initialize browser profile
-        self.workspace = Path(os.path.expanduser(arguments.workspace))
+        if hasattr(arguments, 'workspace') and arguments.workspace:
+            self.workspace = Path(os.path.expanduser(arguments.workspace))
+        else:
+            self.workspace = Path(os.path.expanduser("~"))
         downloads_dir = os.getenv("BROWSER_DOWNLOADS_DIR", str(self.workspace / "downloads"))
         self.browser_profile = BrowserProfile(
             downloads_path=downloads_dir,
@@ -207,6 +211,13 @@ class BrowserActionCollection(ActionCollection):
         - LLM-enhanced browsing with memory and vision
         - Automatic handling of robot detection and paywalls
         """
+        if not task or not task.strip():
+            return ActionResponse(
+                success=False,
+                message="Browser task cannot be empty.",
+                metadata={"error_type": "validation_error"}
+            )
+
         try:
             print(f"🎯 Starting browser task: {task}")
 
@@ -360,7 +371,6 @@ class BrowserActionCollection(ActionCollection):
 if __name__ == "__main__":
     import sys
     import json
-    import asyncio
     
     if len(sys.argv) > 1 and sys.argv[1] == "--test":
         load_dotenv()
@@ -411,7 +421,7 @@ if __name__ == "__main__":
                 function_name = input_data.get("function_name", input_data.get("name", "browser_use"))
                 arguments = input_data.get("arguments", {})
                 
-                if function_name ==  "mcp_browser_use":
+                if function_name == "mcp_browser_use":
                     result = asyncio.run(service.mcp_browser_use(
                         task=arguments.get("task", ""),
                         max_steps=arguments.get("max_steps", 10),

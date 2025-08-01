@@ -157,7 +157,7 @@ def _discover_tools_from_collections() -> Dict[str, Dict[str, Any]]:
     return tools_info
 
 
-async def mcp_tool_desc_transform(mcp_servers: List[str], mcp_config: Dict[str, Any]) -> List[Dict[str, Any]]:
+async def mcp_tool_desc_transform(mcp_servers: List[str], mcp_config: Dict[str, Any], sandbox: Any) -> List[Dict[str, Any]]:
     """
     Transform MCP server configurations into tool descriptions
     

@@ -1,6 +1,4 @@
-import json
 import os
-import sys
 import time
 import traceback
 import zipfile
@@ -628,7 +626,7 @@ if __name__ == "__main__":
             input_line = sys.stdin.readline().strip()
             try:
                 input_data = json.loads(input_line)
-                function_name = input_data.get("function_name", "extract_docx_content")
+                function_name = input_data.get("function_name", "mcp_extract_docx_content")
                 arguments = input_data.get("arguments", {})
                 
                 if function_name == "mcp_extract_docx_content":

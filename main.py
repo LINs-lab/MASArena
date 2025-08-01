@@ -47,12 +47,9 @@ def load_mcp_config(config_path: Optional[str] = None) -> Dict[str, Any]:
         with open(config_path, 'r') as f:
             config = json.load(f)
             
-        # 返回完整配置，确保包含 mcpServers 字段
         if "mcpServers" not in config:
-            # 如果配置文件中没有 mcpServers 字段，则将整个配置作为 mcpServers
             return {"mcpServers": config}
         else:
-            # 如果配置文件中有 mcpServers 字段，则返回整个配置
             return config
             
     except Exception as e:
@@ -193,10 +190,8 @@ def main():
         else:
             mcp_servers = load_mcp_config(args.mcp_config_file)
             
-        # 将MCP服务器配置添加到agent_config中
         agent_config["mcp_servers"] = mcp_servers
         
-        # 存储配置文件路径以供参考
         agent_config["mcp_config_file"] = args.mcp_config_file
 
     # Create directories if needed

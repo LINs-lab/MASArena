@@ -26,6 +26,11 @@ class TextExtractionCollection(ActionCollection):
 
     def __init__(self, arguments: ActionArguments) -> None:
         super().__init__(arguments)
+        if hasattr(arguments, 'workspace') and arguments.workspace:
+            self.workspace = Path(os.path.expanduser(arguments.workspace))
+        else:
+            self.workspace = Path(os.path.expanduser("~"))
+
         self._media_output_dir = self.workspace / "extracted_media"
         self._media_output_dir.mkdir(exist_ok=True)
 

@@ -21,7 +21,11 @@ Main functions:
 
 import json
 import traceback
+import sys
+import os
+import asyncio
 from datetime import datetime
+from pathlib import Path
 
 import arxiv
 from dotenv import load_dotenv
@@ -91,6 +95,10 @@ class ArxivActionCollection(ActionCollection):
         )
 
         # Create downloads directory
+        if hasattr(arguments, 'workspace') and arguments.workspace:
+            self.workspace = Path(os.path.expanduser(arguments.workspace))
+        else:
+            self.workspace = Path(os.path.expanduser("~"))
         self._downloads_dir = self.workspace / "arxiv_downloads"
         self._downloads_dir.mkdir(exist_ok=True)
 
