@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 class ToolManager:
     """Manages MCP tool descriptions and calls tools via a Sandbox."""
-    def __init__(self, mcp_servers: Dict[str, Dict] = None, use_mcp_tools: bool = False, sandbox: Optional[Any] = None):
+    def __init__(self, mcp_servers: Optional[Dict[str, Dict]] = None, use_mcp_tools: bool = False, sandbox: Optional[Any] = None):
         self.mcp_servers = mcp_servers or {}
         self.sandbox = sandbox
         self.client = None

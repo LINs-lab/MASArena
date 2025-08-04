@@ -8,19 +8,17 @@ logger = logging.getLogger(__name__)
 
 class Sandbox:
     """Manages isolated environments for running agent tools."""
-    def __init__(self, mcp_config: Dict[str, Any], workspace_dir: str = None):
+    def __init__(self, mcp_config: Dict[str, Any], workspace_dir: Optional[str] = None):
         self._server_processes: Dict[str, asyncio.subprocess.Process] = {}
         self._mcp_config = mcp_config
         self.workspace_dir = workspace_dir
 
     async def get_server_process(self, server_name: str) -> Optional[asyncio.subprocess.Process]:
         """
-        Starts and returns the process for a given MCP server.
-        If the process is already running, it returns the existing process.
+        Starts and returns a new process for a given MCP server.
+        Each call creates a fresh process since MCP servers in stdio mode 
+        are designed to handle one request and exit.
         """
-        if server_name in self._server_processes:
-            return self._server_processes[server_name]
-
         server_config = self._mcp_config.get("mcpServers", {}).get(server_name)
         if not server_config:
             logger.error(f"Server '{server_name}' not found in MCP config.")
@@ -57,7 +55,6 @@ class Sandbox:
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE
             )
-            self._server_processes[server_name] = process
 
             return process
         except Exception as e:

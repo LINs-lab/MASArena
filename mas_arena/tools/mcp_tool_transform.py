@@ -3,10 +3,8 @@ import logging
 import json
 import traceback
 import os
-import re
 import asyncio
-from typing import Dict, List, Any, Optional, get_origin, get_args
-import time
+from typing import Dict, List, Any, get_origin, get_args
 import importlib.util
 import inspect
 from pydantic.fields import FieldInfo
@@ -421,6 +419,7 @@ async def call_mcp_tool(server_name: str, function_name: str, parameters: Dict[s
         elif server_type == "function_tool":
             return await call_function_tool(server_name, function_name, parameters, mcp_config)
         else: # stdio
+            # For stdio servers, create a new process for each call
             process = await sandbox.get_server_process(server_name)
             if not process:
                 logger.error(f"Failed to get server process for {server_name} from sandbox")
@@ -441,12 +440,14 @@ async def call_mcp_tool(server_name: str, function_name: str, parameters: Dict[s
 
                 timeout = server_config.get("timeout", 600.0)
                 
-                output_lines = []
-                start_time = time.time()
-                
-                # Wait for the process to finish and read all output
+                # Wait for the process to complete and get the output
+                # MCP servers in stdio mode are designed to handle one request and exit
                 output_bytes, stderr_bytes = await asyncio.wait_for(process.communicate(), timeout=timeout)
                 output_text = output_bytes.decode(errors='replace').strip()
+                
+                # Remove the process from sandbox tracking since it has exited
+                if hasattr(sandbox, '_server_processes') and server_name in sandbox._server_processes:
+                    del sandbox._server_processes[server_name]
                 
                 if not output_text:
                     stderr_text = stderr_bytes.decode(errors='replace').strip() if stderr_bytes else ""
@@ -468,9 +469,15 @@ async def call_mcp_tool(server_name: str, function_name: str, parameters: Dict[s
 
             except asyncio.TimeoutError:
                 logger.error(f"Timeout waiting for response from {server_name}")
+                # Clean up the timed-out process
+                if hasattr(sandbox, '_server_processes') and server_name in sandbox._server_processes:
+                    del sandbox._server_processes[server_name]
                 return {"error": f"Timeout waiting for response from {server_name}"}
             except Exception as e:
                 logger.error(f"Error communicating with {server_name}: {e}", exc_info=True)
+                # Clean up the failed process
+                if hasattr(sandbox, '_server_processes') and server_name in sandbox._server_processes:
+                    del sandbox._server_processes[server_name]
                 return {"error": str(e)}
     except Exception as e:
         logger.error(f"Unexpected error calling tool {function_name} on {server_name}: {e}", exc_info=True)
