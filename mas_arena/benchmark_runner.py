@@ -423,7 +423,9 @@ class BenchmarkRunner:
             if verbose:
                 print(f"Cleaned up {len(created_agents)} agent instances")
 
-            return self._finalize_benchmark(all_results, benchmark_name, agent_system, output_file, verbose)
+            # Use the actual agent system name (when using mcp, the name may differ after patching)
+            actual_agent_system = created_agents[0].name if created_agents else agent_system
+            return self._finalize_benchmark(all_results, benchmark_name, actual_agent_system, output_file, verbose)
 
         finally:
             # This block will always execute, ensuring cleanup happens
