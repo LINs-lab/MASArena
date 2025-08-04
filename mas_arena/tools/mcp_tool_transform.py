@@ -438,51 +438,24 @@ async def call_mcp_tool(server_name: str, function_name: str, parameters: Dict[s
                 
                 process.stdin.write(input_bytes)
                 await process.stdin.drain()
-                
-                timeout = server_config.get("timeout", 9999.0)
-                
-                timeout = server_config.get("timeout", 300.0)
+
+                timeout = server_config.get("timeout", 600.0)
                 
                 output_lines = []
                 start_time = time.time()
                 
-                # Read lines until we have a response or timeout
-                while time.time() - start_time < timeout:
-                    try:
-                        line_bytes = await asyncio.wait_for(process.stdout.readline(), timeout=2.0)
-                        if not line_bytes: # EOF
-                            break
-                        
-                        line = line_bytes.decode(errors='replace').strip()
-                        if line:
-                            output_lines.append(line)
-                            # Heuristic: if a line looks like a final JSON response, stop reading.
-                            # This is an optimization to avoid waiting for the timeout.
-                            if line.startswith('{') and line.endswith('}'):
-                                break
-                    except asyncio.TimeoutError:
-                        # No new line for 2 seconds, assume the tool has finished responding
-                        break
-
-                output_text = "\n".join(output_lines)
-                logger.debug(f"Received from {server_name}: {output_text[:500]}...")
-
+                # Wait for the process to finish and read all output
+                output_bytes, stderr_bytes = await asyncio.wait_for(process.communicate(), timeout=timeout)
+                output_text = output_bytes.decode(errors='replace').strip()
+                
                 if not output_text:
-                    stderr_data = await asyncio.wait_for(process.stderr.read(1024), timeout=1.0)
-                    stderr_text = stderr_data.decode(errors='replace') if stderr_data else ""
+                    stderr_text = stderr_bytes.decode(errors='replace').strip() if stderr_bytes else ""
                     logger.error(f"Empty response from {server_name}. Stderr: {stderr_text}")
                     return {"error": f"Empty response from {server_name}. Stderr: {stderr_text[:200]}..."}
 
                 try:
-                    # Find all non-overlapping JSON object strings (non-greedy)
-                    json_matches = re.findall(r'\{.*?\}', output_text, re.DOTALL)
-                    
-                    if not json_matches:
-                        raise json.JSONDecodeError("No JSON object found in output", output_text, 0)
-
-                    # Try to parse the last found JSON object as it's the most likely to be the final result
-                    last_json_str = json_matches[-1]
-                    output_data = json.loads(last_json_str)
+                    # The output from the tool should be a single, clean JSON object.
+                    output_data = json.loads(output_text)
 
                     if isinstance(output_data, dict) and "error" in output_data:
                         logger.warning(f"Tool returned an error: {output_data['error']}")

@@ -74,7 +74,6 @@ class ToolSelector:
             return []
 
         tool_summaries = self._create_tool_summaries()
-        print(f"Tool summaries: {tool_summaries}")
         prompt = LLM_TOOL_SELECTOR_PROMPT.format(
             task_description=task_description,
             tool_summaries=tool_summaries

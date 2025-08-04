@@ -73,6 +73,6 @@ class Sandbox:
                 proc.terminate()
                 await proc.wait() 
                 logger.info(f"Process '{name}' terminated.")
-            except Exception as e:
-                logger.error(f"Error cleaning up process '{name}': {e}", exc_info=True)
+            except ProcessLookupError:
+                logger.warning(f"Process '{name}' (PID: {proc.pid}) was not found. It might have already terminated.")
         self._server_processes.clear()

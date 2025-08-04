@@ -153,7 +153,6 @@ class SingleAgent(AgentSystem):
 
             llm_input = self.prepare_llm_input(self.message_history, self.tools)
             try:
-                print(f"llm_input: {llm_input}")
                 response = await self.client.chat.completions.create(
                     model=self.model_name,
                     messages=llm_input["messages"],

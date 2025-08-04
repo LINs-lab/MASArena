@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import subprocess
 import time
@@ -48,6 +49,7 @@ class AudioCollection(ActionCollection):
 
     def __init__(self, arguments: ActionArguments) -> None:
         super().__init__(arguments)
+        self.logger = logging.getLogger(__name__)
         if hasattr(arguments, 'workspace') and arguments.workspace:
             self.workspace = Path(os.path.expanduser(arguments.workspace))
         else:
@@ -71,8 +73,8 @@ class AudioCollection(ActionCollection):
             ".amr",
         }
 
-        print("Audio Processing Service initialized")
-        print(f"Audio output directory: {self._audio_output_dir}")
+        sys.stderr.write("Audio Processing Service initialized\n")
+        sys.stderr.write(f"Audio output directory: {self._audio_output_dir}\n")
 
         # Check ffmpeg availability
         self._check_ffmpeg_availability()
@@ -86,12 +88,12 @@ class AudioCollection(ActionCollection):
         try:
             result = subprocess.run(["ffmpeg", "-version"], capture_output=True, text=True, timeout=10, check=False)
             if result.returncode == 0:
-                print("FFmpeg is available")
+                sys.stderr.write("FFmpeg is available\n")
             else:
-                print("FFmpeg not found in system PATH")
+                sys.stderr.write("FFmpeg not found in system PATH\n")
             return result.returncode == 0
         except (subprocess.TimeoutExpired, FileNotFoundError):
-            print("FFmpeg not available or timeout")
+            sys.stderr.write("FFmpeg not available or timeout\n")
             return False
 
     def _prepare_audio_for_transcription(self, file_path: Path) -> Path:
@@ -184,11 +186,11 @@ class AudioCollection(ActionCollection):
                     "codec": audio_stream.get("codec_name"),
                 }
             else:
-                print(f"Failed to extract metadata: {result.stderr}")
+                sys.stderr.write(f"Failed to extract metadata: {result.stderr}\n")
                 return {}
 
         except Exception as e:
-            print(f"Error extracting audio metadata: {str(e)}")
+            sys.stderr.write(f"Error extracting audio metadata: {str(e)}\n")
             return {}
 
     def _trim_audio(self, input_path: Path, start_time: float, duration: float | None = None) -> Path:
@@ -249,7 +251,7 @@ class AudioCollection(ActionCollection):
 
             # Validate input file
             file_path: Path = self._validate_file_path(file_path)
-            print(f"Transcribing audio: {file_path.name}")
+            sys.stderr.write(f"Transcribing audio: {file_path.name}\n")
 
             # Get original metadata
             original_metadata = self._get_audio_metadata(file_path)
@@ -287,35 +289,36 @@ class AudioCollection(ActionCollection):
             )
 
             # Format output based on requested format
-            if output_format == "text":
-                result_message = transcription_result["text"]
-            elif output_format == "detailed":
-                confidence_str = (
-                    f"{transcription_result['confidence']:.2f}" if transcription_result["confidence"] else "N/A"
-                )
-                result_message = (
-                    f"Transcription Results for {file_path.name}:\n\n"
-                    f"**Text:** {transcription_result['text']}\n\n"
-                    f"**Confidence:** {confidence_str}\n"
-                    f"**Word Count:** {word_count}\n"
-                    f"**Duration:** {original_metadata.get('duration', 0):.2f} seconds\n"
-                    f"**Model:** {model_size}\n"
-                    f"**Processing Time:** {processing_time:.2f} seconds"
-                )
-            elif output_format == "segments":
-                segments_text = "\n".join(
-                    [
-                        f"[{seg.get('start', 0):.2f}s - {seg.get('end', 0):.2f}s]: {seg.get('text', '').strip()}"
-                        for seg in transcription_result.get("segments", [])
-                    ]
-                )
-                result_message = (
-                    f"Timestamped Transcription for {file_path.name}:\n\n"
-                    f"{segments_text}\n\n"
-                    f"**Full Text:** {transcription_result['text']}"
-                )
-            else:
-                result_message = transcription_result["text"]
+            # if output_format == "text":
+            #     result_message = transcription_result["text"]
+            # elif output_format == "detailed":
+            #     confidence_str = (
+            #         f"{transcription_result['confidence']:.2f}" if "confidence" in transcription_result and transcription_result["confidence"] else "N/A"
+            #     )
+            #     result_message = (
+            #         f"Transcription Results for {file_path.name}:\n\n"
+            #         f"**Text:** {transcription_result['text']}\n\n"
+            #         f"**Confidence:** {confidence_str}\n"
+            #         f"**Word Count:** {word_count}\n"
+            #         f"**Duration:** {original_metadata.get('duration', 0):.2f} seconds\n"
+            #         f"**Model:** {model_size}\n"
+            #         f"**Processing Time:** {processing_time:.2f} seconds"
+            #     )
+            # elif output_format == "segments":
+            #     segments_text = "\n".join(
+            #         [
+            #             f"[{seg.get('start', 0):.2f}s - {seg.get('end', 0):.2f}s]: {seg.get('text', '').strip()}"
+            #             for seg in transcription_result.get("segments", [])
+            #         ]
+            #     )
+            #     result_message = (
+            #         f"Timestamped Transcription for {file_path.name}:\n\n"
+            #         f"{segments_text}\n\n"
+            #         f"**Full Text:** {transcription_result['text']}"
+            #     )
+            # else:
+            #     result_message = transcription_result["text"]
+            result_message = transcription_result["text"]
 
             # Clean up temporary file
             try:
@@ -323,7 +326,7 @@ class AudioCollection(ActionCollection):
             except Exception:
                 pass  # Ignore cleanup errors
 
-            print(f"Transcription completed: {word_count} words, {processing_time:.2f}s")
+            sys.stderr.write(f"Transcription completed: {word_count} words, {processing_time:.2f}s\n")
 
             return ActionResponse(success=True, message=result_message, metadata=audio_metadata.model_dump())
 
@@ -352,7 +355,7 @@ class AudioCollection(ActionCollection):
 
             # Validate input file
             file_path: Path = self._validate_file_path(file_path)
-            print(f"Extracting metadata from: {file_path.name}")
+            sys.stderr.write(f"Extracting metadata from: {file_path.name}\n")
 
             # Extract metadata
             metadata = self._get_audio_metadata(file_path)
@@ -389,7 +392,7 @@ class AudioCollection(ActionCollection):
                 f"Format: {file_path.suffix.upper()}"
             )
 
-            print(f"Metadata extraction completed in {processing_time:.2f}s")
+            sys.stderr.write(f"Metadata extraction completed in {processing_time:.2f}s\n")
 
             return ActionResponse(success=True, message=result_message, metadata=audio_metadata.model_dump())
 
@@ -424,7 +427,7 @@ class AudioCollection(ActionCollection):
 
             # Validate input file
             file_path: Path = self._validate_file_path(file_path)
-            print(f"Trimming audio: {file_path.name}")
+            sys.stderr.write(f"Trimming audio: {file_path.name}\n")
 
             # Get original metadata
             original_metadata = self._get_audio_metadata(file_path)
@@ -472,7 +475,7 @@ class AudioCollection(ActionCollection):
                 f"Output file: {output_path.name}"
             )
 
-            print(f"Audio trimming completed in {processing_time:.2f}s")
+            sys.stderr.write(f"Audio trimming completed in {processing_time:.2f}s\n")
 
             return ActionResponse(success=True, message=result_message, metadata=audio_metadata.model_dump())
 
@@ -524,9 +527,10 @@ if __name__ == "__main__":
     import json
     
     is_mcp_mode = len(sys.argv) == 1
-    if is_mcp_mode:
-        original_print = print
-        print = lambda *args, **kwargs: original_print(*args, file=sys.stderr, **kwargs)
+    # if is_mcp_mode:
+    #     original_print = print
+    #     # Redirect print to stderr
+    #     print = lambda *args, **kwargs: original_print(*args, file=sys.stderr, **kwargs)
     
     load_dotenv()
     args = ActionArguments(
@@ -571,7 +575,7 @@ if __name__ == "__main__":
                 # Write result to stdout as JSON
                 sys.stdout.write(json.dumps(result.model_dump()) + "\n")
                 sys.stdout.flush()
-                sys.exit(0)
+                # Let the script exit naturally to ensure buffers are flushed.
             except json.JSONDecodeError as e:
                 sys.stderr.write(f"Error parsing input JSON: {str(e)}\n")
                 sys.exit(1)
@@ -581,5 +585,5 @@ if __name__ == "__main__":
         else:
             service.run()
     except Exception as e:
-        print(f"An error occurred: {e}: {traceback.format_exc()}")
+        sys.stderr.write(f"An error occurred: {e}: {traceback.format_exc()}\n")
         sys.exit(1)
