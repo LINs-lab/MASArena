@@ -11,6 +11,10 @@ from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage
 from mas_arena.agents.base import AgentSystem, AgentSystemRegistry
 
+
+from agentops.sdk.decorators import agent, trace
+
+
 # Define TypedDict classes for structured output
 class ExpertTeam(TypedDict):
     """Expert team configuration"""
@@ -55,6 +59,7 @@ class Discussion(TypedDict):
 class SumDiscussion(TypedDict):
     sum_context: List[Discussion]
 
+@agent
 class RecruiterAgent:
     """Recruitment agent: generates descriptions for work agents"""
     def __init__(self, agent_id: str, model_name: str = None, num_agents: int = 3):
@@ -225,6 +230,7 @@ class RecruiterAgent:
         
         return default_experts
 
+@agent
 class WorkAgent:
     """Work agent that solves specific aspects of a problem"""
     def __init__(self, agent_id: str, system_prompt: str = None, format_prompt: str = ""):
@@ -314,6 +320,7 @@ class WorkAgent:
                 "message": response,
             }
 
+@agent
 class Evaluator:
     """Evaluates agent solutions and decides whether to recruit new experts or provide final solution"""
     def __init__(self, model_name: str = None, max_iterations: int = 3, min_quality_threshold: float = 0.7, min_improvement_threshold: float = 0.1):
@@ -718,6 +725,7 @@ class AgentVerse(AgentSystem):
         
         return solutions
 
+    @trace
     async def run_agent(self, problem: Dict[str, Any], **kwargs) -> Dict[str, Any]:
         """
         Run the agent system on a given problem.
@@ -731,6 +739,7 @@ class AgentVerse(AgentSystem):
             Dictionary of run results including messages with usage metadata
         """
         problem_text = problem["problem"]
+      
         
         # Initialize messages and solutions
         all_messages = []
