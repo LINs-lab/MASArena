@@ -11,9 +11,10 @@ from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 from mas_arena.agents.base import AgentSystem, AgentSystemRegistry
 
+from agentops.sdk.decorators import trace, operation
+
 # Load environment variables
 load_dotenv()
-
 
 @dataclass
 class ChatDevAgent:
@@ -73,11 +74,9 @@ class ChatDevAgent:
                 "content": f"Error: {str(e)}"
             }
 
-
 class Instructor(ChatDevAgent):
     """Instructor role (CTO, CEO, Tester, Reviewer)"""
     pass
-
 
 class Assistant(ChatDevAgent):
     """Assistant role (CTO, Programmer)"""
@@ -284,6 +283,7 @@ class ChatDev(AgentSystem):
         except Exception as exc:
             return False, f"Execution error: {exc}", ""
 
+    @trace
     async def run_agent(self, problem: Dict[str, Any], **kwargs) -> Dict[str, Any]:
         """Run complete workflow of ChatDev system"""
         try:
@@ -330,6 +330,7 @@ class ChatDev(AgentSystem):
                 "final_answer": f"Error in ChatDev workflow: {str(e)}"
             }
 
+    @operation
     async def _demand_analysis_phase(self, task: str, all_messages: List) -> str:
         """Demand Analysis phase - CEO and CPO discuss product form"""
         self.get_agent_by_role("CEO").clear_history()
@@ -362,6 +363,7 @@ class ChatDev(AgentSystem):
         
         return modality
 
+    @operation
     async def _coding_phase(self, task: str, modality: str, language: str, all_messages: List, problem: Dict[str, Any]) -> str:
         """Coding phase - CTO guides Programmer to write code, includes up to 3 rounds of debate"""
         
@@ -466,6 +468,7 @@ class ChatDev(AgentSystem):
         
         return current_code
 
+    @operation
     async def _code_complete_all_phase(self, task: str, modality: str, language: str, codes: str, all_messages: List) -> str:
         """Code Completion phase - Loop to complete all unimplemented files"""
         current_codes = codes
@@ -557,6 +560,7 @@ class ChatDev(AgentSystem):
         
         return current_codes
 
+    @operation
     async def _test_phase(self, codes: str, problem: Dict[str, Any], all_messages: List) -> str:
         """Real Testing phase - Use real code execution and testing"""
         current_codes = codes
@@ -652,6 +656,3 @@ AgentSystemRegistry.register(
     description="ChatDev multi-agent software development system, implementing complete software development workflow",
     max_iterations=3
 )
-        
-        
-        
