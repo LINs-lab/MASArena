@@ -24,6 +24,7 @@ A comprehensive guide to extending MASArena with custom Multi-Agent Systems and 
 ### 📋 Implementation Requirements
 
 **✅ Essential Requirements:**
+
 - Extend `AgentSystem` base class
 - Implement `run_agent()` method (abstract method - required)
 - Include `evaluator` in config during initialization
@@ -31,6 +32,7 @@ A comprehensive guide to extending MASArena with custom Multi-Agent Systems and 
 - Register with `AgentSystemRegistry`
 
 **💡 Optional but Recommended:**
+
 - Implement `_create_agents()` for tool integration support
 - Use `self.format_prompt` for benchmark-specific formatting
 - Handle async execution properly if needed
@@ -40,18 +42,19 @@ A comprehensive guide to extending MASArena with custom Multi-Agent Systems and 
 #### Step 1: Create Agent System Class Structure
 
 ✅ Langgraph supported
-✅ Customizable agent and multi-agent interaction 
+✅ Customizable agent and multi-agent interaction
 
 **📋 Implementation Guide:**
-   - Inherit from `AgentSystem` base class
-   - Initialize configuration parameters (num_agents, num_rounds, model_name)
-   - Set up agent components using `_create_agents()` method
-   - Extract workers and result extractors from created components
-   - Validate that required components are available
+
+- Inherit from `AgentSystem` base class
+- Initialize configuration parameters (num_agents, num_rounds, model_name)
+- Set up agent components using `_create_agents()` method
+- Extract workers and result extractors from created components
+- Validate that required components are available
 
 **💡 SupervisorMAS Implementation Example (LangGraph Structure):**
 
-```
+```python
 # mas_arena/agents/supervisor_mas.py
 
     def _init_graph_if_needed(self, problem_input: Optional[Any] = None, feedback: Optional[Any] = None):
@@ -93,7 +96,8 @@ A comprehensive guide to extending MASArena with custom Multi-Agent Systems and 
 ```
 
 **💡 ChatEval Implementation Example (Basic Structure):**
-```
+
+```python
 # mas_arena/agents/chateval.py
 class ChatEval(AgentSystem):
     """Multi-agent evaluation system based on iterative debate"""
@@ -118,15 +122,17 @@ class ChatEval(AgentSystem):
 #### Step 2: Implement Core `run_agent` Method
 
 **📋 Implementation Guide:**
-   - Extract problem text from input dictionary
-   - Initialize message storage for tracking LLM responses
-   - Implement multi-round agent interaction logic
-   - Collect and process agent responses with proper metadata
-   - Extract final answer using result extractor
-   - Return formatted result with messages and final answer
+
+- Extract problem text from input dictionary
+- Initialize message storage for tracking LLM responses
+- Implement multi-round agent interaction logic
+- Collect and process agent responses with proper metadata
+- Extract final answer using result extractor
+- Return formatted result with messages and final answer
 
 **💡 ChatEval Implementation Example (run_agent Core Method):**
-```
+
+```python
 # mas_arena/agents/chateval.py
     async def run_agent(self, problem: Dict[str, Any], **kwargs) -> Dict[str, Any]:
         """Run iterative debate process"""
@@ -174,14 +180,16 @@ class ChatEval(AgentSystem):
 #### Step 3: Implement `_create_agents` Method (Tool Integration Support)
 
 **📋 Implementation Guide:**
-   - Create specialized `AgentNode` instances for each role
-   - Set agent names, models, and system prompts
-   - Create result extractor with format prompt integration
-   - Return dictionary with "workers" key containing all components
-   - Ensure each worker has `.name` and `.llm` attributes for tool binding
+
+- Create specialized `AgentNode` instances for each role
+- Set agent names, models, and system prompts
+- Create result extractor with format prompt integration
+- Return dictionary with "workers" key containing all components
+- Ensure each worker has `.name` and `.llm` attributes for tool binding
 
 **💡 ChatEval Implementation Example (_create_agents Tool Integration):**
-```
+
+```python
 # mas_arena/agents/chateval.py
     def _create_agents(self) -> List[Agent]:
         """Create multiple agent instances and result extractor"""
@@ -213,14 +221,16 @@ class ChatEval(AgentSystem):
 #### Step 4: Register System with Framework
 
 **📋 Implementation Guide:**
-   - Use `AgentSystemRegistry.register()` to make system available
-   - Provide system name as string identifier
-   - Pass class reference (not instance)
-   - Include default configuration parameters
-   - These defaults can be overridden during initialization
+
+- Use `AgentSystemRegistry.register()` to make system available
+- Provide system name as string identifier
+- Pass class reference (not instance)
+- Include default configuration parameters
+- These defaults can be overridden during initialization
 
 **💡 ChatEval Implementation Example (Registration):**
-```
+
+```python
 # mas_arena/agents/chateval.py
 # register agent system
 AgentSystemRegistry.register(
@@ -231,18 +241,88 @@ AgentSystemRegistry.register(
 )
 ```
 
+#### Step 5: \[Optional\] Add AgentOps Decorator for Better Tracing
+
+**📋 Implementation Guide:**
+
+- Import `agentops.sdk.decorators`
+- Add tracing to your agent system for better observability
+- Reference the [AgentOps Decorators Documentation](https://docs.agentops.ai/v2/concepts/decorators) for detailed usage
+
+**💡 AgentOps Integration Example:**
+
+```python
+# mas_arena/agents/chateval.py
+from agentops.sdk.decorators import agent, operation, trace
+
+@agent
+class ResultExtractor:
+    """Extract final results from conversation history with AgentOps tracking"""
+    def __init__(self, model_name: str = None, format_prompt: str = ""):
+        self.model_name = model_name or os.getenv("MODEL_NAME", "gpt-4o-mini")
+        self.format_prompt = format_prompt
+        self.llm = ChatOpenAI(
+            model=self.model_name,
+            request_timeout=60,
+            max_retries=2
+        )
+        self.name = "result_extractor"
+        
+    @operation    
+    async def extract(self, all_histories: List[List[Dict[str, str]]], problem: str) -> Dict[str, Any]:
+        """Extract final answer with AgentOps operation tracking"""
+        # ...existing extraction implementation...
+
+@dataclass
+class Agent:
+    """Represents an LLM agent with AgentOps tracking"""
+    agent_id: str
+    name: str
+    model_name: str
+    system_prompt: str
+    chat_history: List[Dict[str, str]] = None
+    
+    def __post_init__(self):
+        self.chat_history = []
+        self.llm = ChatOpenAI(
+            model=self.model_name,
+            request_timeout=60,
+            max_retries=2
+        )
+
+    @operation
+    async def generate_response(self, context: str) -> Any:
+        """Generate agent response with AgentOps operation tracking"""
+        # ...existing generation implementation...
+
+class ChatEval(AgentSystem):
+    """Multi-agent evaluation system with AgentOps tracing"""
+    
+    def __init__(self, name: str = "chateval", config: Dict[str, Any] = None):
+        super().__init__(name, config)
+        # ...existing initialization code...
+    
+    @trace
+    async def run_agent(self, problem: Dict[str, Any], **kwargs) -> Dict[str, Any]:
+        """Run iterative debate process with AgentOps trace tracking"""
+        # ...existing run_agent implementation...
+        return result
+```
+
 ### ⚡ Advanced Features
 
 #### 🎨 Format Prompt Integration
 
 **📋 Implementation Guide:**
-   - Accept `format_prompt` parameter in initialization
-   - Store format prompt for benchmark-specific requirements
-   - Use format prompt in result extraction and agent prompts
-   - Configure timeout and retry settings for robust operation
+
+- Accept `format_prompt` parameter in initialization
+- Store format prompt for benchmark-specific requirements
+- Use format prompt in result extraction and agent prompts
+- Configure timeout and retry settings for robust operation
 
 **💡 ChatEval Implementation Example (Format Prompt Integration):**
-```
+
+```python
 # mas_arena/agents/chateval.py
     def __init__(self, model_name: str = None, format_prompt: str = ""):
         self.model_name = model_name or os.getenv("MODEL_NAME", "gpt-4o-mini")
@@ -258,14 +338,16 @@ AgentSystemRegistry.register(
 #### 🤖 Agent Node Pattern
 
 **📋 Implementation Guide:**
-   - Use dataclass decorator for clean agent definition
-   - Include required attributes: agent_id, name, model_name, system_prompt
-   - Initialize chat history as empty list
-   - Set up LLM instance with timeout and retry configuration
-   - Ensure compatibility with tool integration framework
+
+- Use dataclass decorator for clean agent definition
+- Include required attributes: agent_id, name, model_name, system_prompt
+- Initialize chat history as empty list
+- Set up LLM instance with timeout and retry configuration
+- Ensure compatibility with tool integration framework
 
 **💡 ChatEval Implementation Example (Agent Class Definition):**
-```
+
+```python
 # mas_arena/agents/chateval.py
 @dataclass
 class Agent:
@@ -288,14 +370,16 @@ class Agent:
 #### 🔄 Usage Metadata Handling
 
 **📋 Implementation Guide:**
-   - For native OpenAI API calls or non-structured output: No manual handling required
-   - For structured output: Use `self.llm.with_structured_output(schema=AgentResponse, include_raw=True)`
-   - Usage metadata is automatically handled by the framework
-   - Focus on implementing the structured output schema instead
+
+- For native OpenAI API calls or non-structured output: No manual handling required
+- For structured output: Use `self.llm.with_structured_output(schema=AgentResponse, include_raw=True)`
+- Usage metadata is automatically handled by the framework
+- Focus on implementing the structured output schema instead
 
 ### 📋 Key Implementation Summary
 
 **🔧 Implementation Points:**
+
 - Inherit from `AgentSystem` base class
 - Implement required `run_agent()` method  
 - Ensure config includes `evaluator` key
@@ -316,14 +400,16 @@ Use `AgentSystemRegistry.register()` to register system and provide default conf
 #### Step 1: Basic Structure and Registration
 
 **📋 Implementation Guide:**
-   - Use `@register_benchmark` decorator to register evaluator
-   - Define normalization keys mapping for data field standardization
-   - Inherit from `BaseEvaluator` base class
-   - Provide comprehensive docstring explaining evaluator purpose
-   - Set up evaluator name and supported answer formats
+
+- Use `@register_benchmark` decorator to register evaluator
+- Define normalization keys mapping for data field standardization
+- Inherit from `BaseEvaluator` base class
+- Provide comprehensive docstring explaining evaluator purpose
+- Set up evaluator name and supported answer formats
 
 **💡 MMLU_pro Implementation Example (Registration and Class Definition):**
-```
+
+```python
 # mas_arena/evaluators/mmlu_pro_evaluator.py
 @register_benchmark(
     name="mmlu_pro",
@@ -345,14 +431,16 @@ class MMLU_ProEvaluator(BaseEvaluator):
 #### Step 2: Initialize Configuration
 
 **📋 Implementation Guide:**
-   - Call parent class initialization with name and config
-   - Set up evaluation-specific weights and parameters
-   - Configure dataset loading and validation
-   - Set up logging and error handling
-   - Define evaluation metrics and scoring methods
+
+- Call parent class initialization with name and config
+- Set up evaluation-specific weights and parameters
+- Configure dataset loading and validation
+- Set up logging and error handling
+- Define evaluation metrics and scoring methods
 
 **💡 MMLU_pro Implementation Example (Initialization):**
-```
+
+```python
 # mas_arena/evaluators/mmlu_pro_evaluator.py
     def __init__(self, name="mmlu_pro", config=None):
         """
@@ -376,15 +464,17 @@ class MMLU_ProEvaluator(BaseEvaluator):
 #### Step 3: Implement Core Evaluation Method
 
 **📋 Implementation Guide:**
-   - Extract final answer and reference solution from inputs
-   - Use specialized answer extraction method for response parsing
-   - Apply scoring logic (exact match, numerical comparison, etc.)
-   - Calculate evaluation metrics and scores
-   - Return standardized evaluation results dictionary
-   - Include extracted answer and original final answer
+
+- Extract final answer and reference solution from inputs
+- Use specialized answer extraction method for response parsing
+- Apply scoring logic (exact match, numerical comparison, etc.)
+- Calculate evaluation metrics and scores
+- Return standardized evaluation results dictionary
+- Include extracted answer and original final answer
 
 **💡 MMLU_pro Implementation Example (evaluate Method):**
-```
+
+```python
 # mas_arena/evaluators/mmlu_pro_evaluator.py
     def evaluate(self, problem: Dict[str, Any], run_result: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -424,14 +514,16 @@ class MMLU_ProEvaluator(BaseEvaluator):
 #### 🔍 Answer Extraction
 
 **📋 Implementation Guide:**
-   - Use regular expressions to extract formatted answers
-   - Handle multiple answer formats (tags, patterns, raw text)
-   - Implement fallback strategies for unformatted responses
-   - Clean and normalize extracted text
-   - Support flexible answer parsing for different benchmarks
+
+- Use regular expressions to extract formatted answers
+- Handle multiple answer formats (tags, patterns, raw text)
+- Implement fallback strategies for unformatted responses
+- Clean and normalize extracted text
+- Support flexible answer parsing for different benchmarks
 
 **💡 MMLU_pro Implementation Example (Answer Extraction):**
-```
+
+```python
 # mas_arena/evaluators/mmlu_pro_evaluator.py
     def extract_answer_from_response(self, response: str) -> str:
         """
@@ -455,14 +547,16 @@ class MMLU_ProEvaluator(BaseEvaluator):
 #### ✅ Answer Verification
 
 **📋 Implementation Guide:**
-   - Implement case-insensitive comparison for text answers
-   - Handle numerical index to letter conversion (1→A, 2→B, etc.)
-   - Apply normalization and cleaning to both reference and candidate
-   - Return numerical score (1.0 for match, 0.0 for no match)
-   - Include error handling for malformed inputs
+
+- Implement case-insensitive comparison for text answers
+- Handle numerical index to letter conversion (1→A, 2→B, etc.)
+- Apply normalization and cleaning to both reference and candidate
+- Return numerical score (1.0 for match, 0.0 for no match)
+- Include error handling for malformed inputs
 
 **💡 MMLU_pro Implementation Example (Exact Match Verification):**
-```
+
+```python
 # mas_arena/evaluators/mmlu_pro_evaluator.py
     def check_exact_match(self, reference: str, candidate: str) -> float:
         """
@@ -499,15 +593,17 @@ class MMLU_ProEvaluator(BaseEvaluator):
 #### 📊 Batch Evaluation
 
 **📋 Implementation Guide:**
-   - Iterate through all problems in the batch
-   - Extract problem IDs and reference answers for each item
-   - Apply evaluation logic consistently across all problems
-   - Collect comprehensive results with metadata
-   - Log evaluation progress and summary statistics
-   - Return standardized results format for benchmark runner
+
+- Iterate through all problems in the batch
+- Extract problem IDs and reference answers for each item
+- Apply evaluation logic consistently across all problems
+- Collect comprehensive results with metadata
+- Log evaluation progress and summary statistics
+- Return standardized results format for benchmark runner
 
 **💡 MMLU_pro Implementation Example (Batch Evaluation):**
-```
+
+```python
 # mas_arena/evaluators/mmlu_pro_evaluator.py
     def batch_evaluate(self, problems: List[Dict[str, Any]], **kwargs) -> List[Dict[str, Any]]:
         """
@@ -554,6 +650,7 @@ class MMLU_ProEvaluator(BaseEvaluator):
 ### 💻 Code Evaluation
 
 **🔧 Code Evaluator Key Points:**
+
 - Inherit from `BaseCodeEvaluator` base class (not BaseEvaluator)
 - Implement `check_solution(code, test, entry_point)` method
 - Implement `extract_code(text)` to extract code from responses
@@ -561,6 +658,7 @@ class MMLU_ProEvaluator(BaseEvaluator):
 - Use isolated environments for code execution
 
 **📊 Core Process Flow:**
+
 1. **Code Extraction** - Extract Python code from agent responses
 2. **Environment Isolation** - Create secure execution environment
 3. **Test Execution** - Run test cases to verify code correctness
@@ -569,6 +667,7 @@ class MMLU_ProEvaluator(BaseEvaluator):
 ### 📋 Evaluator Implementation Summary
 
 **🔧 Core Components:**
+
 - Use `@register_benchmark` decorator for registration
 - Inherit from `BaseEvaluator` base class
 - Implement required `evaluate()` method
@@ -576,12 +675,14 @@ class MMLU_ProEvaluator(BaseEvaluator):
 - Optional: Implement answer extraction and verification methods
 
 **📊 Evaluation Process:**
+
 1. **Data Normalization** - Map fields using normalization_keys
 2. **Answer Extraction** - Extract final answer from messages
 3. **Answer Verification** - Compare predicted vs reference answers
 4. **Result Return** - Return score, extracted_answer, final_answer fields
 
-> 📄 **Complete Implementation References**: 
+> 📄 **Complete Implementation References**:
+>
 > - Text Evaluator: [`mas_arena/evaluators/mmlu_pro_evaluator.py`](../mas_arena/evaluators/mmlu_pro_evaluator.py)
 > - Code Evaluator: [`mas_arena/evaluators/humaneval_evaluator.py`](../mas_arena/evaluators/humaneval_evaluator.py)
 
@@ -611,6 +712,7 @@ class MMLU_ProEvaluator(BaseEvaluator):
 ### 📋 Implementation Checklist
 
 **For MAS Extensions:**
+
 - [ ] ✅ Config includes `evaluator` key
 - [ ] 📊 Messages have `usage_metadata` for token tracking
 - [ ] 🏷️ Agents have `name` and `llm` attributes (for tool integration)
@@ -619,9 +721,9 @@ class MMLU_ProEvaluator(BaseEvaluator):
 - [ ] 📋 Proper registration with `AgentSystemRegistry`
 
 **For Evaluator Extensions:**
+
 - [ ] 🎯 Used `@register_benchmark` decorator
 - [ ] ✅ Implemented `evaluate` method
 - [ ] 🗝️ Proper normalization_keys mapping
 - [ ] 🛡️ Error handling for malformed inputs
 - [ ] ⏱️ Timeout handling for long operations
-
