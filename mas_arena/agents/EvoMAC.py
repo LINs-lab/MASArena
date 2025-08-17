@@ -25,6 +25,9 @@ from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 from mas_arena.agents.base import AgentSystem, AgentSystemRegistry
 from asyncio import Lock
 
+
+from agentops.sdk.decorators import agent, operation, trace
+
 # Load environment variables for configuration
 load_dotenv(override=True)
 
@@ -879,6 +882,7 @@ class EvoMAC(AgentSystem):
             print(f"LLM call failed: {e}")
             return "", None
     
+    @operation
     async def _generate_initial_implementation(self, problem_statement: str) -> Tuple[str, Optional[Any]]:
         """
         Generate initial code implementation.
@@ -896,6 +900,7 @@ class EvoMAC(AgentSystem):
         )
         return await self._call_llm_async(messages)
     
+    @operation
     async def _organize_workflow(self, problem_statement: str) -> Tuple[str, Optional[Any]]:
         """
         Generate workflow organization from CTO agent.
@@ -984,6 +989,7 @@ class EvoMAC(AgentSystem):
         # Update implementation with new code
         self.code_manager.update_from_response(response_content)
     
+    @operation
     async def _execute_testing_workflow(self, problem_statement: str) -> Tuple[bool, str]:
         """
         Execute comprehensive testing workflow.
@@ -1024,6 +1030,7 @@ class EvoMAC(AgentSystem):
         
         return has_any_bugs, "\n\n".join(all_test_reports)
     
+    @operation
     async def _organize_testing(self, problem_statement: str) -> Tuple[str, Optional[Any]]:
         """
         Generate test organization plan.
@@ -1047,6 +1054,7 @@ class EvoMAC(AgentSystem):
         )
         return await self._call_llm_async(messages)
     
+    @operation
     async def _execute_test_task(self, problem_statement: str, task_name: str, task_description: str) -> Tuple[bool, str]:
         """
         Execute a single test task.
@@ -1087,6 +1095,7 @@ class EvoMAC(AgentSystem):
         
         return True, "Failed to extract test code"
     
+    @operation
     async def _perform_iterative_optimization(self, problem_statement: str, test_reports: str) -> Tuple[bool, str]:
         """
         Perform iterative optimization to fix bugs.
@@ -1120,6 +1129,7 @@ class EvoMAC(AgentSystem):
         
         return True, current_reports
     
+    @operation
     async def _organize_updates(self, problem_statement: str, test_reports: str) -> Tuple[str, Optional[Any]]:
         """
         Generate update organization to fix current issues.
@@ -1165,6 +1175,7 @@ class EvoMAC(AgentSystem):
             
         return message
     
+    @trace
     async def run_agent(self, problem: Dict[str, Any], **kwargs) -> Dict[str, Any]:
         """
         Run the complete EvoMAC agent system on a given problem.
