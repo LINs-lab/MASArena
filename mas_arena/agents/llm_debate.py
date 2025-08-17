@@ -13,6 +13,9 @@ from openai import AsyncOpenAI
 from dotenv import load_dotenv
 from mas_arena.agents.base import AgentSystem, AgentSystemRegistry
 
+from agentops.sdk.decorators import operation, trace
+
+
 # Load environment variables
 load_dotenv(override=True)
 
@@ -45,6 +48,7 @@ class LLMDebate(AgentSystem):
             timeout=40
         )
 
+    @trace
     async def run_agent(self, problem: Dict[str, Any], **kwargs) -> Dict[str, Any]:
         """
         Run the LLM Debate system on a given problem.
@@ -215,6 +219,7 @@ class LLMDebate(AgentSystem):
             # 备用方案
             return {"role": "assistant", "content": "抱歉，无法获取回答内容。"}
 
+    @operation
     async def _generate_answer_async(self, answer_context: List[Dict]) -> Any:
         """
         异步版本的API调用函数
@@ -257,6 +262,7 @@ class LLMDebate(AgentSystem):
         
         return None
 
+    @operation
     async def _call_llm(self, messages: List[Dict]) -> Dict[str, Any]:
         """
         Call the LLM with given messages and return response with usage metadata.
@@ -283,6 +289,7 @@ class LLMDebate(AgentSystem):
                 'usage': None
             }
 
+    @operation
     async def _aggregate_answers(self, query: str, answers: List[str]) -> Dict[str, Any]:
         """
         Aggregate all agents' final answers into a single result.

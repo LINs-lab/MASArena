@@ -8,7 +8,9 @@ from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 from mas_arena.agents.base import AgentSystem, AgentSystemRegistry
 
+from agentops.sdk.decorators import agent, operation, trace
 
+@agent
 @dataclass
 class Agent:
     name: str
@@ -277,6 +279,7 @@ Output in plain text with markdown formatting, wrapped in <answer> tags:
                 messages.append(message)
         return messages
 
+    @operation
     async def _run_agent_task(self, agent_name: str, task: Dict[str, Any]) -> Dict[str, Any]:
         agent = self.agents[agent_name]
         messages = [SystemMessage(content=agent.system_prompt), HumanMessage(content=str(task))]
@@ -368,6 +371,7 @@ Output in plain text with markdown formatting, wrapped in <answer> tags:
     def _need_iteration(self, qa_content: str) -> bool:
         return bool(self._extract_bugs(qa_content) or self._extract_suggestions(qa_content))
 
+    @trace
     async def run_agent(self, task_data: Dict[str, Any], **kwargs) -> Dict[str, Any]:
         """
         Run the agent system on a task.

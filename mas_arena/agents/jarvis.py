@@ -28,6 +28,7 @@ from openai.types.completion_usage import CompletionUsage
 
 from mas_arena.agents.base import AgentSystem, AgentSystemRegistry
 
+from agentops.sdk.decorators import agent, operation, trace
 
 DEMONSTRATIONS: list[dict] = []
 
@@ -201,6 +202,7 @@ class TaskPlanner(BasePlanner):
         )
         return self.output_parser.parse(llm_response, inputs["hf_tools"])
 
+@agent
 class ResponseGenerator:
     """Generates a response based on the input."""
 
@@ -208,6 +210,7 @@ class ResponseGenerator:
         self.llm_chain = llm_chain
         self.stop = stop
 
+    @operation
     def generate(self, inputs: dict, callbacks: Callbacks = None, **kwargs: Any) -> str:
         """Given input, decided what to do."""
         llm_response = self.llm_chain.run(**inputs, stop=self.stop, callbacks=callbacks)
@@ -432,6 +435,7 @@ def load_chat_planner(llm: BaseLanguageModel) -> TaskPlanner:
 
     return TaskPlanner(llm = llm)
 
+@agent
 class HuggingGPT:
     """Agent for interacting with HuggingGPT - Text Processing Version."""
 
@@ -443,6 +447,7 @@ class HuggingGPT:
         self.response_generator = load_response_generator(llm)
         self.task_executor = None
 
+    @operation
     def run(self, input: str) -> str:
         """Process text input through planning, execution, and response generation."""
         # Plan tasks based on input
@@ -623,6 +628,7 @@ class JarvisSingleAgent(AgentSystem):
         self.agent = HuggingGPT(self.llm, self.tools, name=self.name)
         # self.format_prompt is inherited from AgentSystem and set in super().__init__
 
+    @trace
     async def run_agent(self, problem: Dict[str, Any], **kwargs) -> Dict[str, Any]:
         """
         Runs the HuggingGPT agent.
