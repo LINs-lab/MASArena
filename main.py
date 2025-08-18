@@ -199,8 +199,12 @@ def main():
 
     # Set up agent system monitoring with AgentOps
     if not os.getenv("AGENTOPS_API_KEY"):
-        raise ValueError("AGENTOPS_API_KEY environment variable is not set. Please set it to enable monitoring.")
-    agentops.init(api_key=os.getenv("AGENTOPS_API_KEY", None))
+        logger.warning(
+            """AGENTOPS_API_KEY cannot be found in `.env`. To view tracing data in agentops, please set the api key. 
+You can get the key at https://app.agentops.ai/settings/projects.
+"""
+        )
+    agentops.init(api_key=os.getenv("AGENTOPS_API_KEY", ""))
 
 
     # Run benchmark
