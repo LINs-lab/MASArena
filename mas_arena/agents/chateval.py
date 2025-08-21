@@ -1,9 +1,13 @@
 import os
+import time
 from typing import Dict, List, Any, TypedDict
 from dataclasses import dataclass
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 from mas_arena.agents.base import AgentSystem, AgentSystemRegistry
+
+from agentops.sdk.decorators import agent, operation, trace
+
 
 # define structured output class, use TypedDict instead of Pydantic
 class AgentResponse(TypedDict):
@@ -12,6 +16,7 @@ class AgentResponse(TypedDict):
     solution: str  # Solution
     confidence: int  # Confidence level in the solution, range 1-5
 
+# @agent
 @dataclass
 class Agent:
     """Represents an LLM agent"""
@@ -29,6 +34,7 @@ class Agent:
             max_retries=2        # Set maximum retry attempts to 2
         )
 
+    @operation
     async def generate_response(self, context: str) -> Any:
         """Generate agent response"""
         messages = [
@@ -96,6 +102,7 @@ class Agent:
                 "solution": response.content
             }
 
+@agent
 class ResultExtractor:
     """Extract final results from conversation history"""
     def __init__(self, model_name: str = None, format_prompt: str = ""):
@@ -108,6 +115,7 @@ class ResultExtractor:
         )
         self.name = "result_extractor"
         
+    @operation    
     async def extract(self, all_histories: List[List[Dict[str, str]]], problem: str) -> Dict[str, Any]:
         """
         Extract final answer from all agents' conversation histories
@@ -233,6 +241,7 @@ You are the Logic Expert, focused on providing logical perspective analysis."""
 
 You are the Critical Thinking Expert, focused on providing multi-angle perspective analysis."""
 
+    @trace
     async def run_agent(self, problem: Dict[str, Any], **kwargs) -> Dict[str, Any]:
         """Run iterative debate process"""
         problem_text = problem["problem"]
@@ -311,6 +320,6 @@ if __name__ == "__main__":
     problem = {
         "problem": "A positive integer, its square root is 452, find this positive integer."
     }
-    agent = ChatEval(name="chateval", config={"num_agents": 3, "num_rounds": 2})
-    result = agent.run_agent(problem)
+    chateval_agent = ChatEval(name="chateval", config={"num_agents": 3, "num_rounds": 2})
+    result = chateval_agent.run_agent(problem)
     print(result)

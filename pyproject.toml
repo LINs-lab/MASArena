@@ -1,5 +1,5 @@
 [project]
-name = "project-multi-agents-benchmark"
+name = "MASArena"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
@@ -21,7 +21,7 @@ dependencies = [
     "networkx>=3.4.2",
     "nltk>=3.9.1",
     "numpy>=1.26.4",
-    "openai>=1.37.1",
+    "openai==1.85.0",
     "pandas>=2.2.3",
     "playwright>=1.46.0",
     "psutil>=7.0.0",
@@ -51,6 +51,7 @@ dependencies = [
     "pyyaml",
     "regex",
     "pydantic_core",
+    "agentops>=0.4.19",
 ]
 
 [tool.ruff]

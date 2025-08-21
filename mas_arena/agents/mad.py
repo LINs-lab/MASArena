@@ -8,6 +8,8 @@ from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage
 from mas_arena.agents.base import AgentSystem, AgentSystemRegistry
 
+from agentops.sdk.decorators import operation, trace
+
 load_dotenv(override=True)
 
 @dataclass
@@ -41,6 +43,7 @@ class DebateAgent:
         """Add generated response to memory"""
         self.memory_lst.append({"role": "assistant", "content": memory})
 
+    @operation
     async def ask(self):
         """Query and get response"""
         from langchain_core.messages import AIMessage
@@ -124,6 +127,7 @@ class MADAgent(AgentSystem):
         }
         return dct.get(num, str(num))
 
+    @trace
     async def run_agent(self, problem: Dict[str, Any], **kwargs) -> Dict[str, Any]:
         """Run debate process"""
         

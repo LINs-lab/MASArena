@@ -12,6 +12,7 @@ A comprehensive framework for benchmarking single and multi-agent systems across
 * **🔧 Tool Support**:  Manage tool selection via pluggable wrappers.
 * **🧩 Easy Extensions**: Add agents via subclassing—no core changes.
 * **📂 Paired Datasets & Evaluators**: Add new benchmarks with minimal effort.
+* **⏱️ Real-time Monitoring with AgentOps**: Track agent calls and costs instantly using AgentOps integration.
 
 ## 🙌 Contributing
 

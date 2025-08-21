@@ -4,18 +4,23 @@ This guide explains how to run benchmarks and use the automated workflow optimiz
 
 ## Prerequisites
 
-1.  **Install dependencies:**
+1. **Install dependencies:**
     If you haven't already, install the required packages. We recommend using `uv`.
+
     ```bash
     uv sync
     ```
 
-2.  **Configure Environment Variables:**
+2. **Configure Environment Variables:**
     Create a `.env` file in the project root and set your OpenAI API key and desired model.
+
+    `AGENTOPS_API_KEY` is required to enable monitoring with AgentOps. You can obtain it from the [AgentOps website](https://app.agentops.ai/settings/projects).
+
     ```bash
     OPENAI_API_KEY=your_openai_api_key
     MODEL_NAME=gpt-4o-mini
     OPENAI_API_BASE=https://api.openai.com/v1
+    AGENTOPS_API_KEY=your_agentops_api_key
     ```
 
 ## Running Benchmarks
@@ -27,6 +32,7 @@ You can run benchmarks using the convenience shell script `run_benchmark.sh` (re
 The `run_benchmark.sh` script is the simplest way to run evaluations.
 
 **Syntax:**
+
 ```bash
 # Usage: ./run_benchmark.sh [benchmark] [agent_system] [limit] [mcp_config] [concurrency] [optimizer]
 ./run_benchmark.sh math supervisor_mas 10
@@ -45,7 +51,7 @@ The `run_benchmark.sh` script is the simplest way to run evaluations.
 
 ## Automated Workflow Optimization (AFlow)
 
-MASArena includes AFlow implementation, an automated optimizer for agent workflows. 
+MASArena includes AFlow implementation, an automated optimizer for agent workflows.
 
 **Example:**
 To run AFlow to optimize an agent for the `humaneval` benchmark, provide `aflow` as the optimizer argument to the shell script:

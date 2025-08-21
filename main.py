@@ -6,12 +6,15 @@ import sys
 import time
 from pathlib import Path
 import asyncio
+import dotenv
+import agentops
 
 from mas_arena.benchmark_runner import BenchmarkRunner
 import logging
 
 logger = logging.getLogger(__name__)
 
+dotenv.load_dotenv()
 
 def main():
     # Parse command line arguments
@@ -193,6 +196,16 @@ def main():
     if args.async_run and not supports_concurrency:
         if args.verbose:
             print(f"Warning: {args.benchmark} benchmark does not support concurrency. Running synchronously.\n")
+
+    # Set up agent system monitoring with AgentOps
+    if not os.getenv("AGENTOPS_API_KEY"):
+        logger.warning(
+            """AGENTOPS_API_KEY cannot be found in `.env`. To view tracing data in agentops, please set the api key. 
+You can get the key at https://app.agentops.ai/settings/projects.
+"""
+        )
+    agentops.init(api_key=os.getenv("AGENTOPS_API_KEY", ""))
+
 
     # Run benchmark
     try:
