@@ -1,3 +1,5 @@
+# Acknowledgement: Modified from AFlow (https://github.com/geekan/MetaGPT/blob/main/metagpt/ext/aflow/scripts/optimizer.py) under MIT License
+
 import asyncio
 import os
 import re
@@ -9,6 +11,7 @@ from pydantic import Field
 from tqdm import tqdm
 
 from mas_arena.agent_flow.workflow_evaluator import EvaluationUtils
+from mas_arena.core_serializer.operators import LLmOptimizeOutput
 from mas_arena.optimizers.optimizer import Optimizer
 from mas_arena.agents import AgentSystem
 from mas_arena.utils.llm_parser import LLMOutputParser
@@ -17,15 +20,6 @@ from mas_arena.utils.data_utils import DataUtils
 from mas_arena.utils.experience_utils import ExperienceUtils
 from mas_arena.utils.graph_utils import GraphUtils, OPERATOR_MAP
 from mas_arena.evaluators.base_evaluator import BaseEvaluator
-
-class LLMOptimizationOutput(LLMOutputParser):
-    """
-    Parses the structured output from the optimizer LLM.
-    """
-    modification: str = Field(default="", description="A description of the modification made to the workflow.")
-    graph: str = Field(default="", description="The python code for the modified workflow graph.")
-    prompt: str = Field(default="", description="The python code for the modified prompt definitions.")
-
 
 class AFlowOptimizer(Optimizer):
     """
@@ -59,7 +53,12 @@ class AFlowOptimizer(Optimizer):
     optimizer_agent: Union[AgentSystem, None] = Field(default=None, description="The agent system for the optimize")
 
     executor_agent: Union[AgentSystem, None] = Field(default=None, description="The agent system for the execute")
-
+    train_size: int = Field(
+        default=20,
+        description="The size of the training set for evaluation.")
+    test_size: int = Field(
+        default=40,
+        description="The size of the test set for evaluation.")
     def setup(self, **kwargs):
         """Initializes the optimizer, sets up paths, and prepares utilities."""
         self.root_path = self.optimized_path or self.graph_path
@@ -74,11 +73,6 @@ class AFlowOptimizer(Optimizer):
 
         self.graph = None
         self.round = self.initial_round
-
-        # if self.optimizer_llm is None:
-        #     raise ValueError("optimizer_llm must be provided.")
-        # if self.executor_llm is None:
-        #     self.executor_llm = self.optimizer_llm
 
         if self.optimizer_agent is None:
             raise ValueError("optimizer_agent must be provided.")
@@ -104,7 +98,7 @@ class AFlowOptimizer(Optimizer):
         """Runs a final test evaluation on the best or specified workflow rounds."""
         self.evaluator = evaluator
         if test_rounds is None:
-            best_round = self._find_best_performing_round()
+            best_round = self.find_best_performing_round()
             print(f"No test rounds provided, using best round: {best_round}")
             test_rounds = [best_round]
 
@@ -114,7 +108,6 @@ class AFlowOptimizer(Optimizer):
             loop.run_until_complete(self._execute_final_evaluation(test_rounds))
 
     async def _perform_one_optimization_round(self) -> float:
-        """Manages the process of a single optimization round."""
         num_validation_runs = self.validation_rounds
         benchmark_data = self.data_utils.load_results(self.root_path)
 
@@ -123,7 +116,6 @@ class AFlowOptimizer(Optimizer):
         return await self._generate_and_evaluate_new_workflow(num_validation_runs, benchmark_data)
 
     async def _run_baseline_evaluation(self, num_validation_runs: int, benchmark_data: list) -> float:
-        """Handles the initial round (round 0) to evaluate the raw workflow."""
         self.graph_utils.create_round_directory(self.root_path, self.round)
         self.graph = self.graph_utils.load_graph(self.round, self.root_path)
         print(f"Running baseline evaluation for round {self.round}...")
@@ -132,17 +124,18 @@ class AFlowOptimizer(Optimizer):
         return avg_score
 
     async def _generate_and_evaluate_new_workflow(self, num_validation_runs: int, benchmark_data: list) -> float:
-        """Handles an optimization round: generating a new workflow and evaluating it."""
         next_round_num = self.round + 1
         new_workflow_dir = self.graph_utils.create_round_directory(self.root_path, next_round_num)
 
         while True:
             parent_workflow_sample = self._select_parent_workflow()
-            prompt_template, graph_code = self.graph_utils.read_graph_files(parent_workflow_sample["round"], self.root_path)
+            prompt_template, graph_code = self.graph_utils.read_graph_files(parent_workflow_sample["round"],
+                                                                            self.root_path)
             solve_graph_code = self.graph_utils.extract_solve_graph(graph_code)
 
             processed_experience = self.experience_utils.load_experience()
-            experience_prompt = self.experience_utils.format_experience(processed_experience, parent_workflow_sample["round"])
+            experience_prompt = self.experience_utils.format_experience(processed_experience,
+                                                                        parent_workflow_sample["round"])
 
             if self.optimizer_agent is None:
                 raise ValueError("Optimizer agent is not initialized.")
@@ -156,27 +149,28 @@ class AFlowOptimizer(Optimizer):
             )
 
             # Get and parse the LLM's response
-            response_parser = await self.optimizer_agent.run_agent(problem={"problem": graph_optimize_prompt},
+            response = await self.optimizer_agent.run_agent(problem={"problem": graph_optimize_prompt},
                                                             parse_mode="str")
-            output: Optional[LLMOutputParser] = response_parser.get("final_answer")
-            if isinstance(response_parser, list):
+            output: Optional[LLMOutputParser] = response.get("final_answer")
+            if isinstance(output, list):
                 raise TypeError(f"Expected a single LLMOutputParser, but got a list.")
 
             print(f"-round:{self.round}-- Optimizer LLM Response ---")
             print(output.content)
-            print("----------------------------")
-            parsed_response = self._parse_llm_optimization_output(
-                output.content,
-                orig_graph=solve_graph_code[0],
-                orig_prompt=prompt_template
-            )
-
-            if self.experience_utils.check_modification(processed_experience, parsed_response['modification'],
-                                                        parent_workflow_sample["round"]):
+            try:
+                parsed_response = LLmOptimizeOutput.parse(output.content, parse_mode="xml")
+                response = parsed_response.get_structured_data()
+                print("Parsed LLM Optimization response successfully.")
+            except Exception:
+                response = self._parse_llm_optimization_output(output.content,
+                                                               orig_graph=solve_graph_code[0],
+                                                               orig_prompt=prompt_template)
+                print("Failed to parse LLM Optimization response, using regex fallback.")
+            if self.experience_utils.check_modification(processed_experience, response['modification'],parent_workflow_sample["round"]):
                 break
 
         avg_score = await self._evaluate_and_record_new_workflow(
-            new_workflow_dir, parsed_response, parent_workflow_sample, benchmark_data, num_validation_runs
+            new_workflow_dir, response, parent_workflow_sample, benchmark_data, num_validation_runs
         )
         print(f"Score for new workflow in round {self.round}: {avg_score}")
         return avg_score
@@ -194,7 +188,8 @@ class AFlowOptimizer(Optimizer):
 
         # Evaluate the new graph's performance on the validation set
         avg_score = await self.evaluation_utils.evaluate_graph_async(self, num_validation_runs, benchmark_data,
-                                                                       initial=False)
+                                                                     initial=False, train_size=self.train_size,
+                                                                     test_size=self.test_size)
 
         # Save the results of this experiment
         self.experience_utils.update_experience(directory, experience_entry, avg_score)
@@ -224,19 +219,19 @@ class AFlowOptimizer(Optimizer):
         print(f"\nAverage score across all test runs: {avg_final_score}")
         return avg_final_score
 
-    # --- Helper & Utility Methods ---
 
     def _prepare_initial_round_files(self):
         """Ensures the files for the starting round (usually round 0) are in place."""
         if self.round == 0:
             round_zero_path = os.path.join(self.root_path, f"round_{self.round}")
-            if not os.path.exists(round_zero_path):
-                os.makedirs(round_zero_path, exist_ok=True)
-                # Copy the initial graph and prompt files to the round_0 directory
+            os.makedirs(round_zero_path, exist_ok=True)
+            # Copy the initial graph and prompt files to the round_0 directory
+            if not os.path.exists(os.path.join(round_zero_path, "graph.py")):
                 shutil.copy2(os.path.join(self.graph_path, "graph.py"), os.path.join(round_zero_path, "graph.py"))
+            if not os.path.exists(os.path.join(round_zero_path, "prompt.py")):
                 shutil.copy2(os.path.join(self.graph_path, "prompt.py"), os.path.join(round_zero_path, "prompt.py"))
-                # Update imports in the copied graph.py
-                self.graph_utils.update_prompt_import(os.path.join(round_zero_path, "graph.py"), round_zero_path)
+            # Update imports in the copied graph.py
+            self.graph_utils.update_prompt_import(os.path.join(round_zero_path, "graph.py"), round_zero_path)
 
         if not os.path.exists(os.path.join(self.root_path, f"round_{self.round}")):
             raise ValueError(f"Starting round {self.round} does not exist in {self.root_path}")
@@ -263,7 +258,7 @@ class AFlowOptimizer(Optimizer):
         """Parses the LLM's output, trying structured parsing first and falling back to regex."""
         try:
             # First, try the Pydantic-based XML parser
-            parsed_data = LLMOptimizationOutput.parse(content, parse_mode="xml")
+            parsed_data = LLmOptimizeOutput.parse(content, parse_mode="xml")
             return parsed_data.get_structured_data()
         except Exception:
             # If Pydantic parsing fails, fall back to regex-based extraction
@@ -302,7 +297,7 @@ class AFlowOptimizer(Optimizer):
             return True
         return False
 
-    def _find_best_performing_round(self) -> int:
+    def find_best_performing_round(self) -> int:
         """Loads all scores and returns the round number with the highest score."""
         ranked_scores = self.data_utils._load_scores()
         if not ranked_scores:

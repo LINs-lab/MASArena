@@ -295,7 +295,6 @@ class LLMOutputParser(Parser):
         data = cls.get_content_data(content=content, parse_mode=parse_mode, parse_func=parse_func, **kwargs)
         data.update({"content": content})
         parser = cls.from_dict(data, **kwargs)
-        # parser.content = content
         return parser
 
     def __str__(self) -> str:

@@ -1,6 +1,6 @@
 #!/bin/bash
 # Benchmark Runner Script
-# Usage: ./run_benchmark.sh [benchmark_name] [agent_system] [limit] [mcp_config_file] [concurrency] [optimizer]
+# Usage: ./run_benchmark.sh [benchmark_name] [agent_system] [limit] [mcp_config_file] [concurrency] [optimizer] [train_size] [test_size]
 
 # Default values
 BENCHMARK=${1:-math}
@@ -9,6 +9,8 @@ LIMIT=${3:-2}
 MCP_CONFIG=${4:-}
 CONCURRENCY=${5:-6}
 OPTIMIZER=${6:-} # New optional argument for the optimizer
+TRAIN_SIZE=${7:-}
+TEST_SIZE=${8:-}
 
 # Create necessary directories
 mkdir -p results metrics
@@ -20,6 +22,12 @@ echo "====================================================="
 echo "Benchmark: $BENCHMARK"
 if [ -n "$OPTIMIZER" ]; then
   echo "Optimizer: $OPTIMIZER"
+  if [ -n "$TRAIN_SIZE" ]; then
+    echo "Train Size: $TRAIN_SIZE"
+  fi
+  if [ -n "$TEST_SIZE" ]; then
+    echo "Test Size: $TEST_SIZE"
+  fi
   echo "Agent System (post-optimization): $AGENT_SYSTEM"
 else
   echo "Agent System: $AGENT_SYSTEM"
@@ -61,6 +69,12 @@ fi
 # Build optimizer flags if provided
 if [ -n "$OPTIMIZER" ]; then
   OPTIMIZER_FLAGS="--run-optimizer $OPTIMIZER"
+  if [ -n "$TRAIN_SIZE" ]; then
+    OPTIMIZER_FLAGS="$OPTIMIZER_FLAGS --train_size $TRAIN_SIZE"
+  fi
+  if [ -n "$TEST_SIZE" ]; then
+    OPTIMIZER_FLAGS="$OPTIMIZER_FLAGS --test_size $TEST_SIZE"
+  fi
 else
   OPTIMIZER_FLAGS=""
 fi

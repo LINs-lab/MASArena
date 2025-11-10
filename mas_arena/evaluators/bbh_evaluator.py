@@ -14,6 +14,7 @@ from langsmith.schemas import Run
 
 from mas_arena.evaluators.base_evaluator import BaseEvaluator
 from mas_arena.evaluators.registry import register_benchmark
+from mas_arena.evaluators.utils import extract_answer_generic
 
 
 @register_benchmark(
@@ -22,7 +23,7 @@ from mas_arena.evaluators.registry import register_benchmark
         "id": "task_id",
         "problem": "input",
         "solution": "target",
-    }
+    },
 )
 class BBHEvaluator(BaseEvaluator):
     """
@@ -56,49 +57,7 @@ class BBHEvaluator(BaseEvaluator):
         Returns:
             The extracted answer (e.g., "(A)", "True", "] >")
         """
-        text = text.strip()
-
-        # Primary pattern: Content within <answer>...</answer> tags
-        tag_pattern = r"<answer>\s*([\s\S]*?)\s*</answer>"
-        match = re.search(tag_pattern, text, re.IGNORECASE)
-        if match:
-            return match.group(1).strip()
-
-        # Fallback: "Final Answer: <answer>"
-        final_answer_pattern = r"Final Answer:\s*(.+)"
-        match = re.search(final_answer_pattern, text, re.DOTALL)
-        if match:
-            return match.group(1).strip()
-
-        # Fallback: Look for multiple-choice options (e.g., (A), A, [A])
-        option_pattern = r"\([A-Z]\)|[A-Z]\b|\[[A-Z]\]"
-        matches = re.findall(option_pattern, text, re.DOTALL)
-        if matches:
-            last_match = matches[-1]
-            # Normalize to (A) format
-            if not last_match.startswith("("):
-                last_match = f"({last_match[-1]})"
-            return last_match.strip()
-
-        # Fallback: Look for boolean values
-        boolean_pattern = r"\b(True|False)\b"
-        boolean_matches = re.findall(boolean_pattern, text, re.DOTALL)
-        if boolean_matches:
-            return boolean_matches[-1].strip()
-
-        # Fallback: Look for sequence completions (e.g., "> ) }", "] ] ]")
-        sequence_pattern = r"([>\]\}\)\[]+\s*)+"
-        sequence_matches = re.findall(sequence_pattern, text, re.DOTALL)
-        if sequence_matches:
-            return sequence_matches[-1].strip()
-
-        # Fallback: Last non-empty line
-        lines = [line.strip() for line in text.split("\n") if line.strip()]
-        if lines:
-            return lines[-1]
-
-        # Final fallback: Return stripped text
-        return text.strip()
+        return extract_answer_generic(text)
 
     def normalize_answer(self, answer: str) -> str:
         """
@@ -167,7 +126,12 @@ class BBHEvaluator(BaseEvaluator):
             return 0.0, extracted_answer, error_message
 
     def create_run(
-        self, problem: Dict[str, Any], final_answer: str, extracted_answer: str, score: float, message: str
+        self,
+        problem: Dict[str, Any],
+        final_answer: str,
+        extracted_answer: str,
+        score: float,
+        message: str,
     ) -> Run:
         """
         Create a LangSmith run for evaluation.
@@ -199,7 +163,7 @@ class BBHEvaluator(BaseEvaluator):
             trace_id=str(uuid.uuid4()),
         )
 
-    def evaluate(self, problem: Dict[str, Any], run_result: Dict[str, Any]) -> Dict[str, Any]:
+    async def evaluate(self, problem: Dict[str, Any], run_result: Dict[str, Any]) -> Dict[str, Any]:
         """
         Evaluate a BBH problem given the agent's response.
 
@@ -228,5 +192,3 @@ class BBHEvaluator(BaseEvaluator):
             "score": score,
             "message": message,
         }
-
-

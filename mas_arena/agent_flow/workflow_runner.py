@@ -21,19 +21,10 @@ class WorkflowRunner:
         return graph(name=evaluator.name, agent_name="single_agent", evaluator=evaluator)
 
     async def graph_evaluate_async(self, evaluator: BaseEvaluator, graph: Callable, is_test: bool = False,
-                                   max_concurrent_tasks: int = 20) -> Tuple[float, float, float]:
+                                   max_concurrent_tasks: int = 20, train_size: int = 40, test_size: int = 20) -> Tuple[float, float, float]:
         configured_graph = self._configure_graph(graph=graph, evaluator=evaluator)
 
-        # get data for evaluation
-        from mas_arena.evaluators import BENCHMARKS
-        benchmark_config = BENCHMARKS[evaluator.name]
-        data_path = benchmark_config.get("data_path", f"data/{evaluator.name}_test.jsonl")
-        data = []
-        try:
-            with open(data_path, "r") as f:
-                data = [json.loads(line) for line in f]
-        except FileNotFoundError:
-            raise FileNotFoundError(f"Data file not found: {data_path}")
+        data = evaluator.get_test_data(sample_size=test_size) if is_test else evaluator.get_dev_data(sample_size=train_size)
         if not data or len(data) == 0:
             print("No data to evaluate. Returning zeros.")
             return (0.0, 0.0, 0.0, True)

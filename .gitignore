@@ -21,11 +21,13 @@ dist/
 downloads/
 eggs/
 .eggs/
+lib/
 lib64/
 parts/
 sdist/
 var/
 wheels/
+pip-wheel-metadata/
 share/python-wheels/
 *.egg-info/
 .installed.cfg
@@ -55,6 +57,7 @@ coverage.xml
 *.py,cover
 .hypothesis/
 .pytest_cache/
+
 cover/
 results/
 # Translations
@@ -89,6 +92,7 @@ profile_default/
 ipython_config.py
 
 # pyenv
+.python-version
 #   For a library or package, you might want to ignore these files since the code is
 #   intended to run in multiple environments; otherwise, check them in:
 # .python-version
@@ -100,6 +104,7 @@ ipython_config.py
 #   install all needed dependencies.
 #Pipfile.lock
 
+# PEP 582; used by e.g. github.com/David-OConnor/pyflow
 # UV
 #   Similar to Pipfile.lock, it is generally recommended to include uv.lock in version control.
 #   This is especially recommended for binary packages to ensure reproducibility, and is more
@@ -160,6 +165,19 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
+# Tex
+*.synctex.gz
+*.textput.log
+*.aux
+*.bbl
+*.blg
+*.log
+*.out
+*.fdb_latexmk
+*.fls
+*.brf
+*.ppt
+*.pptx
 # pytype static type analyzer
 .pytype/
 
@@ -175,3 +193,31 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+*.DS_Store
+
+# Ignore Gaia data files
+data/files/gaia/*
+
+# Ignore files downloaded or extracted by tools
+download_files/
+extracted_files/
+extracted_media/
+data/files/lego_database.zip
+config.yaml
+
+# Ignore downloaded Python source
+Python-3.11.5/
+
+models/
+
+*.sqlite3
+*.bin
+*.pkl
+
+# Agent-generated files
+*.html
+*.csv
+*.mp3
+*_run
+*_run.cpp

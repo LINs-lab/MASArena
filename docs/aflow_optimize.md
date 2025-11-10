@@ -50,15 +50,15 @@ This command will:
 
 The following arguments in `main.py` control the optimization process.
 
-| Argument                | Type   | Default                                      | Description                                                  |
-|-------------------------|--------|----------------------------------------------|--------------------------------------------------------------|
-| `--run-optimizer`       | str    | `None`                                       | Specifies the optimizer to run. Use `aflow`.                 |
-| `--benchmark`           | str    | `math`                                       | Benchmark to optimize for.                                   |
-| `--graph_path`          | str    | `mas_arena/configs/aflow`                    | Path to the base AFlow graph configuration.                  |
-| `--optimized_path`      | str    | `example/aflow/humaneval/optimization`       | Path to save the optimized AFlow graph and intermediate files. |
-| `--validation_rounds`   | int    | 1                                            | Number of validation rounds per optimization cycle.          |
-| `--eval_rounds`         | int    | 1                                            | Number of evaluation rounds per optimization cycle.          |
-| `--max_rounds`          | int    | 3                                            | Maximum number of optimization rounds.                       |
+| Argument                | Type   | Default                                | Description                                                  |
+|-------------------------|--------|----------------------------------------|--------------------------------------------------------------|
+| `--run-optimizer`       | str    | `None`                                 | Specifies the optimizer to run. Use `aflow`.                 |
+| `--benchmark`           | str    | `humaneval`                            | Benchmark to optimize for.                                   |
+| `--graph_path`          | str    | `mas_arena/configs/aflow`              | Path to the base AFlow graph configuration.                  |
+| `--optimized_path`      | str    | `example/aflow/humaneval/optimization` | Path to save the optimized AFlow graph and intermediate files. |
+| `--validation_rounds`   | int    | 1                                      | Number of validation rounds per optimization cycle.          |
+| `--eval_rounds`         | int    | 1                                      | Number of evaluation rounds per optimization cycle.          |
+| `--max_rounds`          | int    | 3                                      | Maximum number of optimization rounds.                       |
 
 ---
 

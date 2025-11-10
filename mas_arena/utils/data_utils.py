@@ -145,8 +145,6 @@ class DataUtils:
 
         if not os.path.exists(log_dir):
             return ""
-        #logger.info(log_dir)
-        # data = read_json_file(log_dir, encoding="utf-8")
         data = load_json(log_dir, type="json")
 
         if isinstance(data, dict):

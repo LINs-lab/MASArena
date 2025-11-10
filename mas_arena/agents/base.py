@@ -5,6 +5,7 @@ This module provides the base classes and interfaces for agent systems.
 """
 
 import abc
+import logging
 from typing import Dict, Any, Optional, Type, Callable
 import uuid
 import os
@@ -12,12 +13,17 @@ import json
 from pathlib import Path
 import datetime
 import time
+
+import yaml
+from mas_arena.agents.format import task_format
 from mas_arena.agents.format_prompts import get_format_prompt
 from openai.types.completion_usage import CompletionUsage
 import aiofiles
 
+from mas_arena.memory.base import BaseMemory
 from mas_arena.utils.llm_parser import LLMOutputParser
-
+from mas_arena.memory.common import MASMessage
+logger = logging.getLogger(__name__)
 
 class AgentSystem(abc.ABC):
     """Base class for all agent systems in the benchmark framework
@@ -45,7 +51,7 @@ class AgentSystem(abc.ABC):
         self.config = config or {}
         self.evaluator_name = self.config.get("evaluator", None)
         if self.evaluator_name is None:
-            print("Evaluator name is not set in the configuration.")
+            logger.info("Evaluator name is not set in the configuration. Defaulting to None.")
         
         self.metrics_registry = None
         self.evaluator = None
@@ -65,6 +71,8 @@ class AgentSystem(abc.ABC):
         self.format_prompt = self.format_prompt()
         # ToolManager is now initialized by the ToolIntegrationWrapper, not the base agent
         self.tool_manager = None
+
+        self.meta_memory:Optional[BaseMemory] = None
 
     def format_prompt(self) -> str:
         """
@@ -537,6 +545,26 @@ class AgentSystem(abc.ABC):
             agent_run_end_time = time.perf_counter()
             execution_time_ms = (agent_run_end_time - agent_run_start_time) * 1000
             
+            # If agent run returns an error, treat it as a failure
+            if "error" in run_output and run_output["error"]:
+                messages = run_output.get("messages", [])
+                self._record_agent_responses(problem_id, messages)
+                response_file = await self.save_agent_responses(problem_id, run_id, problem)
+                visualization_file = await self.save_visualization_data(problem_id, run_id)
+                return {
+                    "status": "error",
+                    "score": 0.0,
+                    "is_correct": False,
+                    "reasoning": f"Agent run failed: {run_output['error']}",
+                    "extracted_answer": run_output.get("final_answer", ""),
+                    "messages": messages,
+                    "execution_time_ms": execution_time_ms,
+                    "llm_usage": self._record_token_usage(problem_id, execution_time_ms, messages),
+                    "response_file": str(response_file) if response_file else None,
+                    "visualization_file": str(visualization_file) if visualization_file else None,
+                    "run_id": run_id,
+                }
+
             messages = run_output.get("messages", [])
             usage_metrics = self._record_token_usage(problem_id, execution_time_ms, messages)
             
@@ -552,7 +580,24 @@ class AgentSystem(abc.ABC):
                 )
             
             eval_start_time = time.perf_counter()
-            eval_result = self.evaluator.evaluate(problem=problem, run_result=run_output)
+            eval_result = await self.evaluator.evaluate(problem=problem, run_result=run_output)
+
+            intermediate_steps = (
+                f"manager_agent_steps: {run_output.get('manager_agent_steps', [])}"
+                + f"search_agent_steps: {run_output.get('search_agent_steps', [])}"
+            )
+            
+            if self.meta_memory:
+                await self.meta_memory.add_memory(
+                    MASMessage(
+                        final_answer=eval_result["extracted_answer"],
+                        ground_truth=problem["solution"],
+                        task_question=problem["problem"],
+                        task_search_keywords=run_output.get("search_keywords", ""),
+                        task_trajectory=json.dumps(intermediate_steps),
+                        label=eval_result.get("is_correct", False)
+                    )
+                )
             eval_end_time = time.perf_counter()
             eval_duration_ms = (eval_end_time - eval_start_time) * 1000
             
@@ -589,7 +634,7 @@ class AgentSystem(abc.ABC):
                         "run_id": run_id
                     }
                 )
-            
+            print(f"Evaluation failed with error: {str(e)}")
             # Return a failure result instead of re-raising
             return {
                 "status": "error",
@@ -715,10 +760,10 @@ class AgentSystemRegistry:
         return cls._registry
 
 
-def create_agent_system(name: str, config: Dict[str, Any] = None) -> Optional[AgentSystem]:
+def create_agent_system(name: str, config: Dict[str, Any] = None, memory_type: str = None) -> Optional[AgentSystem]:
     """
     Create an agent system by name.
-    If 'use_tools' or 'use_mcp_tools' is in the config, the agent system
+    If 'use_tools' or 'use_mcp_tools' is in the config, the agent system    
     will be wrapped with ToolIntegrationWrapper to enable tool use.
     """
     AgentSystemRegistry._import_agent_systems()
@@ -727,6 +772,8 @@ def create_agent_system(name: str, config: Dict[str, Any] = None) -> Optional[Ag
     # Get an instance of the agent system from the registry
     try:
         agent_system = AgentSystemRegistry.get(name, config=config)
+        print(f"Agent system instance for '{name}' ID: {id(agent_system)}")
+        logger.info(f"Agent system instance for '{name}' ID: {id(agent_system)}")
     except KeyError:
         return None
 
@@ -750,6 +797,13 @@ def create_agent_system(name: str, config: Dict[str, Any] = None) -> Optional[Ag
             print("Underlying ImportError:")
             traceback.print_exc()
 
+    if memory_type is not None:
+        from mas_arena.memory.memory_registry import memory_registry
+        from mas_arena.memory.base import BaseMemory
+        agent_system.meta_memory: BaseMemory = memory_registry.get(memory_type)
+
+        print(f"Memory instance for '{memory_type}' ID: {id(agent_system.meta_memory)}")
+        logger.info(f"Memory instance for '{memory_type}' ID: {id(agent_system.meta_memory)}")
 
     return agent_system
 

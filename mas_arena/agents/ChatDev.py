@@ -1,11 +1,10 @@
-import os
 import asyncio
+import os
 import re
-import tempfile
-import sys
-from collections import defaultdict, deque
+import uuid
 from typing import Dict, Any, List, Tuple, Optional
 from dataclasses import dataclass
+from threading import Thread
 
 from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
@@ -34,13 +33,17 @@ class ChatDevAgent:
         )
         self.chat_history = []
 
-    def generate_response(self, context: str) -> Dict[str, Any]:
+    def clear_history(self):
+        """Clear the agent's conversation history"""
+        self.chat_history = []
+
+    async def generate_response(self, context: str) -> Dict[str, Any]:
         """Generate response"""
         try:
             # Build messages
             messages = [SystemMessage(content=self.system_prompt)]
             
-            # Add chat history
+            # Add conversation history
             for msg in self.chat_history:
                 if msg.get("role") == "user":
                     messages.append(HumanMessage(content=msg["content"]))
@@ -51,7 +54,10 @@ class ChatDevAgent:
             messages.append(HumanMessage(content=context))
             
             # Call LLM
-            response = self.llm.invoke(messages)
+            response = await self.llm.ainvoke(messages)
+            
+            response.id = f"{self.role}_{uuid.uuid4()}"
+            response.name = self.role
             
             # Update history
             self.chat_history.append({"role": "user", "content": context})
@@ -83,13 +89,16 @@ class ChatDev(AgentSystem):
     ChatDev multi-agent software development system
     
     Implements complete software development workflow:
-    1. Demand Analysis (DemandAnalysis)
-    2. Language Selection (LanguageChoose)
-    3. Coding (Coding)
-    4. Code Completion (CodeCompleteAll)
-    5. Code Review (CodeReview)
-    6. Testing (Test)
+    1. Demand Analysis (DemandAnalysis) - skip for humaneval
+    2. Coding (Coding)
+    3. Code Completion (CodeCompleteAll)
+    4. Code Review (CodeReview)
+    5. Real Testing (Test) - Execute real code tests
     """
+    
+    class TimeoutError(Exception):
+        """Execution timeout exception"""
+        pass
     
     def __init__(self, name: str = "chatdev", config: Dict[str, Any] = None):
         """Initialize ChatDev system"""
@@ -99,31 +108,33 @@ class ChatDev(AgentSystem):
         self.model_name = self.config.get("model_name") or os.getenv("MODEL_NAME", "gpt-4o-mini")
         self.max_iterations = self.config.get("max_iterations", 3)
         
+        # ChatDev background description
+        self.background_prompt = "ChatDev is a software company powered by multiple intelligent agents, such as chief executive officer, chief human resources officer, chief product officer, chief technology officer, etc, with a multi-agent organizational structure and the mission of 'changing the digital world through programming'."
+        
         # Initialize agents
         self.agents = self._create_agents()
         
         # Store project state
         self.project_state = {
             "task": "",
-            "modality": "",
-            "language": "",
+            "modality": "Application",  # Fixed as Application
+            "language": "Python",      # Fixed as Python
             "ideas": "",
             "codes": "",
-            "requirements": ""
+            "requirements": "",
+            "test_reports": "",
+            "error_summary": ""
         }
 
     def _create_agents(self) -> Dict[str, Any]:
         """Create role agents"""
-        # ChatDev background prompt
-        chatdev_prompt = "ChatDev is a software company powered by multiple intelligent agents, such as chief executive officer, chief human resources officer, chief product officer, chief technology officer, etc, with a multi-agent organizational structure and the mission of 'changing the digital world through programming'."
-        
         agents = {}
         
         # CEO - Chief Executive Officer  
         agents["CEO"] = Instructor(
             name="Chief Executive Officer",
             role="CEO", 
-            system_prompt=f"{chatdev_prompt}\nYou are Chief Executive Officer. Now, we are both working at ChatDev and we share a common interest in collaborating to successfully complete a task assigned by a new customer. Your main responsibilities include being an active decision-maker on users' demands and other key policy issues, leader, manager, and executor. Your decision-making role involves high-level decisions about policy and strategy; and your communicator role can involve speaking to the organization's management and employees.",
+            system_prompt=f"{self.background_prompt}\nYou are Chief Executive Officer. Now, we are both working at ChatDev and we share a common interest in collaborating to successfully complete a task assigned by a new customer. Your main responsibilities include being an active decision-maker on users' demands and other key policy issues, leader, manager, and executor. Your decision-making role involves high-level decisions about policy and strategy; and your communicator role can involve speaking to the organization's management and employees.",
             model_name=self.model_name
         )
         
@@ -131,7 +142,7 @@ class ChatDev(AgentSystem):
         agents["CPO"] = Assistant(
             name="Chief Product Officer", 
             role="CPO",
-            system_prompt=f"{chatdev_prompt}\nYou are Chief Product Officer. we are both working at ChatDev. We share a common interest in collaborating to successfully complete a task assigned by a new customer. You are responsible for all product-related matters in ChatDev. Usually includes product design, product strategy, product vision, product innovation, project management and product marketing.",
+            system_prompt=f"{self.background_prompt}\nYou are Chief Product Officer. we are both working at ChatDev. We share a common interest in collaborating to successfully complete a task assigned by a new customer. You are responsible for all product-related matters in ChatDev. Usually includes product design, product strategy, product vision, product innovation, project management and product marketing.",
             model_name=self.model_name
         )
         
@@ -139,7 +150,7 @@ class ChatDev(AgentSystem):
         agents["CTO"] = Instructor(
             name="Chief Technology Officer",
             role="CTO",
-            system_prompt=f"{chatdev_prompt}\nYou are Chief Technology Officer. we are both working at ChatDev. We share a common interest in collaborating to successfully complete a task assigned by a new customer. You are very familiar to information technology. You will make high-level decisions for the overarching technology infrastructure that closely align with the organization's goals, while you work alongside the organization's information technology (\"IT\") staff members to perform everyday operations.",
+            system_prompt=f"{self.background_prompt}\nYou are Chief Technology Officer. we are both working at ChatDev. We share a common interest in collaborating to successfully complete a task assigned by a new customer. You are very familiar to information technology. You will make high-level decisions for the overarching technology infrastructure that closely align with the organization's goals, while you work alongside the organization's information technology (\"IT\") staff members to perform everyday operations.",
             model_name=self.model_name
         )
         
@@ -147,7 +158,7 @@ class ChatDev(AgentSystem):
         agents["Programmer"] = Assistant(
             name="Programmer",
             role="Programmer", 
-            system_prompt=f"{chatdev_prompt}\nYou are Programmer. we are both working at ChatDev. We share a common interest in collaborating to successfully complete a task assigned by a new customer. You can write/create computer software or applications by providing a specific programming language to the computer. You have extensive computing and coding experience in many varieties of programming languages and platforms, such as Python, Java, C, C++, HTML, CSS, JavaScript, XML, SQL, PHP, etc,.",
+            system_prompt=f"{self.background_prompt}\nYou are Programmer. we are both working at ChatDev. We share a common interest in collaborating to successfully complete a task assigned by a new customer. You can write/create computer software or applications by providing a specific programming language to the computer. You have extensive computing and coding experience in many varieties of programming languages and platforms, such as Python, Java, C, C++, HTML, CSS, JavaScript, XML, SQL, PHP, etc,.",
             model_name=self.model_name
         )
         
@@ -155,19 +166,123 @@ class ChatDev(AgentSystem):
         agents["Code Reviewer"] = Instructor(
             name="Code Reviewer",
             role="Reviewer",
-            system_prompt=f"{chatdev_prompt}\nYou are Code Reviewer. we are both working at ChatDev. We share a common interest in collaborating to successfully complete a task assigned by a new customer. You can help programmers to assess source codes for software troubleshooting, fix bugs to increase code quality and robustness, and offer proposals to improve the source codes.",
+            system_prompt=f"{self.background_prompt}\nYou are Code Reviewer. we are both working at ChatDev. We share a common interest in collaborating to successfully complete a task assigned by a new customer. You can help programmers to assess source codes for software troubleshooting, fix bugs to increase code quality and robustness, and offer proposals to improve the source codes.",
             model_name=self.model_name
         )
         
-        # Software Test Engineer
-        agents["Tester"] = Instructor(
-            name="Software Test Engineer", 
-            role="Tester",
-            system_prompt=f"{chatdev_prompt}\nYou are Software Test Engineer. we are both working at ChatDev. We share a common interest in collaborating to successfully complete a task assigned by a new customer. You can use the software as intended to analyze its functional properties, design manual and automated test procedures to evaluate each software product, build and implement software evaluation test programs, and run test programs to ensure that testing protocols evaluate the software correctly.",
-            model_name=self.model_name
-        )
-        
-        return {"workers": list(agents.values())}
+        return {
+            "workers": list(agents.values()),
+            "agents_dict": agents,
+            "agent_names": {i: agent.name for i, agent in enumerate(agents.values())}
+        }
+
+    def get_agent_names(self) -> Dict[int, str]:
+        """Get agent name mapping for visualization and debugging"""
+        return self.agents.get("agent_names", {})
+    
+    def get_agent_by_role(self, role: str) -> Optional[Any]:
+        """Get agent by role name"""
+        agents_dict = self.agents.get("agents_dict", {})
+        return agents_dict.get(role)
+
+    def run_with_timeout(self, func, args, timeout: int = 60):
+        """Execute function within specified time, raise exception if timeout"""
+        result: list[Any] = []
+        exception: list[BaseException] = []
+
+        def target():
+            try:
+                result.append(func(*args))
+            except BaseException as e:
+                exception.append(e)
+
+        thread = Thread(target=target, daemon=True)
+        thread.start()
+        thread.join(timeout)
+
+        if thread.is_alive():
+            raise self.TimeoutError("Execution timed out")
+
+        if exception:
+            raise exception[0]
+
+        return result[0] if result else None
+
+    def extract_code_from_response(self, text: str) -> str:
+        """Extract code from response, following HumanEval evaluator logic"""
+        # 1. Look for "## Validated Code" block
+        qa_match = re.search(r"##\s*Validated Code\s*```python\s*([\s\S]*?)```", text, re.IGNORECASE)
+        if qa_match:
+            return qa_match.group(1).strip()
+
+        # 2. Look for any ```python code block
+        block_match = re.search(r"```python\s*([\s\S]*?)```", text, re.IGNORECASE)
+        if block_match:
+            return block_match.group(1).strip()
+
+        # 3. Look for function definition pattern
+        fn_match = re.search(r"(def\s+\w+\s*\(.*?\):[\s\S]*?)(?=\n{2,}|\Z)", text)
+        if fn_match:
+            return fn_match.group(1).strip()
+
+        # 4. Fallback: return entire text
+        return text.strip()
+
+    def check_solution(self, code: str, test: str, entry_point: str) -> Tuple[bool, str, str]:
+        """Check if solution is correct"""
+        output_results = ""
+        try:
+            # Create isolated namespace
+            env: Dict[str, Any] = {}
+
+            # Inject candidate implementation
+            exec(code, env)
+            if entry_point not in env:
+                return False, f"Function '{entry_point}' not found in code", ""
+            
+            candidate_fn = env[entry_point]
+
+            # Inject and get test function
+            exec(test, env)
+            if "check" not in env:
+                return False, "Test function 'check' not found", ""
+            
+            check_fn = env["check"]
+
+            # Run test, if check() raises exception, test fails
+            self.run_with_timeout(check_fn, (candidate_fn,), timeout=60)
+            
+            # If test passes, collect some example output results for Programmer to review
+            try:
+                # Try to extract some example calls from test code
+                import re
+                test_examples = re.findall(r'assert\s+.*?==\s+.*', test)
+                if test_examples:
+                    output_results = "Test examples and expected outputs:\n"
+                    for i, example in enumerate(test_examples[:3]):  # Show max 3 examples
+                        output_results += f"  {i+1}. {example}\n"
+                
+                # Try to extract function call examples
+                call_examples = re.findall(rf'{entry_point}\([^)]*\)', test)
+                if call_examples:
+                    output_results += "\nFunction calls found in tests:\n"
+                    for i, call in enumerate(set(call_examples[:3])):  # Deduplicate, max 3
+                        try:
+                            result = eval(call, env)
+                            output_results += f"  {call} -> {result}\n"
+                        except:
+                            output_results += f"  {call} -> (execution failed)\n"
+            except:
+                output_results = "Test passed but could not extract example outputs"
+            
+            return True, "All tests passed", output_results
+
+        except self.TimeoutError as te:
+            return False, str(te), ""
+        except AssertionError as ae:
+            return False, f"Test failed: {ae}", ""
+        except Exception as exc:
+            return False, f"Execution error: {exc}", ""
 
     async def run_agent(self, problem: Dict[str, Any], **kwargs) -> Dict[str, Any]:
         """Run complete workflow of ChatDev system"""
@@ -179,35 +294,34 @@ class ChatDev(AgentSystem):
             # Store all LLM response messages
             all_messages = []
             
-            # 1. Demand Analysis Phase (DemandAnalysis)
+            
+            modality = "Application"  # Fixed
+            language = "Python"      # Fixed
+            
+            # 1. Demand Analysis phase (skip for humaneval tasks)
             modality = await self._demand_analysis_phase(task, all_messages)
             self.project_state["modality"] = modality
             
-            # 2. Language Selection Phase (LanguageChoose)
-            language = await self._language_choose_phase(task, modality, all_messages)
             self.project_state["language"] = language
             
-            # 3. Coding Phase (Coding)
-            codes = await self._coding_phase(task, modality, language, all_messages)
+            # 2. Coding phase
+            codes = await self._coding_phase(task, modality, language, all_messages, problem)
             self.project_state["codes"] = codes
             
-            # 4. Code Completion Phase (CodeCompleteAll)
+            # 3. Code Completion phase
             completed_codes = await self._code_complete_all_phase(task, modality, language, codes, all_messages)
             self.project_state["codes"] = completed_codes
             
-            # 5. Code Review Phase (CodeReview)
+            # 4. Code Review phase
             reviewed_codes = await self._code_review_phase(task, modality, language, completed_codes, all_messages)
             self.project_state["codes"] = reviewed_codes
             
-            # 6. Testing Phase (Test)
-            final_codes = await self._test_phase(language, reviewed_codes, all_messages)
-            
-            # Extract final answer - Combine with format prompt
-            final_answer = self._extract_final_answer(final_codes)
+            # 5. Real Testing phase - Execute real code
+            final_codes = await self._test_phase(reviewed_codes, problem, all_messages)
             
             return {
                 "messages": all_messages,
-                "final_answer": final_answer
+                "final_answer": final_codes
             }
             
         except Exception as e:
@@ -217,26 +331,29 @@ class ChatDev(AgentSystem):
             }
 
     async def _demand_analysis_phase(self, task: str, all_messages: List) -> str:
-        """Demand Analysis Phase - CEO and CPO discuss product form"""
+        """Demand Analysis phase - CEO and CPO discuss product form"""
+        self.get_agent_by_role("CEO").clear_history()
+        self.get_agent_by_role("CPO").clear_history()
+        
         phase_prompt = [
-            "ChatDev has made products in the following form before:",
-            "Image: can present information in line chart, bar chart, flow chart, cloud chart, Gantt chart, etc.",
-            "Document: can present information via .docx files.",
-            "PowerPoint: can present information via .pptx files.",
-            "Excel: can present information via .xlsx files.",
-            "PDF: can present information via .pdf files.",
-            "Website: can present personal resume, tutorial, products, or ideas, via .html files.",
-            "Application: can implement visualized game, software, tool, etc, via python.",
-            "Dashboard: can display a panel visualizing real-time information.",
-            "Mind Map: can represent ideas, with related concepts arranged around a core concept.",
-            f"As the Chief Product Officer, to satisfy the new user's demand and the product should be realizable, you should keep discussing with me to decide which product modality do we want the product to be?",
-            "Note that we must ONLY discuss the product modality and do not discuss anything else! Once we all have expressed our opinion(s) and agree with the results of the discussion unanimously, any of us must actively terminate the discussion by replying with only one line, which starts with a single word <INFO>, followed by our final product modality without any other words, e.g., \"<INFO> PowerPoint\"."
+            "As the Chief Product Officer, please carefully analyze the given task and generate a comprehensive requirements document.",
+            f"Task: \"{task}\"",
+            "Your analysis should include:",
+            "1. Core functionality requirements - what the solution needs to accomplish",
+            "2. Input/Output specifications - what data types, formats, and structures are expected",
+            "3. Key constraints and edge cases that need to be handled",
+            "4. Performance and reliability requirements",
+            "5. User interaction patterns (if applicable)",
+            "",
+            "Based on your analysis, determine the most appropriate solution approach.",
+            "Once you have completed your requirements analysis, respond with:",
+            "\"<INFO> Application\" for code-based solutions, or \"<INFO> Document\" for documentation-based solutions."
         ]
         
         context = f"Task: {task}\n\n{' '.join(phase_prompt)}"
         
         # CPO as assistant role provides suggestions
-        cpo_response = self.agents["workers"][1].generate_response(context)  # CPO
+        cpo_response = await self.agents["workers"][1].generate_response(context)  # CPO
         all_messages.append(cpo_response["message"])
         
         # Extract product form
@@ -245,63 +362,120 @@ class ChatDev(AgentSystem):
         
         return modality
 
-    async def _language_choose_phase(self, task: str, modality: str, all_messages: List) -> str:
-        """Language Selection Phase - CTO and CEO discuss programming language"""
-        phase_prompt = [
-            f"According to the new user's task and some creative brainstorm ideas listed below: ",
-            f"Task: \"{task}\".",
-            f"Modality: \"{modality}\".",
-            f"Ideas: \"\".",
-            f"We have decided to complete the task through a executable software implemented via a programming language. ",
-            f"As the Chief Technology Officer, to satisfy the new user's demand and make the software realizable, you should propose a concrete programming language. If python can complete this task via Python, please answer Python; otherwise, answer another programming language (e.g., Java, C++, etc,).",
-            f"Note that we must ONLY discuss the target programming language and do not discuss anything else! Once we all have expressed our opinion(s) and agree with the results of the discussion unanimously, any of us must actively terminate the discussion and conclude the best programming language we have discussed without any other words or reasons, return only one line using the format: \"<INFO> *\" where \"*\" represents a programming language."
-        ]
+    async def _coding_phase(self, task: str, modality: str, language: str, all_messages: List, problem: Dict[str, Any]) -> str:
+        """Coding phase - CTO guides Programmer to write code, includes up to 3 rounds of debate"""
         
-        context = ' '.join(phase_prompt)
-        
-        # CTO as assistant role selects language
-        cto_response = self.agents["workers"][2].generate_response(context)  # CTO
-        all_messages.append(cto_response["message"])
-        
-        # Extract programming language
-        language_match = re.search(r'<INFO>\s*(\w+)', cto_response["content"]) 
-        language = language_match.group(1) if language_match else "Python"
-        
-        return language
+        self.get_agent_by_role("Programmer").clear_history()
+        self.get_agent_by_role("CTO").clear_history()
 
-    async def _coding_phase(self, task: str, modality: str, language: str, all_messages: List) -> str:
-        """Coding Phase - CTO guides Programmer to write code"""
+        # Initial coding prompt
         phase_prompt = [
-            f"According to the new user's task and our software designs listed below: ",
+            "According to the new user's task and our software designs listed below: ",
             f"Task: \"{task}\".",
-            f"Task description: \"\".",
             f"Modality: \"{modality}\".",
             f"Programming Language: \"{language}\"",
-            f"Ideas:\"\"",
             f"We have decided to complete the task through a executable software implemented via {language}. As the Programmer, to satisfy the new user's demands, you should write complete, functional code that solves the task.",
+            f"",
+            f"CRITICAL CODING REMINDERS - Pay special attention to these commonly forgotten aspects:",
+            f"1. INPUT/OUTPUT FORMAT COMPLIANCE:",
+            f"   - Carefully read and understand the expected input format (string, number, list, etc.)",
+            f"   - Ensure your function accepts the correct input type to avoid 'Input must be a string' errors",
+            f"   - Match the exact output format specified in the task description",
+            f"   - Add proper input validation and type checking",
+            f"",
+            f"2. FUNCTION SIGNATURE AND INTERFACE:",
+            f"   - Use the exact function name specified in the task (if provided)",
+            f"   - Ensure parameter names and types match requirements",
+            f"   - Return the correct data type and format",
+            f"",
+            f"3. EDGE CASES AND ERROR HANDLING:",
+            f"   - Handle empty inputs, null values, and boundary conditions",
+            f"   - Add try-except blocks for potential runtime errors",
+            f"   - Validate inputs before processing",
+            f"",
+            f"4. ALGORITHM IMPLEMENTATION:",
+            f"   - Implement the core logic completely - no placeholder code",
+            f"   - Test your logic mentally with the provided examples",
+            f"   - Ensure all loops, conditions, and calculations are correct",
+            f"",
+            f"5. IMPORTS AND DEPENDENCIES:",
+            f"   - Include all necessary import statements",
+            f"   - Use standard library when possible to avoid dependency issues",
+            f"",
             f"Think step by step and reason yourself to the right decisions to make sure we get it right.",
             f"You will first lay out the names of the core classes, functions, methods that will be necessary, as well as a quick comment on their purpose.",
             f"Then you will output the complete functional code.",
             f"Please note that the code should be fully functional. Ensure to implement all functions. No placeholders (such as 'pass' in Python).",
             f"",
-            f"Output format requirements:",
+            f"IMPORTANT: Format your final response according to these requirements:",
             f"{self.format_prompt}"
         ]
         
         context = ' '.join(phase_prompt)
-        
-        # Programmer as assistant role writes code
-        programmer_response = self.agents["workers"][3].generate_response(context)  # Programmer
+
+        # Round 1: Initial coding by Programmer
+        programmer_response = await self.agents["workers"][3].generate_response(context)  # Programmer
         all_messages.append(programmer_response["message"])
+        current_code = programmer_response["content"]
         
-        return programmer_response["content"]
+        # Up to 3 rounds of debate
+        for debate_round in range(1):
+            # CTO reviews code and provides suggestions
+            review_prompt = [
+                f"According to the new user's task and the Programmer's current implementation:",
+                f"Task: \"{task}\".",
+                f"Modality: \"{modality}\".",
+                f"Programming Language: \"{language}\"",
+                f"Current Implementation:",
+                f"\"{current_code}\"",
+                "As the Chief Technology Officer, please review this implementation. Check for:",
+                "1) Architecture completeness and design quality",
+                "2) Code functionality and logic correctness", 
+                "3) Whether all requirements are met",
+                "4) Potential improvements or missing components",
+                "If the implementation is satisfactory, respond with \"<APPROVED>\" at the end.",
+                "Otherwise, provide specific suggestions for improvement."
+            ]
+            
+            cto_context = ' '.join(review_prompt)
+            cto_response = await self.agents["workers"][2].generate_response(cto_context)  # CTO
+            all_messages.append(cto_response["message"])
+            
+            # If CTO approves code, end debate
+            if "<APPROVED>" in cto_response["content"]:
+                break
+            
+            # Programmer improves code based on CTO's suggestions
+            improvement_prompt = [
+                f"According to the Chief Technology Officer's review feedback:",
+                f"Original Task: \"{task}\".",
+                f"Your Current Implementation:",
+                f"\"{current_code}\"",
+                f"CTO's Feedback:",
+                f"\"{cto_response['content']}\"",
+                "As the Programmer, please improve your implementation based on the CTO's feedback.",
+                "IMPORTANT: Format your improved code according to these requirements:",
+                f"{self.format_prompt}",
+                "Ensure all suggested improvements are incorporated."
+            ]
+            
+            improvement_context = ' '.join(improvement_prompt)
+            improved_response = await self.agents["workers"][3].generate_response(improvement_context)  # Programmer
+            all_messages.append(improved_response["message"])
+            current_code = improved_response["content"]
+        
+        return current_code
 
     async def _code_complete_all_phase(self, task: str, modality: str, language: str, codes: str, all_messages: List) -> str:
-        """Code Completion Phase - Loop to complete all unimplemented files"""
+        """Code Completion phase - Loop to complete all unimplemented files"""
         current_codes = codes
-        
+        if self.evaluator_name == "humaneval":
+            return current_codes
+
+        self.get_agent_by_role("Programmer").clear_history()
+
         # Simplified handling: check for unimplemented code
-        for iteration in range(3):  # Maximum 3 iterations
+        for iteration in range(3):  # Max 3 iterations
             if "TODO" not in current_codes and "pass" not in current_codes and "# Implementation needed" not in current_codes:
                 break
                 
@@ -315,29 +489,31 @@ class ChatDev(AgentSystem):
                 f"As the Programmer, you need to complete and implement all remaining functions, methods and classes. Make sure all TODO items and placeholder code (like 'pass') are fully implemented.",
                 f"Output the complete, fully functional code that solves the task.",
                 f"",
-                f"Output format requirements:",
+                f"IMPORTANT: Format your final response according to these requirements:",
                 f"{self.format_prompt}"
             ]
             
             context = ' '.join(phase_prompt)
-            programmer_response = self.agents["workers"][3].generate_response(context)  # Programmer
+            programmer_response = await self.agents["workers"][3].generate_response(context)  # Programmer
             all_messages.append(programmer_response["message"])
             current_codes = programmer_response["content"]
         
         return current_codes
 
     async def _code_review_phase(self, task: str, modality: str, language: str, codes: str, all_messages: List) -> str:
-        """Code Review Phase - Code Reviewer and Programmer interact in loops"""
+        """Code Review phase - Code Reviewer and Programmer interact in cycles"""
         current_codes = codes
         
-        for iteration in range(3):  # Maximum 3 rounds of review
+        self.get_agent_by_role("Code Reviewer").clear_history()
+        self.get_agent_by_role("Programmer").clear_history()
+
+        for iteration in range(2):  # Max 3 rounds of review
             # Code Reviewer review
             review_prompt = [
                 f"According to the new user's task and our software designs: ",
                 f"Task: \"{task}\".",
                 f"Modality: \"{modality}\".",
                 f"Programming Language: \"{language}\"",
-                f"Ideas: \"\"",
                 f"Codes:",
                 f"\"{current_codes}\"",
                 f"As the Code Reviewer, to make the software directly operable without further coding, ChatDev have formulated the following regulations:",
@@ -351,10 +527,10 @@ class ChatDev(AgentSystem):
             ]
             
             context = ' '.join(review_prompt)
-            reviewer_response = self.agents["workers"][4].generate_response(context)  # Code Reviewer
+            reviewer_response = await self.agents["workers"][4].generate_response(context)  # Code Reviewer
             all_messages.append(reviewer_response["message"])
             
-            # If review is complete, break the loop
+            # If review complete, break loop
             if "<INFO> Finished" in reviewer_response["content"]:
                 break
                 
@@ -364,132 +540,115 @@ class ChatDev(AgentSystem):
                 f"Task: \"{task}\".",
                 f"Modality: \"{modality}\".",
                 f"Programming Language: \"{language}\"",
-                f"Ideas: \"\"",
                 f"Current codes: ",
                 f"\"{current_codes}\"",
                 f"Code review comments:",
                 f"\"{reviewer_response['content']}\"",
                 f"As the Programmer, modify the code according to the review comments. Output the complete, improved code that addresses all the issues mentioned in the review.",
                 f"",
-                f"Output format requirements:",
+                f"IMPORTANT: Format your final response according to these requirements:",
                 f"{self.format_prompt}"
             ]
             
             context = ' '.join(modify_prompt)
-            programmer_response = self.agents["workers"][3].generate_response(context)  # Programmer
+            programmer_response = await self.agents["workers"][3].generate_response(context)  # Programmer
             all_messages.append(programmer_response["message"])
             current_codes = programmer_response["content"]
         
         return current_codes
 
-    async def _test_phase(self, language: str, codes: str, all_messages: List) -> str:
-        """Testing Phase - Software Test Engineer and Programmer interact in loops"""
+    async def _test_phase(self, codes: str, problem: Dict[str, Any], all_messages: List) -> str:
+        """Real Testing phase - Use real code execution and testing"""
         current_codes = codes
         
-        for iteration in range(3):  # Maximum 3 rounds of testing
-            # Simulate test reports
-            test_reports = "No syntax errors found. All basic functionality tests passed."
+        # Clear Programmer history
+        self.get_agent_by_role("Programmer").clear_history()
+        
+        # Get test information from problem
+        test_code = problem.get("test", "")
+        entry_point = problem.get("entry_point", "")
+        
+        # If no test cases, return current code
+        if not test_code or not entry_point:
+            return current_codes
+        
+        for iteration in range(3):  # Max 3 rounds of testing
+            # Extract pure code part from current code
+            extracted_code = self.extract_code_from_response(current_codes)
             
-            # Test Engineer summarizes errors
-            error_summary_prompt = [
-                f"Our developed source codes and corresponding test reports are listed below: ",
-                f"Programming Language: \"{language}\"",
-                f"Source Codes:",
-                f"\"{current_codes}\"",
-                f"Test Reports of Source Codes:",
-                f"\"{test_reports}\"",
-                f"According to my test reports, please locate and summarize the bugs that cause the problem."
-            ]
+            # Execute real test
+            passed, error_message, test_output = await asyncio.to_thread(self.check_solution, extracted_code, test_code, entry_point)
             
-            context = ' '.join(error_summary_prompt)
-            tester_response = self.agents["workers"][5].generate_response(context)  # Tester
-            all_messages.append(tester_response["message"])
-            
-            # If no errors, end testing
-            if "No" in tester_response["content"] or "no bugs" in tester_response["content"].lower() or "no issues" in tester_response["content"].lower():
-                break
+            if passed:
+                # Test passed, let Programmer review output and confirm
+                review_prompt = [
+                    f"Congratulations! Your code has passed all unit tests.",
+                    f"",
+                    f"Task: \"{self.project_state['task']}\"",
+                    f"",
+                    f"Your Final Code:",
+                    f"{extracted_code}",
+                    f"",
+                    f"Test Results:",
+                    f"{test_output}",
+                    f"",
+                    f"As the Programmer, please review the test results above to ensure:",
+                    f"1. The outputs match your expectations for the given task",
+                    f"2. The function behavior is correct for the test cases",
+                    f"3. The implementation handles edge cases appropriately",
+                    f"",
+                    f"If you are satisfied with the results, respond with '<CONFIRMED>' and provide the final code.",
+                    f"If you notice any issues or want to make improvements, provide the updated code.",
+                    f"",
+                    f"IMPORTANT: Format your final response according to these requirements:",
+                    f"{self.format_prompt}"
+                ]
                 
-            # Programmer fixes bugs
+                context = '\n'.join(review_prompt)
+                programmer_response = await self.agents["workers"][3].generate_response(context)  # Programmer
+                all_messages.append(programmer_response["message"])
+                
+                # Return Programmer's final response regardless of confirmation
+                return programmer_response["content"]
+            
+            # Test failed, let Programmer fix code
             fix_prompt = [
-                f"Our developed source codes and corresponding test reports are listed below: ",
-                f"Programming Language: \"{language}\"",
-                f"Current source codes:",
-                f"\"{current_codes}\"", 
-                f"Test reports:",
-                f"\"{test_reports}\"",
-                f"Error summary:",
-                f"\"{tester_response['content']}\"",
-                f"As the Programmer, fix all bugs and issues identified in the test reports. Output the complete, bug-free code.",
-                f"If no bugs are found, output the current code as final validated code.",
+                f"Your previous code has failed the unit tests.",
                 f"",
-                f"Output format requirements:",
+                f"Task: \"{self.project_state['task']}\"",
+                f"",
+                f"Current Code:",
+                f"{extracted_code}",
+                f"",
+                f"Test Failure/Error:",
+                f"{error_message}",
+                f"",
+                f"As the Programmer, analyze the error message and fix the bug in the code.",
+                f"Make sure to:",
+                f"1. Address the specific error mentioned above",
+                f"2. Ensure the function signature matches requirements",
+                f"3. Handle all edge cases properly",
+                f"4. Test your logic against the examples in the original task",
+                f"",
+                f"Provide the complete, corrected code.",
+                f"IMPORTANT: Format your final response according to these requirements:",
                 f"{self.format_prompt}"
             ]
             
-            context = ' '.join(fix_prompt)
-            programmer_response = self.agents["workers"][3].generate_response(context)  # Programmer
+            context = '\n'.join(fix_prompt)
+            programmer_response = await self.agents["workers"][3].generate_response(context)  # Programmer
             all_messages.append(programmer_response["message"])
-            
-            # Check if fixes are complete
-            if ("<INFO> Finished" in programmer_response["content"] or 
-                "no bugs" in programmer_response["content"].lower() or
-                "no issues" in programmer_response["content"].lower()):
-                # If complete, keep current code
-                break
-                
             current_codes = programmer_response["content"]
         
+        # If still issues after 3 rounds, return last code
         return current_codes
-
-    def _extract_final_answer(self, final_codes: str) -> str:
-        """Extract final answer, ensure it follows format_prompt format"""
-        # If output already contains format_prompt format, return directly
-        if "<answer>" in final_codes and "</answer>" in final_codes:
-            return final_codes
-        
-        # If not properly formatted, try to extract code and reformat
-        import re
-        
-        # Try to extract code block
-        code_pattern = r'```python\s*(.*?)\s*```'
-        code_match = re.search(code_pattern, final_codes, re.DOTALL)
-        
-        if code_match:
-            extracted_code = code_match.group(1).strip()
-        else:
-            # If no code block, assume entire content is code
-            extracted_code = final_codes.strip()
-        
-        # Format output using format_prompt
-        if "humaneval" in self.evaluator_name or "mbpp" in self.evaluator_name:
-            # For code generation tasks, use complete format
-            formatted_answer = f"""<answer>
-## Implementation Details
-Complete implementation of the requested functionality.
-
-## Features Implemented
-All required functions and features as specified in the task.
-
-## Optimizations
-Code follows best practices and is optimized for readability and performance.
-
-## Validated Code
-```python
-{extracted_code}
-```
-</answer>"""
-        else:
-            # For other tasks, use simple format
-            formatted_answer = f"Solution:\n{extracted_code}"
-        
-        return formatted_answer
 
 
 # Register ChatDev system to framework
 AgentSystemRegistry.register(
     "chatdev",
     ChatDev,
-    evaluator="humaneval",  # Default using HumanEval evaluator
+    evaluator="humaneval",  # Default to use HumanEval evaluator
     description="ChatDev multi-agent software development system, implementing complete software development workflow",
     max_iterations=3
 )

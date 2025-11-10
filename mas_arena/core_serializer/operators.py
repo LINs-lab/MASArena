@@ -13,9 +13,8 @@ import concurrent
 from mas_arena.core_serializer.component import SerializableComponent
 from mas_arena.utils.data_utils import test_case_2_test_function
 from mas_arena.core_serializer.operator_prompts import *
-from mas_arena.evaluators.base_evaluator import BaseEvaluator
-from mas_arena.evaluators.humaneval_evaluator import HumanEvalEvaluator
 from mas_arena.evaluators.utils import sanitize
+from mas_arena.evaluators.base_code_evaluator import BaseCodeEvaluator
 
 class OperatorOutput(LLMOutputParser):
 
@@ -71,7 +70,7 @@ class Custom(Operator):
 
     async def __call__(self, input: str, instruction: str) -> dict:
         prompt = instruction + input
-        response = await self.agent.run_agent(problem={"problem": prompt}, parser=self.prompt, parse_mode="str")
+        response = await self.agent.run_agent(problem={"problem": prompt}, parser=self.outputs_format, parse_mode="str")
         output: Optional[LLMOutputParser] = response.get("final_answer")
         if not output:
             return {}
@@ -165,9 +164,7 @@ class ScEnsemble(Operator):
         prompt = self.prompt.format(problem=problem, solutions=solution_text)
         response = await self.agent.run_agent(problem={"problem": prompt}, parser=self.outputs_format, parse_mode="xml")
         output: Optional[LLMOutputParser] = response.get("final_answer")
-        if not output:
-            return {}
-        return output.get_structured_data()
+        return self._process_response(output, answer_mapping, solutions)
 
 class CustomCodeGenerate(Operator):
 
@@ -218,79 +215,89 @@ class ReflectionTestOp(OperatorOutput):
                                          description="Corrective solution for code execution errors or test case failures")
 
 
-TEST_SUPPORTED_EVALUATORS = [HumanEvalEvaluator]
-
-
 class Test(Operator):
 
     def __init__(self, agent: AgentSystem, **kwargs):
-
         name = "Test"
         description = "Tests the solution using public test cases. If the solution fails, it reflects on the errors and attempts to modify the solution. Returns True and the solution if all tests pass after modifications. Returns False and the current solution if it still fails after modifications."
         interface = "test(problem: str, solution: str, entry_point: str, evaluator = self.evaluator) -> dict with key 'result' of type bool and key 'solution' of type str. Always include 'evaluator = self.evaluator' in the input."
         super().__init__(name=name, description=description, interface=interface, agent=agent, outputs_format=TestOutput,
                          **kwargs)
 
-    # async def __call__(self, *args, **kwargs):
-    #     return await self.async_execute(*args, **kwargs)
-
-    async def __call__(self, problem, solution, entry_point, evaluator: BaseEvaluator, test_loop: int = 3):
+    async def __call__(self, problem: str, solution: str, entry_point: str, 
+                       evaluator: BaseCodeEvaluator, test_loop: int = 3) -> dict:
         """
-        "Test": {
-        "description": "Test the solution with test cases, if the solution is correct, return 'no error', if the solution is incorrect, return reflect on the soluion and the error information",
-        "interface": "test(problem: str, solution: str, entry_point: str, evaluator = self.evaluator) -> str"
-        }
+        Test the solution with test cases. If the solution is correct, return success.
+        If incorrect, reflect on the solution and attempt to fix it.
+        
+        Args:
+            problem: The problem description
+            solution: The code solution to test
+            entry_point: The function name to test
+            evaluator: The evaluator to use for testing
+            test_loop: Maximum number of test-fix iterations
+            
+        Returns:
+            Dictionary with 'result' (bool) and 'solution' (str) keys
         """
         for _ in range(test_loop):
             result = self.exec_code(solution, entry_point, evaluator)
+            
             if result == "no error":
                 return {"result": True, "solution": solution}
-            elif "exec_fail_case" in result:
-                result = result["exec_fail_case"]
-                prompt = REFLECTION_ON_PUBLIC_TEST_PROMPT.format(
-                    problem=problem,
-                    solution=solution,
-                    exec_pass=f"executed unsuccessfully, error: \n {result}",
-                    test_fail="executed unsucessfully",
-                )
-                response = await self.agent.run_agent(problem={"problem": prompt}, parser=ReflectionTestOp, parse_mode="json")
-                output: Optional[LLMOutputParser] = response.get("final_answer")
-                solution = sanitize(
-                    output.get_structured_data().get("reflection_and_solution", output.content),
-                    entrypoint=entry_point
-                )
+            
+            # Prepare error information for reflection
+            if isinstance(result, dict) and "exec_fail_case" in result:
+                error_info = result["exec_fail_case"]
+                exec_status = f"executed unsuccessfully, error: \n {error_info}"
+                test_status = "executed unsucessfully"
             else:
-                prompt = REFLECTION_ON_PUBLIC_TEST_PROMPT.format(
-                    problem=problem,
-                    solution=solution,
-                    exec_pass="executed successfully",
-                    test_fail=result,
-                )
-                response = await self.agent.run_agent(problem={"problem": prompt}, parser=ReflectionTestOp, parse_mode="json")
-                output: Optional[LLMOutputParser] = response.get("final_answer")
-                solution = sanitize(
-                    output.get_structured_data().get("reflection_and_solution", output.content),
-                    entrypoint=entry_point
-                )
+                error_info = result
+                exec_status = "executed successfully"
+                test_status = error_info
+            
+            # Generate reflection prompt and get improved solution
+            prompt = REFLECTION_ON_PUBLIC_TEST_PROMPT.format(
+                problem=problem,
+                solution=solution,
+                exec_pass=exec_status,
+                test_fail=test_status,
+            )
+            
+            # Get agent's reflection and improved solution
+            response = await self.agent.run_agent(
+                problem={"problem": prompt}, 
+                parser=ReflectionTestOp,
+                parse_mode="json"
+            )
+            
+            output: Optional[LLMOutputParser] = response.get("final_answer")
+            if output:
+                solution_content = output.get_structured_data().get("reflection_and_solution", output.content)
+                solution = sanitize(solution_content, entrypoint=entry_point)
 
-        result = self.exec_code(solution, entry_point, evaluator)
+        # Final test after all iterations
+        final_result = self.exec_code(solution, entry_point, evaluator)
+        return {
+            "result": final_result == "no error",
+            "solution": solution
+        }
 
-        if result == "no error":
-            return {"result": True, "solution": solution}
-        else:
-            return {"result": False, "solution": solution}
-
-
-    def exec_code(self, solution: str, entry_point: str, evaluator: BaseEvaluator):
-
-        if any(isinstance(evaluator, evaluator_type) for evaluator_type in TEST_SUPPORTED_EVALUATORS):
-            test_cases = evaluator.extract_test_cases_with_entry_point(entry_point)
-        else:
-            supported_evaluators = [typ.__name__ for typ in TEST_SUPPORTED_EVALUATORS]
-            raise ValueError(
-                f"Evaluator {type(evaluator)} is not supported! Available benchmarks: {supported_evaluators} and their subclasses")
-
+    def exec_code(self, solution: str, entry_point: str, evaluator: BaseCodeEvaluator) -> Union[str, list, dict]:
+        """
+        Execute code with test cases and collect results
+        
+        Args:
+            solution: The code solution to test
+            entry_point: The function name to test
+            evaluator: The evaluator to use for testing
+            
+        Returns:
+            "no error" if all tests pass, otherwise error information
+        """
+        test_cases = evaluator.extract_test_cases_with_entry_point(entry_point)
         fail_cases = []
+        
         for test_case in test_cases:
             test_code = test_case_2_test_function(solution, test_case, entry_point)
             try:
@@ -298,9 +305,8 @@ class Test(Operator):
             except AssertionError as e:
                 exc_type, exc_value, exc_traceback = sys.exc_info()
                 tb_str = traceback.format_exception(exc_type, exc_value, exc_traceback)
-                # with open("tester.txt", "a") as f:
-                #     f.write("test_error of " + entry_point + "\n")
-                error_infomation = {
+                
+                error_information = {
                     "test_fail_case": {
                         "test_case": test_case,
                         "error_type": "AssertionError",
@@ -308,21 +314,28 @@ class Test(Operator):
                         "traceback": tb_str,
                     }
                 }
-                fail_cases.append(error_infomation)
+                fail_cases.append(error_information)
             except Exception as e:
-                # with open("tester.txt", "a") as f:
-                #     f.write(entry_point + " " + str(e) + "\n")
                 return {"exec_fail_case": str(e)}
-        if fail_cases != []:
-            return fail_cases
-        else:
-            return "no error"
+        
+        return "no error" if not fail_cases else fail_cases
 
-def run_code(code):
+
+def run_code(code: str) -> Tuple[str, str]:
+    """
+    Safely execute Python code in a restricted environment
+    
+    Args:
+        code: Python code to execute
+        
+    Returns:
+        Tuple of (status, result) where status is "Success" or "Error"
+    """
     try:
-        # Create a new global namespace
+        # Create a new isolated namespace
         global_namespace = {}
 
+        # Security: List of potentially dangerous imports
         disallowed_imports = [
             "os", "sys", "subprocess", "multiprocessing",
             "matplotlib", "seaborn", "plotly", "bokeh", "ggplot",
@@ -332,15 +345,20 @@ def run_code(code):
         # Check for prohibited imports
         for lib in disallowed_imports:
             if f"import {lib}" in code or f"from {lib}" in code:
-                #logger.info("Detected prohibited import: %s", lib)
                 return "Error", f"Prohibited import: {lib} and graphing functionalities"
 
-        # Use exec to execute the code
+        # Execute the code in the isolated namespace
         exec(code, global_namespace)
-        # Assume the code defines a function named 'solve'
+        
+        # Check for the expected 'solve' function
         if 'solve' in global_namespace and callable(global_namespace['solve']):
-            result = global_namespace['solve']()
-            return "Success", str(result)
+            try:
+                result = global_namespace['solve']()
+                return "Success", str(result)
+            except Exception as e:
+                exc_type, exc_value, exc_traceback = sys.exc_info()
+                tb_str = traceback.format_exception(exc_type, exc_value, exc_traceback)
+                return "Error", f"Runtime error in solve(): {str(e)}\n{''.join(tb_str)}"
         else:
             return "Error", "Function 'solve' not found"
     except Exception as e:
@@ -416,3 +434,9 @@ class Programmer(Operator):
                     f"Code: {code}\n\nStatus: {status}, {output}"
                 )
         return {"code": code, "output": output}
+
+class LLmOptimizeOutput(LLMOutputParser):
+
+    modification: str = Field(default="", description="modification")
+    graph: str = Field(default="", description="graph")
+    prompt: str = Field(default="", description="prompt")

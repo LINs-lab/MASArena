@@ -79,7 +79,7 @@ class ExperienceUtils:
                     return False
             return True
         else:
-            return True  # 如果 experience_data 为空，也返回 True
+            return True
 
     def create_experience_data(self, sample, modification):
         return {

@@ -6,5 +6,9 @@ EXPERIMENTAL_CONFIG = {
     "math": {
         "question_type": "math",
         "operators": ["Custom", "ScEnsemble", "Programmer"]
+    },
+    "mbpp": {
+        "question_type": "code",
+        "operators": ["Custom", "CustomCodeGenerate", "Test", "ScEnsemble"]
     }
 }

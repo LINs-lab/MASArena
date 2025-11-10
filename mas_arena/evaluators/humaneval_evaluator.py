@@ -1,19 +1,21 @@
 """
 HumanEval Evaluator
 """
+
 import asyncio
 import time
 import re
 import traceback
+import random
 from threading import Thread
 from typing import Dict, Any, Tuple, Callable, List, Optional
 
 from langsmith.evaluation import RunEvaluator
 from langsmith.schemas import Run
 from mas_arena.evaluators.base_code_evaluator import BaseCodeEvaluator
-from mas_arena.evaluators.utils.normalization import normalize_problem_keys
 from mas_arena.evaluators.utils.sanitize import sanitize, code_extract
 from mas_arena.evaluators.registry import register_benchmark
+from mas_arena.evaluators.utils.timeout import run_with_timeout, TimeoutError
 
 
 @register_benchmark(
@@ -24,45 +26,16 @@ from mas_arena.evaluators.registry import register_benchmark
         "solution": "canonical_solution",
         "test": "test",
         "entry_point": "entry_point",
-    }
+    },
 )
 class HumanEvalEvaluator(BaseCodeEvaluator):
     """Evaluator for HumanEval problems"""
 
-    class TimeoutError(Exception):
-        """Raised when execution exceeds the allowed time limit."""
-
     def __init__(self, name: str, config: Dict[str, Any] = None):
-        super().__init__(name, config) 
+        super().__init__(name, config)
 
         # LangSmith evaluator for packaging the evaluation run
         self.run_evaluator = RunEvaluator()
-
-    def run_with_timeout(self, func, args, timeout: int = 60):
-        """
-        Execute ``func(*args)`` in a separate thread
-        and abort if it does not finish within *timeout* seconds.
-        """
-        result: list[Any] = []
-        exception: list[BaseException] = []
-
-        def target():
-            try:
-                result.append(func(*args))
-            except BaseException as e:
-                exception.append(e)
-
-        thread = Thread(target=target, daemon=True)
-        thread.start()
-        thread.join(timeout)
-
-        if thread.is_alive():
-            raise self.TimeoutError("Execution timed out")
-
-        if exception:
-            raise exception[0]
-
-        return result[0] if result else None
 
     def extract_code(self, text: str) -> str:
         """
@@ -126,10 +99,10 @@ class HumanEvalEvaluator(BaseCodeEvaluator):
             check_fn = env["check"]
 
             # If ``check()`` raises, the except block will handle it
-            self.run_with_timeout(check_fn, (candidate_fn,), timeout=60)
+            run_with_timeout(check_fn, (candidate_fn,), timeout=60)
             return True, "All tests passed"
 
-        except self.TimeoutError as te:
+        except TimeoutError as te:
             msg = str(te)
         except AssertionError as ae:
             msg = f"Test failed: {ae}"
@@ -141,9 +114,7 @@ class HumanEvalEvaluator(BaseCodeEvaluator):
         self.logger.error(f"Check failed: {msg}")
         return False, msg
 
-    def calculate_score(
-        self, test_code: str, prediction: str, entry_point: str
-    ) -> Tuple[float, str, str]:
+    def calculate_score(self, test_code: str, prediction: str, entry_point: str) -> Tuple[float, str, str]:
         """
         Return ``(score, code_used_for_test, message)`` where *score* is 1.0 on success, 0.0 otherwise.
         """
@@ -178,7 +149,7 @@ class HumanEvalEvaluator(BaseCodeEvaluator):
             trace_id=str(uuid.uuid4()),
         )
 
-    def evaluate(self, problem: Dict[str, Any], run_result: Dict[str, Any]) -> Dict[str, Any]:
+    async def evaluate(self, problem: Dict[str, Any], run_result: Dict[str, Any]) -> Dict[str, Any]:
         """
         Main entry point – keeps the outer interface unchanged.
         Consumes one *problem* dict and the model *run_result*, returns a detailed evaluation dict.
@@ -232,10 +203,3 @@ class HumanEvalEvaluator(BaseCodeEvaluator):
                 return case["test"]
 
         return None
-
-    def _load_data(self):
-
-        self._train_data = []
-        self._dev_data = self._load_dateset_from_path(f"data/{self.name}_validate.jsonl")
-        self._test_data = self._load_dateset_from_path(f"data/{self.name}_test.jsonl")
-        self._test_cases = self._load_dateset_from_path(f"data/{self.name}_public_test.jsonl")

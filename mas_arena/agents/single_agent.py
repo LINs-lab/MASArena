@@ -85,7 +85,7 @@ class SingleAgent(AgentSystem):
 
         if "parser" in kwargs or "parse_mode" in kwargs:
             parser = kwargs.get("parser", None)
-            parse_mode = kwargs.get("parser_mode", "str")
+            parse_mode = kwargs.get("parse_mode", "str")
             response_format = self.parse_generated_text(response_content, parser=parser, parse_mode=parse_mode)
             return {
                 "messages": [ai_message],

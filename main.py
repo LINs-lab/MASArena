@@ -1,9 +1,18 @@
 #!/usr/bin/env python3
+# This is a patch to force ChromaDB to use the updated sqlite3 library
+# as the system default is too old.
+__import__('pysqlite3')
+import sys
+sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
+
 import argparse
 import datetime
-import sys
+import os
+import time
 from pathlib import Path
 import asyncio
+
+from dotenv import load_dotenv
 
 from mas_arena.benchmark_runner import BenchmarkRunner
 import logging
@@ -13,11 +22,13 @@ logger = logging.getLogger(__name__)
 
 def main():
     # Parse command line arguments
+    load_dotenv()
     parser = argparse.ArgumentParser(description="Run benchmarks for multi-agent systems")
 
     # Import available agent systems and benchmarks
     from mas_arena.agents import AVAILABLE_AGENT_SYSTEMS
     from mas_arena.evaluators import BENCHMARKS
+    from mas_arena.memory.memory_registry import memory_registry
     parser.add_argument(
         "--benchmark",
         type=str,
@@ -75,6 +86,14 @@ def main():
         help="Data ID to use (default: None)"
     )
 
+    parser.add_argument("--pass_at_k", type=int, default=1, help="Number of samples to generate for pass@k metric (default: 1)")
+
+    parser.add_argument(
+        "--memory-type", type=str, default=None,
+        choices=memory_registry.get_available_memory_names(),
+        help=f"Memory type to use. Available: {', '.join(memory_registry.get_available_memory_names())}"
+    )
+
     # Optimizer arguments
     optimizer_group = parser.add_argument_group("Optimizer Settings")
     optimizer_group.add_argument(
@@ -93,18 +112,27 @@ def main():
     optimizer_group.add_argument(
         "--optimized_path",
         type=str,
-        default="example/aflow/humaneval/optimization",
+        default=None,
         help="Path to save the optimized agent flow graph.",
     )
     optimizer_group.add_argument("--validation_rounds", type=int, default=1, help="Number of validation rounds.")
     optimizer_group.add_argument("--eval_rounds", type=int, default=1, help="Number of evaluation rounds.")
     optimizer_group.add_argument("--max_rounds", type=int, default=3, help="Maximum number of optimization rounds.")
+    optimizer_group.add_argument("--train_size", type=int, default=40, help="Size of the training set for evaluation.")
+    optimizer_group.add_argument("--test_size", type=int, default=20, help="Size of the test set for evaluation.")
 
     # Parse arguments
     args = parser.parse_args()
 
     if args.run_optimizer:
         if args.run_optimizer == "aflow":
+            if not args.optimized_path:
+                args.optimized_path = f"example/aflow/{args.benchmark}/optimization"
+
+            if os.path.exists(args.optimized_path):
+                timestamp = time.strftime("%Y%m%d_%H%M%S")
+                args.optimized_path = f"{args.optimized_path}_{timestamp}"
+
             from example.aflow.run_aflow_optimize import run_aflow_optimization
             print("\n" + "=" * 80)
             print(f"Running AFlow Optimizer ({datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')})")
@@ -193,7 +221,10 @@ def main():
                 agent_system=args.agent_system,
                 agent_config=agent_config if agent_config else None,
                 verbose=args.verbose,
+                data_id=args.data_id,
                 concurrency=args.concurrency,
+                memory_type=args.memory_type,
+                pass_at_k=args.pass_at_k
             ))
         else:
             summary = runner.run(
@@ -202,7 +233,10 @@ def main():
                 limit=args.limit,
                 agent_system=args.agent_system,
                 agent_config=agent_config if agent_config else None,
-                verbose=args.verbose
+                verbose=args.verbose,
+                data_id=args.data_id,
+                memory_type=args.memory_type,
+                pass_at_k=args.pass_at_k
             )
         logger.info(f"Benchmark summary: {summary}")
         return 0

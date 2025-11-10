@@ -11,8 +11,6 @@ import logging
 from typing import Dict, Any, List, Optional, Union
 from abc import ABCMeta
 
-from mas_arena.core_serializer.registry import COMPONENT_REGISTRY
-
 class BaseEvaluator(metaclass=ABCMeta):
     """
     Abstract base class for evaluators.
@@ -76,8 +74,19 @@ class BaseEvaluator(metaclass=ABCMeta):
         """Load data for the evaluator."""
         pass
 
+    def _get_data(self, data: List[dict], indices: Optional[List[int]]=None, sample_size: Optional[int]=None, seed: Optional[int]=None) -> List[dict]:
+        raise NotImplementedError("Subclasses must implement the _get_data method")
+
+    def get_train_data(self, indices: Optional[List[int]] = None, sample_size: Optional[int] = None, seed: Optional[int] = None) -> List[dict]:
+        raise NotImplementedError("Subclasses must implement the get_test_data method")
+
+    def get_dev_data(self, indices: Optional[List[int]] = None, sample_size: Optional[int] = None, seed: Optional[int] = None) -> List[dict]:
+        raise NotImplementedError("Subclasses must implement the get_test_data method")
+
+    def get_test_data(self, indices: Optional[List[int]] = None, sample_size: Optional[int] = None, seed: Optional[int] = None) -> List[dict]:
+        raise NotImplementedError("Subclasses must implement the get_test_data method")
     
-    def evaluate(self, problem: Dict[str, Any], **kwargs) -> Dict[str, Any]:
+    async def evaluate(self, problem: Dict[str, Any], **kwargs) -> Dict[str, Any]:
         """
         Evaluate an agent's solution to a problem.
         

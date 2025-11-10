@@ -25,7 +25,7 @@ from mas_arena.evaluators.utils.ifeval.evaluation_lib import (
         "problem": "prompt",
         "instruction_id_list": "instruction_id_list",
         "kwargs": "kwargs",
-    }
+    },
 )
 class IFEvalEvaluator(BaseEvaluator):
     """Evaluates LLM outputs on IFEval tasks (strict & loose modes)."""
@@ -42,23 +42,22 @@ class IFEvalEvaluator(BaseEvaluator):
         """
         Standardizes the input dictionary from the Runner, extracting fields needed for the agent.
         """
-        instr_ids = problem.get("instruction_id_list",
-                                problem.get("instruction_ids", []))
+        instr_ids = problem.get("instruction_id_list", problem.get("instruction_ids", []))
         kwargs_ = problem.get("kwargs", [])
 
         input_example = InputExample(
             key=problem.get("id", problem.get("key", 0)),
             instruction_id_list=instr_ids,
-            prompt=problem["problem"],   # (Runner maps to 'problem')
+            prompt=problem["problem"],  # (Runner maps to 'problem')
             kwargs=kwargs_,
         )
 
         return {
-            "problem": input_example.prompt,            # Content sent to the agent
+            "problem": input_example.prompt,  # Content sent to the agent
             "instruction_id_list": input_example.instruction_id_list,
             "kwargs": input_example.kwargs,
             "key": input_example.key,
-            "original_problem": problem,                # Retrieved during evaluation
+            "original_problem": problem,  # Retrieved during evaluation
         }
 
     @staticmethod
@@ -93,11 +92,14 @@ class IFEvalEvaluator(BaseEvaluator):
                 tier1[iid]["correct"] += 1
 
         def _ratio(d):  # Helper function
-            return {k: {
-                        "accuracy": v["correct"] / v["total"] if v["total"] else 0,
-                        "correct": v["correct"],
-                        "total": v["total"],
-                    } for k, v in d.items()}
+            return {
+                k: {
+                    "accuracy": v["correct"] / v["total"] if v["total"] else 0,
+                    "correct": v["correct"],
+                    "total": v["total"],
+                }
+                for k, v in d.items()
+            }
 
         return {
             "prompt_followed": prompt_followed,
@@ -109,8 +111,7 @@ class IFEvalEvaluator(BaseEvaluator):
             "tier1_accuracies": _ratio(tier1),
         }
 
-    def evaluate(self, problem: Dict[str, Any],
-                 run_result: Dict[str, Any]) -> Dict[str, Any]:
+    async def evaluate(self, problem: Dict[str, Any], run_result: Dict[str, Any]) -> Dict[str, Any]:
         """
         Evaluates a single sample in both strict and loose modes.
         The score is based on whether the prompt is fully followed in strict mode.
@@ -143,20 +144,22 @@ class IFEvalEvaluator(BaseEvaluator):
         # 3. Call official evaluation functions
         mapping = {inp.prompt: final_ans}
         strict_out = test_instruction_following_strict(inp, mapping)
-        loose_out  = test_instruction_following_loose(inp, mapping)
+        loose_out = test_instruction_following_loose(inp, mapping)
 
         strict_metrics = self._aggregate_metrics(strict_out)
-        loose_metrics  = self._aggregate_metrics(loose_out)
+        loose_metrics = self._aggregate_metrics(loose_out)
 
         # 4. Main score: prompt-level strict
         score = 1.0 if strict_metrics["prompt_followed"] else 0.0
 
         return {
             "final_answer": final_ans,
-            "extracted_answer": final_ans[:100]+'...' if len(final_ans) > 100 else final_ans,  # For benchmark_runner.py compatibility
+            "extracted_answer": (
+                final_ans[:100] + "..." if len(final_ans) > 100 else final_ans
+            ),  # For benchmark_runner.py compatibility
             "score": score,
             "details": {
                 "strict_evaluation": strict_metrics,
                 "loose_evaluation": loose_metrics,
-            }
+            },
         }
