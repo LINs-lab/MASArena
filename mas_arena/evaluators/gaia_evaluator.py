@@ -2,220 +2,61 @@
 GAIA Evaluator
 """
 
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, TypedDict
 import sys
 import re
-import string
+import os
+import json
+import asyncio
+from functools import lru_cache
+from typing_extensions import override
+from openai import AsyncOpenAI
+from dotenv import load_dotenv
 
 from mas_arena.evaluators.base_evaluator import BaseEvaluator
 from mas_arena.evaluators.registry import register_benchmark
 
-try:
-    from sentence_transformers import SentenceTransformer
-    from mas_arena.utils.text_similarity_utils import are_strings_semantically_similar
-    SENTENCE_TRANSFORMERS_AVAILABLE = True
-except ImportError:
-    SENTENCE_TRANSFORMERS_AVAILABLE = False
-    SentenceTransformer = None
-    are_strings_semantically_similar = None
+# Load environment variables
+load_dotenv(override = True)
 
 
 def _get_string_value(data: Any) -> str:
-    """
-    Attempts to extract a string representation from various data types.
-
-    Args:
-        data (Any): Input data of any type.
-
-    Returns:
-        str: The extracted string value or an empty string if extraction fails.
-    """
+    """Best-effort extraction of a human-readable string from heterogeneous objects."""
     if isinstance(data, str):
         return data
-    elif hasattr(data, 'content') and isinstance(getattr(data, 'content'), str):
-        return getattr(data, 'content')
-    elif isinstance(data, dict):
-        for key in ["text", "answer", "content", "final_answer", "output"]:
-            if key in data and isinstance(data[key], str):
-                return data[key]
-        print(f"GaiaEvaluator Warning: Received a dict but could not extract a string value from known keys: {data}",
-              file=sys.stderr)
+    if hasattr(data, "content") and isinstance(getattr(data, "content"), str):  # e.g. SDK objects
+        return getattr(data, "content")
+    if isinstance(data, dict):
+        for key in ("text", "answer", "content", "final_answer", "output"):
+            val = data.get(key)
+            if isinstance(val, str):
+                return val
+        # Fallback: stringify but warn once per distinct type to avoid noise
+        print(
+            "GaiaEvaluator Warning: Dict without known string keys; falling back to str(data)",
+            file=sys.stderr,
+        )
         return str(data)
-    elif data is None:
+    if data is None:
         return ""
-    else:
-        print(f"GaiaEvaluator Warning: Unexpected data type for answer extraction: {type(data)}. Converting to string.",
-              file=sys.stderr)
-        return str(data)
+    print(
+        f"GaiaEvaluator Warning: Unexpected data type {type(data)!r}; coercing to string.",
+        file=sys.stderr,
+    )
+    return str(data)
 
 
-def _is_primarily_numerical(s: str) -> bool:
-    """
-    Checks if a string primarily represents a numerical value.
-
-    Supports:
-        - Integers and decimals (e.g., "123", "12.34")
-        - Optional leading sign (+/-)
-        - Commas as thousand separators (e.g., "1,000")
-        - Scientific notation (e.g., "1.23e4")
-        - Percent signs (%) at the end
-        - Currency symbols ($, €, £, ¥) at the beginning
-
-    Does NOT support:
-        - Multiple decimal points
-        - Invalid characters in number body
-
-    Args:
-        s (str): Input string to check.
-
-    Returns:
-        bool: True if the string can be interpreted as a numerical value.
-    """
-    if not isinstance(s, str) or not s.strip():
-        return False
-    cleaned = s.strip()
-    if cleaned[0] in "$€£¥":
-        cleaned = cleaned[1:]
-    if cleaned.endswith('%'):
-        cleaned = cleaned[:-1]
-    cleaned = cleaned.replace(',', '')
-    pattern = r'^[+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?$'
-    return bool(re.fullmatch(pattern, cleaned))
+@lru_cache(maxsize=4)
+def _compile_answer_tag_pattern() -> re.Pattern:
+    return re.compile(r"<answer>(.*?)</answer>", flags=re.DOTALL | re.IGNORECASE)
 
 
-def _normalize_str(input_str: str, remove_punct: bool = True) -> str:
-    """
-    Normalize a string by removing whitespace and optionally punctuation,
-    then converting to lowercase.
-
-    Args:
-        input_str (str): Input string to normalize.
-        remove_punct (bool): Whether to remove punctuation. Defaults to True.
-
-    Returns:
-        str: Normalized string.
-    """
-    if not isinstance(input_str, str):
-        input_str = str(input_str)
-
-    # Remove all whitespace
-    no_spaces = re.sub(r"\s+", "", input_str)
-
-    if remove_punct:
-        translator = str.maketrans("", "", string.punctuation)
-        return no_spaces.translate(translator).lower()
-    else:
-        return no_spaces.lower()
-
-
-def _split_string(s: str, char_list: Optional[List[str]] = None) -> List[str]:
-    """
-    Split a string using any of the characters in `char_list`.
-
-    Args:
-        s (str): Input string to split.
-        char_list (List[str], optional): Characters to use as delimiters. Defaults to [",", ";"].
-
-    Returns:
-        List[str]: List of substrings after splitting.
-    """
-    if char_list is None:
-        char_list = [",", ";"]
-
-    escaped_chars = "".join(re.escape(c) for c in char_list)
-    pattern = f"[{escaped_chars}]"
-
-    try:
-        return re.split(pattern, s)
-    except re.error as e:
-        print(f"Regex error during split: {e}", file=sys.stderr)
-        return [s]
-
-
-def _normalize_number_str(number_str: str) -> float:
-    """
-    Convert a number-like string (with $, %, commas) to a float.
-
-    Args:
-        number_str (str): String representing a numerical value.
-
-    Returns:
-        float: The normalized float value or float('inf') on failure.
-    """
-    if not isinstance(number_str, str):
-        number_str = str(number_str)
-
-    cleaned = number_str.replace("$", "").replace("%", "").replace(",", "")
-    try:
-        return float(cleaned)
-    except ValueError:
-        print(f"String '{number_str}' cannot be converted to a number.", file=sys.stderr)
-        return float("inf")
-
-
-def _is_float(element: Any) -> bool:
-    """
-    Check if an object can be converted to float.
-
-    Args:
-        element (Any): Element to check.
-
-    Returns:
-        bool: True if convertible to float, False otherwise.
-    """
-    try:
-        float(element)
-        return True
-    except (ValueError, TypeError):
-        return False
-
-
-def _question_scorer(model_answer: str, ground_truth: str) -> bool:
-    """
-    Score the question based on different types of answers.
-
-    Args:
-        model_answer (str): Answer provided by the model.
-        ground_truth (str): Ground truth reference.
-
-    Returns:
-        bool: Whether the answer matches the ground truth.
-    """
-    try:
-        if _is_float(ground_truth):
-            print(f"Evaluating {model_answer} as a number.", file=sys.stderr)
-            normalized_answer = _normalize_number_str(model_answer)
-            return normalized_answer == float(ground_truth)
-
-        elif any(char in ground_truth for char in [",", ";"]):
-            print(f"Evaluating {model_answer} as a comma-separated list.", file=sys.stderr)
-            gt_elems = _split_string(ground_truth)
-            ma_elems = _split_string(model_answer)
-
-            if len(gt_elems) != len(ma_elems):
-                print("Answer lists have different lengths, returning False.", file=sys.stderr)
-                return False
-
-            comparisons = []
-            for ma_elem, gt_elem in zip(ma_elems, gt_elems):
-                if _is_float(gt_elem):
-                    normalized_ma_elem = _normalize_number_str(ma_elem)
-                    comparisons.append(normalized_ma_elem == float(gt_elem))
-                else:
-                    ma_elem = _normalize_str(ma_elem, remove_punct=False)
-                    gt_elem = _normalize_str(gt_elem, remove_punct=False)
-                    comparisons.append(ma_elem == gt_elem)
-            return all(comparisons)
-
-        else:
-            print(f"Evaluating {model_answer} as a string.", file=sys.stderr)
-            ma_elem = _normalize_str(model_answer)
-            gt_elem = _normalize_str(ground_truth)
-            return ma_elem == gt_elem
-
-    except Exception as e:
-        print(f"Error during evaluation: {e}", file=sys.stderr)
-        return False
+class OpenAIResult(TypedDict, total=False):
+    is_correct: bool
+    confidence: float
+    reasoning: str
+    extracted_answer: Optional[str]
+    raw_response: str
 
 
 @register_benchmark(
@@ -226,7 +67,7 @@ def _question_scorer(model_answer: str, ground_truth: str) -> bool:
         "solution": "Final answer",
         "files": "file_name",
         "level": "Level",
-    }
+    },
 )
 class GaiaEvaluator(BaseEvaluator):
     """
@@ -243,161 +84,206 @@ class GaiaEvaluator(BaseEvaluator):
         """
         self.name = name
         self.config = config
-        self.use_semantic_similarity: bool = config.get('use_semantic_similarity', False)
-        self.similarity_threshold: float = config.get('semantic_similarity_threshold', 0.85)
-        self.similarity_model_name: str = config.get('semantic_similarity_model_name', 'all-MiniLM-L6-v2')
-        self.similarity_model: Optional[SentenceTransformer] = None
 
-        if self.use_semantic_similarity:
-            if SENTENCE_TRANSFORMERS_AVAILABLE and are_strings_semantically_similar is not None:
-                try:
-                    print(f"GaiaEvaluator: Loading semantic similarity model '{self.similarity_model_name}'...")
-                    self.similarity_model = SentenceTransformer(self.similarity_model_name)
-                    print("GaiaEvaluator: Semantic similarity model loaded successfully.")
-                except Exception as e:
-                    print(
-                        f"GaiaEvaluator Error: Failed to load semantic similarity model '{self.similarity_model_name}': {e}",
-                        file=sys.stderr)
-                    print("GaiaEvaluator: Falling back to exact match only.", file=sys.stderr)
-                    self.use_semantic_similarity = False
-            else:
-                print(
-                    "GaiaEvaluator Warning: 'use_semantic_similarity' is True, "
-                    "but 'sentence-transformers' library is not installed or text_similarity_utils.py is missing.",
-                    file=sys.stderr)
-                print(
-                    "GaiaEvaluator: Please install it ('pip install sentence-transformers') to use semantic similarity. "
-                    "Falling back to exact match.",
-                    file=sys.stderr)
-                self.use_semantic_similarity = False
-
-    def evaluate(self, problem: Dict[str, Any], run_result: Dict[str, Any], **kwargs) -> Dict[str, Any]:
+    async def _evaluate_with_openai(
+        self, problem: str, solution: str, answer: str, model_name: str = "gpt-4o-mini"
+    ) -> OpenAIResult:
         """
-        Performs an evaluation for a GAIA task.
+        Evaluate whether an answer is correct for a given problem using OpenAI API.
 
         Args:
-            problem (Dict[str, Any]): Problem dictionary containing ground truth.
-            run_result (Dict[str, Any]): Result dictionary from agent's run.
+            problem: The problem statement
+            solution: The standard/correct answer
+            answer: The answer to evaluate (may be LLM output with answer embedded)
+            model_name: OpenAI model to use for evaluation
 
         Returns:
-            Dict[str, Any]: Evaluation result including score and reasoning.
+            Dictionary containing:
+            - is_correct: Boolean indicating if the answer is correct
+            - confidence: Float between 0-1 indicating confidence in the evaluation
+            - reasoning: String explaining the evaluation reasoning
+            - extracted_answer: The key answer extracted from the response (if any)
         """
-        agent_full_output_str = _get_string_value(run_result.get("final_answer"))
-        ground_truth_str = _get_string_value(problem.get("solution"))
-        problem_id_for_warning = problem.get('id', 'Unknown ID')
+        # Initialize OpenAI client
+        client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"), base_url=os.getenv("OPENAI_API_BASE"))
 
-        if ground_truth_str == "" and problem.get("solution") is not None:
-            print(
-                f"GaiaEvaluator Warning: Ground truth for problem {problem_id_for_warning} resulted in an empty string after processing: {problem.get('solution')}",
-                file=sys.stderr)
+        # Create evaluation prompt
+        evaluation_prompt = f"""You are an expert evaluator. Your task is to determine whether a given answer is correct for a problem, even if the format differs from the standard solution.
 
-        extracted_prediction_str = agent_full_output_str
-        answer_found_by_marker = False
+Problem: {problem}
 
-        # Priority 1: XML-style <answer>...</answer>
-        answer_match = re.search(r'<answer>(.*?)</answer>', agent_full_output_str, re.IGNORECASE | re.DOTALL)
-        if answer_match:
-            extracted_prediction_str = answer_match.group(1).strip()
-            answer_found_by_marker = True
+Standard Solution: {solution}
 
-        # Priority 2: LaTeX-style boxed answers, e.g., \boxed{answer}
-        if not answer_found_by_marker:
-            latex_boxed_match = re.search(r"\\boxed\{([^}]+)\}", agent_full_output_str)
-            if latex_boxed_match:
-                extracted_prediction_str = latex_boxed_match.group(1).strip()
-                answer_found_by_marker = True
+Answer to Evaluate: {answer}
 
-        # Priority 3: Simple boxed answers, e.g., boxed{answer}
-        if not answer_found_by_marker:
-            simple_boxed_match = re.search(r"boxed\{([^}]+)\}", agent_full_output_str, re.IGNORECASE)
-            if simple_boxed_match:
-                extracted_prediction_str = simple_boxed_match.group(1).strip()
-                answer_found_by_marker = True
+Please evaluate whether the answer is correct. The answer might be:
+- Embedded in a longer response (extract the key answer)
+- In a different format but mathematically/logically equivalent
+- More detailed than the standard solution
+- Less detailed but still correct
 
-        # Priority 4: Boxed Answer: ...
-        if not answer_found_by_marker:
-            boxed_answer_match = re.search(r"Boxed Answer:?\s*\{?([^\}\n\r]+)\}?", agent_full_output_str, re.IGNORECASE)
-            if boxed_answer_match:
-                extracted_prediction_str = boxed_answer_match.group(1).strip()
-                answer_found_by_marker = True
+Respond with a JSON object containing:
+{{
+    "is_correct": true/false,
+    "confidence": 0.0-1.0,
+    "reasoning": "explanation of your evaluation",
+    "extracted_answer": "the key answer you extracted (if any)"
+}}
 
-        # Priority 5: Final Answer: ... or Answer: ...
-        if not answer_found_by_marker:
-            answer_marker_match = re.search(
-                r"(?:(?:the\s+)?(?:final\s+)?answer\s*(?:is)?|thus,\s*(?:the\s+)?(?:final\s+)?answer\s*(?:in\s+the\s+requested\s+format\s*)?(?:is)?):\s*([^\n\r.!?]+)",
-                agent_full_output_str,
-                re.IGNORECASE
+Be generous in your evaluation - if the core answer is correct despite formatting differences, mark it as correct.
+
+If llm fails to provide a valid answer based on existing knowledge, mark it as incorrect.
+
+If the answer is strictly required to be a specific word, then it must match that word exactly. Mark synonyms or similar words as incorrect.
+"""
+
+        def _extract_json_block(text: str) -> str:
+            """Extract the first plausible JSON object substring from a model response."""
+            text = text.strip()
+            # Remove fenced code markers if present
+            if text.startswith("```"):
+                # Split off the first line (``` or ```json)
+                parts = text.split("\n", 1)
+                text = parts[1] if len(parts) > 1 else ""
+                if text.endswith("```"):
+                    text = text.rsplit("```", 1)[0]
+            # Heuristic: find first '{' and last '}'
+            start = text.find("{")
+            end = text.rfind("}")
+            if start != -1 and end != -1 and end > start:
+                return text[start : end + 1]
+            return text  # fallback
+
+        try:
+            response = await client.chat.completions.create(
+                model=model_name,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "You are an expert answer evaluator. Always respond with valid JSON.",
+                    },
+                    {"role": "user", "content": evaluation_prompt},
+                ],
+                temperature=0.1,
             )
-            if answer_marker_match:
-                extracted_prediction_str = answer_marker_match.group(1).strip()
-                answer_found_by_marker = True
-            else:
-                # Fallback: Simpler version to catch "Answer: ..."
-                simple_answer_match = re.search(r"(?:Answer|Final Answer):\s*(.+)", agent_full_output_str, re.IGNORECASE)
-                if simple_answer_match:
-                    extracted_prediction_str = simple_answer_match.group(1).split('\n')[0].strip()
-                    answer_found_by_marker = True
-
-        # Cleanup for Priority 5 if an answer was found via marker logic
-        if answer_found_by_marker:
-            if extracted_prediction_str.startswith("**") and extracted_prediction_str.endswith("**") and len(extracted_prediction_str) > 4:
-                extracted_prediction_str = extracted_prediction_str[2:-2].strip()
-            elif extracted_prediction_str.startswith("*") and extracted_prediction_str.endswith("*") and len(extracted_prediction_str) > 2:
-                extracted_prediction_str = extracted_prediction_str[1:-1].strip()
-
-            extracted_prediction_str = extracted_prediction_str.rstrip('.!?')
-
-        # Remove common LaTeX wrappers and markers that might have been missed
-        cleanup_patterns = [
-            r"\\boxed",
-            r"\\text",
-            r"boxed"
-        ]
-        for pattern in cleanup_patterns:
-            extracted_prediction_str = re.sub(pattern, "", extracted_prediction_str, flags=re.IGNORECASE)
-
-        # Remove any lingering braces
-        extracted_prediction_str = extracted_prediction_str.replace("{", "").replace("}", "").strip()
-
-        # Evaluate correctness
-        evaluation_method = "exact_match"
-        is_correct = False
-
-        if extracted_prediction_str:
-            is_correct = _question_scorer(extracted_prediction_str, ground_truth_str)
-            evaluation_method = "question_scorer"
-
-        # Fallback to semantic similarity if enabled
-        if not is_correct and self.use_semantic_similarity and self.similarity_model and are_strings_semantically_similar:
-            if not _is_primarily_numerical(ground_truth_str):
-                print("GaiaEvaluator: Exact match failed, trying semantic similarity as fallback.", file=sys.stderr)
-                is_correct = are_strings_semantically_similar(
-                    str_a=extracted_prediction_str,
-                    str_b=ground_truth_str,
-                    model=self.similarity_model,
-                    threshold=self.similarity_threshold
+            content = response.choices[0].message.content
+            if not content:
+                return OpenAIResult(
+                    is_correct=False,
+                    confidence=0.0,
+                    reasoning="Empty response content from OpenAI",
+                    extracted_answer=None,
                 )
-                if is_correct:
-                    evaluation_method = "semantic_similarity_fallback"
+            raw = content.strip()
+            json_candidate = _extract_json_block(raw)
+            try:
+                parsed: OpenAIResult = json.loads(json_candidate)  # type: ignore
+            except json.JSONDecodeError as e:
+                return OpenAIResult(
+                    is_correct=False,
+                    confidence=0.0,
+                    reasoning=f"Failed to parse JSON: {e}",
+                    extracted_answer=None,
+                    raw_response=raw,
+                )
 
-        # Log detailed reasoning
-        normalized_prediction_for_log = _normalize_str(extracted_prediction_str)
-        normalized_ground_truth_for_log = _normalize_str(ground_truth_str)
-        reasoning = (
-            f"GAIA Evaluation ({evaluation_method}): "
-            f"Extracted Pred '{extracted_prediction_str}' (normalized: '{normalized_prediction_for_log}') vs "
-            f"Ref '{ground_truth_str}' (normalized: '{normalized_ground_truth_for_log}'). "
-            f"Match: {is_correct}. "
-            f"FoundByMarker: {answer_found_by_marker}. "
-            f"ProblemID: {problem_id_for_warning}. "
-            f"FullLLMOutput (first 300 chars): {agent_full_output_str[:300]}"
-        )
+            # Normalize fields
+            parsed.setdefault("is_correct", False)
+            conf = parsed.get("confidence", 0.0) or 0.0
+            try:
+                conf_f = float(conf)
+            except (TypeError, ValueError):
+                conf_f = 0.0
+            parsed["confidence"] = max(0.0, min(1.0, conf_f))
+            parsed.setdefault("reasoning", "")
+            return parsed
+        except Exception as e:  # network / auth / other
+            return OpenAIResult(
+                is_correct=False,
+                confidence=0.0,
+                reasoning=f"Error during OpenAI evaluation: {e}",
+                extracted_answer=None,
+            )
 
+    async def _evaluate_with_openai_sync(
+        self, problem: str, solution: str, answer: str, model_name: str = "gpt-4o-mini"
+    ) -> OpenAIResult:
+        """Sync wrapper; reuses existing loop if running outside async context."""
+        try:
+            loop = asyncio.get_event_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+        if loop.is_running():  # create a dedicated loop to avoid RuntimeError
+            temp_loop = asyncio.new_event_loop()
+            try:
+                return temp_loop.run_until_complete(self._evaluate_with_openai(problem, solution, answer, model_name))
+            finally:
+                temp_loop.close()
+        else:
+            return loop.run_until_complete(self._evaluate_with_openai(problem, solution, answer, model_name))
+
+    async def evaluate(self, problem: Dict[str, Any], **kwargs) -> Dict[str, Any]:
+        # Get run_result from kwargs, fallback to problem if not provided
+        run_result = kwargs.get("run_result", problem)
+
+        model_answer = _get_string_value(run_result.get("final_answer"))
+        ground_truth = _get_string_value(problem.get("solution"))
+
+        # Extract <answer>...</answer> (case-insensitive, cached regex)
+        match = _compile_answer_tag_pattern().search(model_answer)
+        answer = match.group(1) if match else model_answer
+
+        # Get problem statement for OpenAI evaluation
+        problem_statement = _get_string_value(problem.get("problem", problem.get("Question", "")))
+
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            return {
+                "score": 0.0,
+                "prediction": answer,
+                "extracted_answer": answer,
+                "expected": ground_truth,
+                "is_correct": False,
+                "confidence": 0.0,
+                "reasoning": "Missing OPENAI_API_KEY; evaluation aborted.",
+                "evaluation_method": "openai_failed",
+            }
+
+        model_name = self.config.get("model_name", "gpt-4o-mini")
+
+        attempts = 0
+        last_result: OpenAIResult | None = None
+        while attempts < 2:  # first attempt + one retry
+            attempts += 1
+            result = await self._evaluate_with_openai_sync(
+                problem=problem_statement,
+                solution=ground_truth,
+                answer=answer,
+                model_name=model_name,
+            )
+            last_result = result
+            # Decide if retry needed: only retry on transport / parse errors (confidence==0 and not is_correct)
+            if result.get("is_correct") is True:
+                break
+            reasoning = (result.get("reasoning") or "").lower()
+            if not (("error" in reasoning) or ("fail" in reasoning) or ("parse" in reasoning)):
+                # It's a deliberate negative evaluation, no need to retry.
+                break
+
+        # Compose final output
+        is_correct = bool(last_result.get("is_correct")) if last_result else False
+        extracted_answer = (last_result.get("extracted_answer") if last_result else None) or answer
         return {
             "score": 1.0 if is_correct else 0.0,
-            "prediction": agent_full_output_str,
-            "extracted_answer": extracted_prediction_str,
-            "expected": ground_truth_str,
+            "prediction": extracted_answer,
+            "extracted_answer": extracted_answer,
+            "expected": ground_truth,
             "is_correct": is_correct,
-            "reasoning": reasoning
+            "confidence": last_result.get("confidence") if last_result else 0.0,
+            "reasoning": last_result.get("reasoning") if last_result else "No result",
+            "evaluation_method": (
+                "openai" if is_correct else ("openai_retry_failed" if attempts == 2 and not is_correct else "openai")
+            ),
+            "attempts": attempts,
         }

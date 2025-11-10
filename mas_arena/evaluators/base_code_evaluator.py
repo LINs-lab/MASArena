@@ -30,10 +30,10 @@ class BaseCodeEvaluator(BaseEvaluator):
     def __init__(self, name: str, config: Dict[str, Any] = None):
         super().__init__(name, config)
         self.run_evaluator = RunEvaluator()
-        
+
         # Create log directory if it doesn't exist
         Path(self.log_path).mkdir(parents=True, exist_ok=True)
-        
+
         logging.basicConfig(
             filename=f"{self.log_path}/evaluator.log",
             level=logging.INFO,
@@ -47,8 +47,13 @@ class BaseCodeEvaluator(BaseEvaluator):
         self._test_data = self._load_dateset_from_path(f"data/{self.name}_test.jsonl")
         self._test_cases = self._load_dateset_from_path(f"data/{self.name}_public_test.jsonl")
 
-    def _get_data(self, data: List[dict], indices: Optional[List[int]] = None, sample_size: Optional[int] = None,
-                  seed: Optional[int] = None) -> List[dict]:
+    def _get_data(
+        self,
+        data: List[dict],
+        indices: Optional[List[int]] = None,
+        sample_size: Optional[int] = None,
+        seed: Optional[int] = None,
+    ) -> List[dict]:
         if indices is None:
             indices = list(range(len(data)))
         if sample_size is not None:
@@ -58,22 +63,34 @@ class BaseCodeEvaluator(BaseEvaluator):
         return_data = [data[idx] for idx in indices]
         return return_data
 
-    def get_train_data(self, indices: Optional[List[int]] = None, sample_size: Optional[int] = None,
-                       seed: Optional[int] = None) -> List[dict]:
+    def get_train_data(
+        self,
+        indices: Optional[List[int]] = None,
+        sample_size: Optional[int] = None,
+        seed: Optional[int] = None,
+    ) -> List[dict]:
         if self._train_data is None:
             print(f"Train data for benchmark {type(self).__name__} is not loaded or None. Return an empty list.")
             return []
         return self._get_data(data=self._train_data, indices=indices, sample_size=sample_size, seed=seed)
 
-    def get_dev_data(self, indices: Optional[List[int]] = None, sample_size: Optional[int] = None,
-                     seed: Optional[int] = None) -> List[dict]:
+    def get_dev_data(
+        self,
+        indices: Optional[List[int]] = None,
+        sample_size: Optional[int] = None,
+        seed: Optional[int] = None,
+    ) -> List[dict]:
         if self._dev_data is None:
             print(f"Dev data for benchmark {type(self).__name__} is not loaded or None. Return an empty list.")
             return []
         return self._get_data(data=self._dev_data, indices=indices, sample_size=sample_size, seed=seed)
 
-    def get_test_data(self, indices: Optional[List[int]] = None, sample_size: Optional[int] = None,
-                      seed: Optional[int] = None) -> List[dict]:
+    def get_test_data(
+        self,
+        indices: Optional[List[int]] = None,
+        sample_size: Optional[int] = None,
+        seed: Optional[int] = None,
+    ) -> List[dict]:
         if self._test_data is None:
             print(f"Test data for evaluator {type(self).__name__} is not loaded or None. Return an empty list.")
             return []
@@ -84,6 +101,7 @@ class BaseCodeEvaluator(BaseEvaluator):
             if case["entry_point"] == entry_point:
                 return case["test"]
         return None
+
     def extract_code(self, text: str) -> str:
         """
         Extract Python code from text in several fall-back steps:
@@ -131,7 +149,7 @@ class BaseCodeEvaluator(BaseEvaluator):
             "type": "code_generation",
             "description": docstring or prompt.strip()[:120] + "...",
             "requirements": [f"Implement `{entry_point}` function"],
-            "constraints": [c.strip() for c in constraints[0].splitlines()] if constraints else [],
+            "constraints": ([c.strip() for c in constraints[0].splitlines()] if constraints else []),
             "examples": examples,
             "entry_point": entry_point,
             "function_signature": function_signature,
@@ -164,14 +182,6 @@ class BaseCodeEvaluator(BaseEvaluator):
             trace_id=str(uuid.uuid4()),
         )
 
-    @abstractmethod
-    def check_solution(self, code: str, test: str, entry_point: str, **kwargs) -> Tuple[bool, str]:
-        """
-        Check if the solution is correct.
-        Must be implemented by specific evaluators.
-        """
-        pass
-
     def check_solution(self, code: str, test: str, entry_point: str, **kwargs) -> Tuple[bool, str]:
         """
         Check if the solution is correct.
@@ -196,6 +206,7 @@ class BaseCodeEvaluator(BaseEvaluator):
         except Exception as exc:
             msg = f"Execution error: {exc}"
         return False, msg
+
     def verify_answer(self, prediction: str, reference: Union[str, Dict[str, Any]]) -> bool:
         """
         Implementation of BaseEvaluator's verify_answer for code tasks.
@@ -211,7 +222,7 @@ class BaseCodeEvaluator(BaseEvaluator):
         passed, _ = self.check_solution(prediction, test, entry_point)
         return passed
 
-    def evaluate(self, problem: Dict[str, Any], run_result: Dict[str, Any]) -> Dict[str, Any]:
+    async def evaluate(self, problem: Dict[str, Any], run_result: Dict[str, Any]) -> Dict[str, Any]:
         """
         Main evaluation entry point.
         Extends BaseEvaluator's evaluate with code-specific processing.
@@ -240,4 +251,4 @@ class BaseCodeEvaluator(BaseEvaluator):
         # Save results using parent class method
         self.save_results([result])
 
-        return result 
+        return result

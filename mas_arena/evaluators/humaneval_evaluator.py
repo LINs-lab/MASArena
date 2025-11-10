@@ -1,6 +1,7 @@
 """
 HumanEval Evaluator
 """
+
 import asyncio
 import time
 import re
@@ -25,13 +26,13 @@ from mas_arena.evaluators.utils.timeout import run_with_timeout, TimeoutError
         "solution": "canonical_solution",
         "test": "test",
         "entry_point": "entry_point",
-    }
+    },
 )
 class HumanEvalEvaluator(BaseCodeEvaluator):
     """Evaluator for HumanEval problems"""
 
     def __init__(self, name: str, config: Dict[str, Any] = None):
-        super().__init__(name, config) 
+        super().__init__(name, config)
 
         # LangSmith evaluator for packaging the evaluation run
         self.run_evaluator = RunEvaluator()
@@ -113,9 +114,7 @@ class HumanEvalEvaluator(BaseCodeEvaluator):
         self.logger.error(f"Check failed: {msg}")
         return False, msg
 
-    def calculate_score(
-        self, test_code: str, prediction: str, entry_point: str
-    ) -> Tuple[float, str, str]:
+    def calculate_score(self, test_code: str, prediction: str, entry_point: str) -> Tuple[float, str, str]:
         """
         Return ``(score, code_used_for_test, message)`` where *score* is 1.0 on success, 0.0 otherwise.
         """
@@ -150,7 +149,7 @@ class HumanEvalEvaluator(BaseCodeEvaluator):
             trace_id=str(uuid.uuid4()),
         )
 
-    def evaluate(self, problem: Dict[str, Any], run_result: Dict[str, Any]) -> Dict[str, Any]:
+    async def evaluate(self, problem: Dict[str, Any], run_result: Dict[str, Any]) -> Dict[str, Any]:
         """
         Main entry point – keeps the outer interface unchanged.
         Consumes one *problem* dict and the model *run_result*, returns a detailed evaluation dict.

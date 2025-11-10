@@ -1,28 +1,34 @@
 #!/usr/bin/env python3
+# This is a patch to force ChromaDB to use the updated sqlite3 library
+# as the system default is too old.
+__import__('pysqlite3')
+import sys
+sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
+
 import argparse
 import datetime
 import os
-import sys
 import time
 from pathlib import Path
 import asyncio
-import dotenv
-import agentops
+
+from dotenv import load_dotenv
 
 from mas_arena.benchmark_runner import BenchmarkRunner
 import logging
 
 logger = logging.getLogger(__name__)
 
-dotenv.load_dotenv()
 
 def main():
     # Parse command line arguments
+    load_dotenv()
     parser = argparse.ArgumentParser(description="Run benchmarks for multi-agent systems")
 
     # Import available agent systems and benchmarks
     from mas_arena.agents import AVAILABLE_AGENT_SYSTEMS
     from mas_arena.evaluators import BENCHMARKS
+    from mas_arena.memory.memory_registry import memory_registry
     parser.add_argument(
         "--benchmark",
         type=str,
@@ -78,6 +84,14 @@ def main():
     parser.add_argument(
         "--data-id", type=str, default=None,
         help="Data ID to use (default: None)"
+    )
+
+    parser.add_argument("--pass_at_k", type=int, default=1, help="Number of samples to generate for pass@k metric (default: 1)")
+
+    parser.add_argument(
+        "--memory-type", type=str, default=None,
+        choices=memory_registry.get_available_memory_names(),
+        help=f"Memory type to use. Available: {', '.join(memory_registry.get_available_memory_names())}"
     )
 
     # Optimizer arguments
@@ -197,16 +211,6 @@ def main():
         if args.verbose:
             print(f"Warning: {args.benchmark} benchmark does not support concurrency. Running synchronously.\n")
 
-    # Set up agent system monitoring with AgentOps
-    if not os.getenv("AGENTOPS_API_KEY"):
-        logger.warning(
-            """AGENTOPS_API_KEY cannot be found in `.env`. To view tracing data in agentops, please set the api key. 
-You can get the key at https://app.agentops.ai/settings/projects.
-"""
-        )
-    agentops.init(api_key=os.getenv("AGENTOPS_API_KEY", ""))
-
-
     # Run benchmark
     try:
         if run_async:
@@ -219,6 +223,8 @@ You can get the key at https://app.agentops.ai/settings/projects.
                 verbose=args.verbose,
                 data_id=args.data_id,
                 concurrency=args.concurrency,
+                memory_type=args.memory_type,
+                pass_at_k=args.pass_at_k
             ))
         else:
             summary = runner.run(
@@ -229,6 +235,8 @@ You can get the key at https://app.agentops.ai/settings/projects.
                 agent_config=agent_config if agent_config else None,
                 verbose=args.verbose,
                 data_id=args.data_id,
+                memory_type=args.memory_type,
+                pass_at_k=args.pass_at_k
             )
         logger.info(f"Benchmark summary: {summary}")
         return 0

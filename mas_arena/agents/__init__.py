@@ -1,11 +1,10 @@
 """
-Multi-Agent Systems for Benchmarking
+This module initializes the agent systems available in the MAS Arena.
 
-This package dynamically discovers and registers agent systems.
-By importing this package, all agent system modules are automatically loaded,
-which triggers the registration of their respective systems via decorators.
+It dynamically imports all agent system modules in the current directory,
+registers them with the AgentSystemRegistry, and makes them available
+for creation through the `create_agent_system` function.
 """
-
 import pkgutil
 import importlib
 import traceback

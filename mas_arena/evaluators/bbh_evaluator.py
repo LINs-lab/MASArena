@@ -23,7 +23,7 @@ from mas_arena.evaluators.utils import extract_answer_generic
         "id": "task_id",
         "problem": "input",
         "solution": "target",
-    }
+    },
 )
 class BBHEvaluator(BaseEvaluator):
     """
@@ -126,7 +126,12 @@ class BBHEvaluator(BaseEvaluator):
             return 0.0, extracted_answer, error_message
 
     def create_run(
-        self, problem: Dict[str, Any], final_answer: str, extracted_answer: str, score: float, message: str
+        self,
+        problem: Dict[str, Any],
+        final_answer: str,
+        extracted_answer: str,
+        score: float,
+        message: str,
     ) -> Run:
         """
         Create a LangSmith run for evaluation.
@@ -158,7 +163,7 @@ class BBHEvaluator(BaseEvaluator):
             trace_id=str(uuid.uuid4()),
         )
 
-    def evaluate(self, problem: Dict[str, Any], run_result: Dict[str, Any]) -> Dict[str, Any]:
+    async def evaluate(self, problem: Dict[str, Any], run_result: Dict[str, Any]) -> Dict[str, Any]:
         """
         Evaluate a BBH problem given the agent's response.
 
@@ -187,5 +192,3 @@ class BBHEvaluator(BaseEvaluator):
             "score": score,
             "message": message,
         }
-
-

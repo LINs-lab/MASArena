@@ -19,8 +19,8 @@ from mas_arena.evaluators.base_evaluator import BaseEvaluator
 from mas_arena.evaluators.registry import register_benchmark
 from mas_arena.evaluators.utils import calculate_f1_score, normalize_answer
 
-_ANS_TAG_RE   = re.compile(r"<answer>\s*([\s\S]*?)\s*</answer>", re.IGNORECASE)
-_FINAL_RE     = re.compile(r"(?:^|\n)\s*(?:final\s+answer|answer)\s*[:\-]?\s*([\s\S]+)", re.IGNORECASE)
+_ANS_TAG_RE = re.compile(r"<answer>\s*([\s\S]*?)\s*</answer>", re.IGNORECASE)
+_FINAL_RE = re.compile(r"(?:^|\n)\s*(?:final\s+answer|answer)\s*[:\-]?\s*([\s\S]+)", re.IGNORECASE)
 
 
 @register_benchmark(
@@ -29,7 +29,7 @@ _FINAL_RE     = re.compile(r"(?:^|\n)\s*(?:final\s+answer|answer)\s*[:\-]?\s*([\
         "id": "id",
         "problem": "context",
         "solution": "ref_text",
-    }
+    },
 )
 class DROPEvaluator(BaseEvaluator):
     """Evaluator for DROP benchmark problems."""
@@ -78,34 +78,27 @@ class DROPEvaluator(BaseEvaluator):
         """Calculates token-level F1 score (AllenNLP-style)."""
         return calculate_f1_score(gold, pred, self._normalize)
 
-
-    def _make_run(
-        self,
-        problem: Dict[str, Any],
-        final_answer: str,
-        extracted: str,
-        score: float
-    ) -> Run:
+    def _make_run(self, problem: Dict[str, Any], final_answer: str, extracted: str, score: float) -> Run:
         """Creates a LangSmith Run object for evaluation."""
         import uuid
+
         return Run(
             id=str(uuid.uuid4()),
             name=f"{self.name.upper()}_Evaluation",
             inputs={"context": problem["problem"], "task_id": problem.get("id")},
             outputs={
-                "prediction"      : final_answer,
+                "prediction": final_answer,
                 "extracted_answer": extracted,
-                "expected"        : problem["solution"],
-                "score"           : score,
-                "passed"          : score >= 0.3,  # Matches official threshold of 0.3 for passing
+                "expected": problem["solution"],
+                "score": score,
+                "passed": score >= 0.3,  # Matches official threshold of 0.3 for passing
             },
             run_type="evaluation",
             start_time=time.strftime("%Y-%m-%dT%H:%M:%SZ"),
             trace_id=str(uuid.uuid4()),
         )
 
-
-    def evaluate(self, problem: Dict[str, Any], run_result: Dict[str, Any]) -> Dict[str, Any]:
+    async def evaluate(self, problem: Dict[str, Any], run_result: Dict[str, Any]) -> Dict[str, Any]:
         """
         Evaluates a problem against an LLM response.
 
@@ -118,17 +111,14 @@ class DROPEvaluator(BaseEvaluator):
         -------
         Dictionary with keys {final_answer, extracted_answer, score}
         """
-        raw_out          = run_result.get("final_answer", "")
+        raw_out = run_result.get("final_answer", "")
         extracted_answer = self._extract_answer(raw_out)
 
         # Support multiple answers (split by |); take the best F1 score for each prediction and gold answer
         gold_list = [x.strip() for x in str(problem["solution"]).split("|") if x.strip()]
         pred_list = [x.strip() for x in extracted_answer.split("|") if x.strip()]
 
-        scores = [
-            self._f1(gold, pred)
-            for gold in gold_list for pred in pred_list
-        ] or [0.0]
+        scores = [self._f1(gold, pred) for gold in gold_list for pred in pred_list] or [0.0]
 
         best_f1 = max(scores)
 
@@ -150,7 +140,7 @@ class DROPEvaluator(BaseEvaluator):
         final_score = 1 if best_f1 >= 0.3 else best_f1
 
         return {
-            "final_answer"    : str(raw_out),
+            "final_answer": str(raw_out),
             "extracted_answer": extracted_answer,
-            "score"           : final_score,
+            "score": final_score,
         }

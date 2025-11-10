@@ -17,12 +17,10 @@ from dotenv import load_dotenv
 
 from mas_arena.agents.base import AgentSystem, AgentSystemRegistry
 
-from agentops.sdk.decorators import agent, operation, trace
-
 # Load environment variables
 load_dotenv()
 
-@agent
+
 class SwarmAgent:
     """Individual agent in the swarm"""
 
@@ -43,8 +41,7 @@ class SwarmAgent:
         )
         self.llm = ChatOpenAI(model=self.model_name)
         self.name = agent_id
-    
-    @operation
+
     async def solve(self, problem: str) -> Dict[str, Any]:
         """
         Solve a problem independently.
@@ -88,7 +85,7 @@ For mathematical problems, make sure to provide your final answer in a clear for
 Agent ID: {self.agent_id}
 """
 
-@agent
+
 class Aggregator:
     """Aggregates results from swarm agents to produce a final solution"""
 
@@ -104,7 +101,6 @@ class Aggregator:
         self.name = "aggregator"
         self.format_prompt = format_prompt
 
-    @operation
     async def aggregate(self, problem: str, solutions: List[Dict[str, Any]]) -> Dict[str, Any]:
         """
         Aggregate solutions from multiple agents.
@@ -200,9 +196,9 @@ class SwarmSystem(AgentSystem):
     def _get_system_prompt(self) -> str:
         """Get system prompt for an agent based on its index"""
         base_prompt = "You are an intelligent AI assistant specialized in solving problems carefully and step by step."
+      
         return base_prompt
 
-    @trace
     async def run_agent(self, problem: Dict[str, Any], **kwargs) -> Dict[str, Any]:
         """
         Run the agent system on a given problem.

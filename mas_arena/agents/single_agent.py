@@ -13,8 +13,6 @@ from openai import AsyncOpenAI
 from dotenv import load_dotenv
 
 from mas_arena.agents.base import AgentSystem, AgentSystemRegistry
-from agentops.sdk.decorators import trace
-
 
 # Load environment variables
 load_dotenv()
@@ -41,7 +39,6 @@ class SingleAgent(AgentSystem):
         else:
             self.client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"), base_url=os.getenv("OPENAI_API_BASE"))
 
-    @trace
     async def run_agent(self, problem: Dict[str, Any], **kwargs) -> Dict[str, Any]:
         """
         Run the agent system on a given problem.

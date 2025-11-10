@@ -3,7 +3,6 @@ from typing import Dict, Any
 from openai import AsyncOpenAI
 from dotenv import load_dotenv
 from mas_arena.agents.base import AgentSystem, AgentSystemRegistry
-from agentops.sdk.decorators import agent, trace
 
 load_dotenv()
 
@@ -32,7 +31,6 @@ class AutoGen(AgentSystem):
             }
         ]
 
-    @trace
     async def run_agent(self, problem: Dict[str, Any], **kwargs) -> Dict[str, Any]:
 
         problem_text = problem["problem"]

@@ -86,7 +86,7 @@ class BaseEvaluator(metaclass=ABCMeta):
     def get_test_data(self, indices: Optional[List[int]] = None, sample_size: Optional[int] = None, seed: Optional[int] = None) -> List[dict]:
         raise NotImplementedError("Subclasses must implement the get_test_data method")
     
-    def evaluate(self, problem: Dict[str, Any], **kwargs) -> Dict[str, Any]:
+    async def evaluate(self, problem: Dict[str, Any], **kwargs) -> Dict[str, Any]:
         """
         Evaluate an agent's solution to a problem.
         

@@ -11,8 +11,6 @@ from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 from langchain_community.callbacks.openai_info import OpenAICallbackHandler
 from mas_arena.agents.base import AgentSystem, AgentSystemRegistry
 
-from agentops.sdk.decorators import agent, trace, operation
-
 import nest_asyncio
 nest_asyncio.apply()
 
@@ -41,7 +39,6 @@ def print_agent_info(agent: 'Agent', score: float = None):
     print(f"{Colors.CYAN}Agent: {agent.name}{score_str}{Colors.ENDC}")
     print(f"  System Prompt: {agent.system_prompt[:100]}...")
 
-@agent
 @dataclass
 class Agent:
     """Represents an LLM agent"""
@@ -169,7 +166,6 @@ class EvoAgent(AgentSystem):
             
         return base_agents
     
-    @operation
     async def _crossover(self, parent1: Agent, parent2: Agent) -> Agent:
         """
         Crossover operation: combine features of two parent agents to create offspring
@@ -292,7 +288,6 @@ class EvoAgent(AgentSystem):
             
             return child
     
-    @operation
     async def _mutation(self, parent: Agent) -> Agent:
         """
         Mutation operation: create a mutated offspring based on the parent agent
@@ -431,7 +426,6 @@ class EvoAgent(AgentSystem):
         except Exception:
             return 0.0
     
-    @operation
     async def _summarize_results(self, problem: str, results: List[Dict[str, Any]]) -> Tuple[str, Dict[str, Any]]:
         """
         Use LLM to summarize results from multiple agents
@@ -499,7 +493,6 @@ class EvoAgent(AgentSystem):
             best_result = max(results, key=lambda x: x.get("score", 0))
             return best_result.get("extracted_answer", f"Unable to summarize results: {str(e)}"), {}
     
-    @trace
     async def run_agent(self, problem: Dict[str, Any], **kwargs) -> Dict[str, Any]:
         """
         Run evolutionary agent system to solve given problem (async version)
