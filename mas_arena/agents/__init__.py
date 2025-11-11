@@ -19,7 +19,7 @@ from .base import AgentSystem, AgentSystemRegistry, create_agent_system
 for _, name, _ in pkgutil.iter_modules(__path__):
     # Ensure we don't try to import the base module itself again
     # or any other non-agent system modules.
-    if name not in ['base', 'format_prompts']:
+    if name not in ['base', 'format_prompts', 'agent_core']:
             importlib.import_module(f".{name}", __package__)
 
 # --- Public API ---
@@ -34,4 +34,11 @@ __all__ = [
     "AgentSystemRegistry",
     "create_agent_system",
     "AVAILABLE_AGENT_SYSTEMS",
+    "BenchAgent",  # 新增BenchAgent类
 ]
+
+# 导入BenchAgent以便直接使用
+try:
+    from .bench_agent import BenchAgent
+except ImportError:
+    pass  # 如果导入失败，忽略错误

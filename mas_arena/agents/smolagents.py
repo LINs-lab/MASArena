@@ -19,25 +19,19 @@ import yaml
 from mas_arena.utils.llm_utils import call_model
 from mas_arena.agents.base import AgentSystem, AgentSystemRegistry
 from mas_arena.agents.reformulator import prepare_response, truncate_observation
-from mas_arena.smolagents_tools.media.audio_inspector import AudioInspectorTool
-from mas_arena.smolagents_tools.web.browser import BrowserTool
-from mas_arena.smolagents_tools.web.download import DownloadTool
-from mas_arena.smolagents_tools.document.csv_extractor import CSVExtractorTool
-from mas_arena.smolagents_tools.document.markdown_converter import MarkdownConverterTool
-from mas_arena.smolagents_tools.document.sheet_extractor import SheetExtractorTool
-from mas_arena.smolagents_tools.document.text_extractor import TextExtractorTool
-from mas_arena.smolagents_tools.media.video_inspector import VideoInspectorTool
-from mas_arena.smolagents_tools.media.visual_inspector import VisualInspectorTool
-from mas_arena.smolagents_tools.document.zip_extractor import ZipExtractorTool
-from mas_arena.smolagents_tools.web.arxiv_tool import ArxivTool
-from mas_arena.smolagents_tools.system.terminal_tool import TerminalTool
-from mas_arena.smolagents_tools.web.crawler_tools import (
-    SimpleCrawler,
-    CrawlerArchiveSearchTool,
-    CrawlerReadTool,
+# 导入外部工具
+from mas_arena.tools.external_tools import (
+    # 媒体工具
+    AudioInspectorTool, VideoInspectorTool, VisualInspectorTool,
+    # 网络工具
+    BrowserTool, DownloadTool, SearchTool, TextInspectorTool, ArxivTool,
+    SimpleCrawler, CrawlerArchiveSearchTool, CrawlerReadTool,
+    # 文档工具
+    CSVExtractorTool, MarkdownConverterTool, SheetExtractorTool,
+    TextExtractorTool, ZipExtractorTool,
+    # 系统工具
+    TerminalTool,
 )
-from mas_arena.smolagents_tools.web.search_tool import SearchTool
-from mas_arena.smolagents_tools.web.text_inspector import TextInspectorTool
 
 from smolagents import (
     ActionStep,

@@ -17,7 +17,7 @@ import yaml
 
 from mas_arena.utils.llm_utils import call_model
 from mas_arena.agents.base import AgentSystem, AgentSystemRegistry
-from mas_arena.smolagents_tools.system.terminal_tool import TerminalTool
+from mas_arena.tools.external_tools import TerminalTool
 from smolagents import (
     ActionStep,
     CodeAgent,
