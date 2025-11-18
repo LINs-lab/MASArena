@@ -78,7 +78,7 @@ Our framework distinguishes between performance gains (dimensions 1-2) and opera
   <img src="docs/images/intro.svg" style="display: block; margin: 0 auto; max-width: 100%;" alt="MASArena Architecture"/>
 </div>
 
-<<<<<<< HEAD
+
 | No. | Date | Notes | Feishu summary |
 |:--- |:---:|:---:|:---:|
 1 | 2025.02.26 20:00 GMT+8 | [Notes](meeting-notes/Meeting-20250226.md) | [Summary](https://ocnfww8fyyv6.feishu.cn/docx/PVXfdIcvYof6R8xKon4cCyQJncb) |
@@ -92,7 +92,7 @@ Our framework distinguishes between performance gains (dimensions 1-2) and opera
 9 | 2025.05.28 20:30 GMT+8 | [Notes](meeting-notes/Meeting-20250528.md) | [Summary](https://ocnfww8fyyv6.feishu.cn/minutes/obcnqgdzxm136p2ja5u53794) |
 Feishu Page: [project_multi_agents_benchmark](https://ocnfww8fyyv6.feishu.cn/docx/PVXfdIcvYof6R8xKon4cCyQJncb)
 
-=======
+
 ## 🌟 Core Features
 
 * **🧱 Modular Design**: Swap agents, tools, datasets, prompts, and evaluators with ease.
@@ -195,4 +195,4 @@ You can contribute in many ways:
 5. **Submit PR**: Create a pull request with a clear description
 
 Our automated CI/CD pipeline will run tests on every pull request to ensure code quality and reliability.
->>>>>>> masarena/BenchAgent
+
