@@ -1,0 +1,128 @@
+extract_key_steps: |
+  Please provide a concise summary of the following execution log.
+  Break down the summary into individual steps, and for each step, briefly describe what action was taken and its outcome.
+  Ensure the summary is clear, structured, and captures all key actions in the order they occurred.
+
+  **Execution logs:**
+  {agent_log}
+
+semantic_match_prompt: |
+  Task : Determine if the semantic meaning of the prediction and true_answer matches.
+
+  Input Format :
+  question: [Description of the specific task]
+  prediction: [Model generated output]
+  true_answer: [Ground truth answer]
+
+  Judgment Criteria :
+  1. Semantic match takes precedence over literal match (allow synonyms/paraphrasing)
+  2. Core information must be identical (entities/numbers/logical relationships must align)
+  3. Ignore minor formatting differences (punctuation, spacing, capitalization)
+
+  Consider false when:
+  - Semantic contradictions exist
+  - Information is missing/redundant
+  - Precision mismatch (e.g., "2023" vs "May 2023")
+  - Correct results caused by reasoning errors
+
+  Output Requirements:
+  - Strictly return plain text "true" or "false"
+  - No explanations or additional content
+  - Maintain strict boolean output format
+
+  Examples:
+  question: On the DeepFruits fruit detection graph on Connected Papers from 2016, what feature caused the largest bubble to be the size it is?
+  prediction: citation count
+  true_answer: citations
+  true
+
+  task: Calculate the result of 2+3
+  prediction: five
+  true_answer: 6
+  false
+
+  Now answer the task below:\n
+  question: {question}
+  prediction: {prediction}
+  true_answer: {true_answer}
+
+base_manager_prompt: |
+  Problem-solving agent coordinating specialized agents for complex questions.
+
+  TOOL USAGE PRIORITY:
+  Always prioritize using available tools over writing custom code. Tools have special permissions and capabilities that Python code cannot access.
+
+  FILE ACCESS IMPORTANT:
+  If the task involves files or attachments, you MUST use appropriate tools to access them. Do NOT attempt to write Python code to read files - only tools have file access permissions.
+
+  SEARCH AGENT USAGE:
+  Use search_agent for web research, current data, or online documents:
+  search_agent("Your detailed request")
+
+  DO NOT use browser tools directly - always delegate to search_agent.
+
+  TASKS:
+  1. Analyze problem requirements
+  2. Use search_agent for web research
+  3. Use appropriate tools for file access and processing
+  4. Process and synthesize information
+  5. Execute Python code for calculations only when tools aren't available
+  6. Provide accurate answers
+
+  REQUIRED: Use 'final_answer' tool:
+  ```python
+  final_answer("Your answer")
+  ```
+
+  Keep final answers concise and direct.  If the question asks for a number, provide just the number. If it asks for a specific fact, provide just that fact without extra elaboration. Avoid unnecessary explanatory text in your final answer.
+
+search_agent_prompt_managed_task: |
+  Navigate .txt files directly. For PDFs/youtube videos, use 'convert_to_markdown'.
+
+  When you have the answer, use the 'final_answer' tool for your response:
+  ```python
+  final_answer("Your answer")
+  ```
+
+  Keep answers concise and direct.
+
+build_search_keywords_prompt: |
+  Extract key information from user query to construct efficient search terms for retrieving the most relevant results.
+
+  Requirements:
+  1. Analyze the user's question to identify core concepts, terminology, and keywords
+  2. Extract contextual information and constraints that may impact search quality
+  3. Break down complex questions into searchable components
+  4. Identify the domain, subject matter, and specific needs of the question
+
+  Output format:
+  <core concepts or topics of the question>
+
+  Ensure search terms are specific enough to retrieve relevant information while maintaining sufficient breadth to capture related cases.
+  Combine technical terminology with everyday expressions to optimize search effectiveness.
+
+  Here is the user query:
+  {user_query}
+
+failure_attribution_and_suggestion_prompt: |
+  Based on the following execution log and reference experience, analyze the root causes of the agent’s failure and output specific, actionable improvement suggestions.
+
+  Requirements:
+
+  Briefly trace key steps and outcomes from the log internally (for contextual analysis only — no need to output this explicitly).
+  Cross-reference log patterns with similar cases in the knowledge base to pinpoint technical or behavioral root causes (e.g., missing parameters, API misuse, skipped validation, incorrect branching).
+  Output ONLY a numbered list of improvements. Each item must:
+  Target the identified root cause with technical specificity (e.g., modify logic, add validation, adjust call order)
+  Be directly implementable by the agent
+  Contain no explanations, headings, or markdown formatting
+  Knowledge Reference:
+  {knowledge}
+
+  Execution Log:
+  {agent_log}
+
+  Output Format (strictly follow):
+
+  [Specific suggestion 1]
+  [Specific suggestion 2]
+  ...

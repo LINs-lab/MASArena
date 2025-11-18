@@ -1,0 +1,678 @@
+{
+    "memory_bank": {
+        "history": {
+            "2025-10-25": [
+                {
+                    "query": "How many slides in this PowerPoint presentation mention crustaceans? Here are the necessary files: /workspace/project_memory_layer/data/files/gaia/validate/a3fbeb63-0e8c-4a11-bff6-0e3b484c3e9c.pptx",
+                    "response": "4",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-25",
+                    "memory_id": "memory_bank_2025-10-25_15"
+                },
+                {
+                    "query": "How many more blocks (also denoted as layers) in BERT base encoder than the encoder from the architecture proposed in Attention is All You Need?",
+                    "response": "6",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-25",
+                    "memory_id": "memory_bank_2025-10-25_24"
+                },
+                {
+                    "query": "Hi, I was out sick from my classes on Friday, so I'm trying to figure out what I need to study for my Calculus mid-term next week. My friend from class sent me an audio recording of Professor Willowbrook giving out the recommended reading for the test, but my headphones are broken :(\n\nCould you please listen to the recording for me and tell me the page numbers I'm supposed to go over? I've attached a file called Homework.mp3 that has the recording. Please provide just the page numbers as a comma-delimited list. And please provide the list in ascending order. Here are the necessary files: /workspace/project_memory_layer/data/files/gaia/validate/1f975693-876d-457b-a649-393859e79bf3.mp3",
+                    "response": "132, 133, 134, 197, 245",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-25",
+                    "memory_id": "memory_bank_2025-10-25_25"
+                }
+            ],
+            "2025-10-27": [
+                {
+                    "query": "You are a telecommunications engineer who wants to build cell phone towers on a stretch of road. In the reference file is a layout of the road and nearby houses. Each dash, \"-\", is a marker indicating a mile. Each capital H indicates a house located next to a mile marker, appearing above or below the stretch of road. Each cell phone tower can cover houses located next to the road within a 4-mile radius. Find the minimum number of cell phone towers needed to cover all houses next to the road. Your answer should be a positive numerical integer value. Here are the necessary document files: /workspace/project_memory_layer/data/files/gaia/validate/389793a7-ca17-4e82-81cb-2b3a2391b4b9.txt",
+                    "response": "3",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-27",
+                    "memory_id": "memory_bank_2025-10-27_3"
+                },
+                {
+                    "query": "The attached Excel file contains the sales of menu items for a local fast-food chain. What were the total sales that the chain made from food (not including drinks)? Express your answer in USD with two decimal places. Here are the necessary table files: /workspace/project_memory_layer/data/files/gaia/validate/7bd855d8-463d-4ed5-93ca-5fe35145f733.xlsx, for processing excel file, you can use the excel tool or write python code to process the file step-by-step and get the information.",
+                    "response": "89706.00",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-27",
+                    "memory_id": "memory_bank_2025-10-27_5"
+                },
+                {
+                    "query": "How many slides in this PowerPoint presentation mention crustaceans? Here are the necessary files: /workspace/project_memory_layer/data/files/gaia/validate/a3fbeb63-0e8c-4a11-bff6-0e3b484c3e9c.pptx",
+                    "response": "4",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-27",
+                    "memory_id": "memory_bank_2025-10-27_12"
+                },
+                {
+                    "query": "Review the chess position provided in the image. It is black's turn. Provide the correct next move for black which guarantees a win. Please provide your response in algebraic notation. Here are the necessary image files: /workspace/project_memory_layer/data/files/gaia/validate/cca530fc-4052-43b2-b130-b30968d8aa44.png",
+                    "response": "There is no move for Black in this position that guarantees a win. White is winning; the best Black can attempt is 1...Ne2+ but it does not guarantee victory.",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-27",
+                    "memory_id": "memory_bank_2025-10-27_20"
+                },
+                {
+                    "query": "Examine the video at https://www.youtube.com/watch?v=1htKBjuUWec.\n\nWhat does Teal'c say in response to the question \"Isn't that hot?\"",
+                    "response": "Indeed.",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-27",
+                    "memory_id": "memory_bank_2025-10-27_23"
+                },
+                {
+                    "query": "On June 6, 2023, an article by Carolyn Collins Petersen was published in Universe Today. This article mentions a team that produced a paper about their observations, linked at the bottom of the article. Find this paper. Under what NASA award number was the work performed by R. G. Arendt supported by?",
+                    "response": "80GSFC21M0002",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-27",
+                    "memory_id": "memory_bank_2025-10-27_24"
+                },
+                {
+                    "query": "In the year 2022, and before December, what does \"R\" stand for in the three core policies of the type of content that was violated in the public logs on the Legume Wikipedia page?",
+                    "response": "research",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-27",
+                    "memory_id": "memory_bank_2025-10-27_29"
+                },
+                {
+                    "query": "Pull out the sentence in the following 5x7 block of text. Read from left to right and use all of the letters in order:\n\nTHESE\nAGULL\nGLIDE\nDPEAC\nEFULL\nYTOMY\nCHAIR",
+                    "response": "THE SEAGULL GLIDED PEACEFULLY TO MY CHAIR",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-27",
+                    "memory_id": "memory_bank_2025-10-27_32"
+                },
+                {
+                    "query": "If Eliud Kipchoge could maintain his record-making marathon pace indefinitely, how many thousand hours would it take him to run the distance between the Earth and the Moon its closest approach? Please use the minimum perigee value on the Wikipedia page for the Moon when carrying out your calculation. Round your result to the nearest 1000 hours and do not use any comma separators if necessary.",
+                    "response": "17",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-27",
+                    "memory_id": "memory_bank_2025-10-27_44"
+                }
+            ],
+            "2025-10-28": [
+                {
+                    "query": "As a comma separated list with no whitespace, using the provided image provide all the fractions that use / as the fraction line and the answers to the sample problems. Order the list by the order in which the fractions appear. Here are the necessary image files: /workspace/project_memory_layer/data/files/gaia/validate/9318445f-fe6a-4e1b-acbf-c68228c9906a.png",
+                    "response": "6/8,3/4,2/60,1/30,30/90,1/3,8/18,4/9,9/72,1/8,64/46,206/340,103/170",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-28",
+                    "memory_id": "memory_bank_2025-10-28_1"
+                },
+                {
+                    "query": "You are a telecommunications engineer who wants to build cell phone towers on a stretch of road. In the reference file is a layout of the road and nearby houses. Each dash, \"-\", is a marker indicating a mile. Each capital H indicates a house located next to a mile marker, appearing above or below the stretch of road. Each cell phone tower can cover houses located next to the road within a 4-mile radius. Find the minimum number of cell phone towers needed to cover all houses next to the road. Your answer should be a positive numerical integer value. Here are the necessary document files: /workspace/project_memory_layer/data/files/gaia/validate/389793a7-ca17-4e82-81cb-2b3a2391b4b9.txt",
+                    "response": "3",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-28",
+                    "memory_id": "memory_bank_2025-10-28_2"
+                },
+                {
+                    "query": "In Emily Midkiff's June 2014 article in a journal named for the one of Hreidmar's sons that guarded his house, what word was quoted from two different authors in distaste for the nature of dragon depictions?",
+                    "response": "Emily Midkiff's June 2014 article in 'Fafnir' journal could not be accessed due to technical barriers, paywalls, and failed browser/API automation. No evidence was found for the word quoted from two authors in distaste for dragon depictions, and all verification steps were followed. Manual intervention (contacting Fafnir editors or Emily Midkiff) is required to obtain the exact word or citation.",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-28",
+                    "memory_id": "memory_bank_2025-10-28_7"
+                },
+                {
+                    "query": "Under DDC 633 on Bielefeld University Library's BASE, as of 2020, from what country was the unknown language article with a flag unique from the others?",
+                    "response": "\n### 1. Task outcome (short version):\n\nThere is no direct, primary evidence currently accessible (screenshots, archived UI, forum posts) for the country associated with the unique flag on the unknown language article under DDC 633 in Bielefeld University Library's BASE as of 2020. All automated, archival, and documentation-driven search attempts were exhaustively performed and failed due to access restrictions and lack of indexed primary sources.\n\n---\n\n### 2. Task outcome (extremely detailed version):\n\n- Search-agent systematically attempted:\n    - Crawling archived pages, Google Images, forums, and libraries for UI screenshots or descriptions, 2019–2021.\n    - Using advanced operators and visual resource modalities for user-shared evidence.\n    - Accessing BASE directly, Wayback Machine, and other archives, but was blocked by anti-bot mechanisms and technical gatekeeping.\n    - Searching Wikipedia and technical blogs for interface documentation—all yielded contextual info but nothing about flag icon conventions.\n    - API and browser automation failed due to payment/protection errors.\n- No forum, user post, academic paper, or visual tutorial discussed the unique flag or country case in DDC 633 for 2020.\n- No indirect documentation described the scenario or verified which country the unknown flag represented.\n- Outcome is NOT VERIFIED; no claim is possible regarding the country of the flag without further human or institutional escalation.\n\n#### Recommendations:\n- Next steps are strongly advised:\n    - Contact BASE support or Bielefeld University Library for direct records/screenshots.\n    - Inquire on domain-specific forums, user communities, or academic library outreach channels regarding BASE's UI history and flag conventions.\n    - Search for archived presentations or conference slides about BASE's design circa 2020.\n\n---\n\n### 3. Additional context:\n\n- The BASE search engine is well-documented in terms of scholarly coverage but poorly documented for specific UI features like country/language flags in public archives.\n- The lack of persistent UI visual records is a broader systemic issue in library technology history.\n- This answer synthesizes all available context and exhaustively flags unsuccessful modalities, in accordance with both fallback and manager protocols.\n\n**This task currently cannot be completed with a verified answer. Direct outreach to BASE/library staff or expert forum inquiry is recommended for mission-critical confirmation.**\n",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-28",
+                    "memory_id": "memory_bank_2025-10-28_8"
+                },
+                {
+                    "query": "How many at bats did the Yankee with the most walks in the 1977 regular season have that same season?",
+                    "response": "561",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-28",
+                    "memory_id": "memory_bank_2025-10-28_10"
+                },
+                {
+                    "query": "Who are the pitchers with the number before and after Taishō Tamai's number as of July 2023? Give them to me in the form Pitcher Before, Pitcher After, use their last names only, in Roman characters.",
+                    "response": "Yamada, Uehara",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-28",
+                    "memory_id": "memory_bank_2025-10-28_13"
+                },
+                {
+                    "query": "According to Girls Who Code, how long did it take in years for the percentage of computer scientists that were women to change by 13% from a starting point of 37%?",
+                    "response": "22 years",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-28",
+                    "memory_id": "memory_bank_2025-10-28_14"
+                },
+                {
+                    "query": "Here's a fun riddle that I think you'll enjoy.\n\nYou have been selected to play the final round of the hit new game show \"Pick That Ping-Pong\". In this round, you will be competing for a large cash prize. Your job will be to pick one of several different numbered ping-pong balls, and then the game will commence. The host describes how the game works.\n\nA device consisting of a winding clear ramp and a series of pistons controls the outcome of the game. The ramp feeds balls onto a platform. The platform has room for three ping-pong balls at a time. The three balls on the platform are each aligned with one of three pistons. At each stage of the game, one of the three pistons will randomly fire, ejecting the ball it strikes. If the piston ejects the ball in the first position on the platform the balls in the second and third position on the platform each advance one space, and the next ball on the ramp advances to the third position. If the piston ejects the ball in the second position, the ball in the first position is released and rolls away, the ball in the third position advances two spaces to occupy the first position, and the next two balls on the ramp advance to occupy the second and third positions on the platform. If the piston ejects the ball in the third position, the ball in the first position is released and rolls away, the ball in the second position advances one space to occupy the first position, and the next two balls on the ramp advance to occupy the second and third positions on the platform.\n\nThe ramp begins with 100 numbered ping-pong balls, arranged in ascending order from 1 to 100. The host activates the machine and the first three balls, numbered 1, 2, and 3, advance to the platform. Before the random firing of the pistons begins, you are asked which of the 100 balls you would like to pick. If your pick is ejected by one of the pistons, you win the grand prize, $10,000.\n\nWhich ball should you choose to maximize your odds of winning the big prize? Please provide your answer as the number of the ball selected.",
+                    "response": "1",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-28",
+                    "memory_id": "memory_bank_2025-10-28_15"
+                },
+                {
+                    "query": "In the fictional language of Tizin, basic sentences are arranged with the Verb first, followed by the direct object, followed by the subject of the sentence. I want to express my love for apples to my Tizin friend. \n\nThe word that indicates oneself is \"Pa\" is the nominative form, \"Mato\" is the accusative form, and \"Sing\" is the genitive form. \n\nThe root verb that indicates an intense like for something is \"Maktay\". When it is used in the present, it is used in it's root form, when it is used in the preterit past, it is \"Tay\", and when it is used in the imperfect past, it is \"Aktay\". It is used differently than in English, and is better translated as \"is pleasing to\", meaning that the thing doing the liking is actually the object of the sentence rather than the subject.\n\nThe word for apples is borrowed from English in Tizin, and so it is \"Apple\" is the nominative form, \"Zapple\" is the accusative form, and \"Izapple\" is the genitive form. \n\nPlease translate \"I like apples\" to Tizin.",
+                    "response": "Maktay Mato Apple",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-28",
+                    "memory_id": "memory_bank_2025-10-28_16"
+                },
+                {
+                    "query": "What is the final numeric output from the attached Python code? Here are the necessary python files: /workspace/project_memory_layer/data/files/gaia/validate/f918266a-b3e0-4914-865d-4faa564f1aef.py",
+                    "response": "0",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-28",
+                    "memory_id": "memory_bank_2025-10-28_20"
+                },
+                {
+                    "query": "You are Van Helsing, a renowned vampire hunter. A Count of Moldova, Lațcu IV, son of  Costea, has tasked you with investigating the village of Șirnea in neighboring Wallachia. The Count's advisors have reported that a vampire was spotted crossing the border near the village, and would like you to investigate it.\n\nYou travel to the village of Șirnea, and you begin your investigation. One night, just before dawn, you catch a glimpse of a man in a long black cape with red lining leaping from roof-top to roof-top with superhuman agility. It's a vampire! You try to chase the creature back to its home, but the creature is too fast. However, because of the remoteness of the village, you know with absolute certainty that the vampire must be a resident of the village. You decide that your best course of action will be to visit all 100 residents of the town during the day. You know something about vampires and humans that will make your investigation possible; humans always tell the truth, but vampires always lie.\n\nIn the afternoon, you go from house to house, speaking with all 100 residents of Șirnea. You ask everyone the same question: \"How many vampires are living in Șirnea\". Everyone in the village gives the same response, \"At least one of us is a human.\"\n\nHow many residents of Șirnea have been turned into vampires?",
+                    "response": "100",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-28",
+                    "memory_id": "memory_bank_2025-10-28_21"
+                },
+                {
+                    "query": "How many more blocks (also denoted as layers) in BERT base encoder than the encoder from the architecture proposed in Attention is All You Need?",
+                    "response": "6",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-28",
+                    "memory_id": "memory_bank_2025-10-28_22"
+                },
+                {
+                    "query": "Of the authors (First M. Last) that worked on the paper \"Pie Menus or Linear Menus, Which Is Better?\" in 2015, what was the title of the first paper authored by the one that had authored prior papers?",
+                    "response": "No definitive bibliographic record for the 2015 paper 'Pie Menus or Linear Menus, Which Is Better?' could be found in Google Scholar, ACM DL, IEEE Xplore, Wikipedia, or arXiv. Without a confirmed author list, the original question cannot be answered. Exhaustive cross-database search verified that no such record exists according to accessible databases.",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-28",
+                    "memory_id": "memory_bank_2025-10-28_24"
+                },
+                {
+                    "query": "Bob was invited to participate in a game show, and he advanced to the final round. The final round offered Bob the chance to win a large sum by playing a game against the host. The host has 30 shiny prop coins, each of which is worth $1,000 if Bob manages to win them by playing the game. The host hides the coins in three different prize boxes and then shuffles their order. The only rule restricting the host's coin placement is that one box must contain at least 2 coins, and one box must contain 6 more coins than another box. In order to play, Bob must submit three guesses, one guess for the number of coins in each box. The box is then opened and the number of coins is revealed. If Bob's guess is a number greater than the number of coins in the box, Bob earns no coins. If Bob guesses a number equal to or less than the number of coins in the box, Bob wins a number of coins equal to his guess.\n\nIf Bob plays uses the optimal strategy, what's the minimum amount of money he can win from the game?",
+                    "response": "18000",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-28",
+                    "memory_id": "memory_bank_2025-10-28_27"
+                },
+                {
+                    "query": "In Series 9, Episode 11 of Doctor Who, the Doctor is trapped inside an ever-shifting maze. What is this location called in the official script for the episode? Give the setting exactly as it appears in the first scene heading.",
+                    "response": "UNVERIFIED: Automated search failed to retrieve the official or fan transcript for Doctor Who Series 9, Episode 11 ('Heaven Sent'); all strategies (API, browser automation, archive/fan sites, forums) returned access failures or no relevant content. Per strict instructions, I cannot synthesize or guess the answer. ACTION REQUEST: Please manually upload or provide the official script or transcript file (preferably the opening page or the first scene heading). Upon receipt, I will extract and verify the requested location verbatim from the document. Source-type tagging and validation will be included in the follow-up response.",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-28",
+                    "memory_id": "memory_bank_2025-10-28_28"
+                },
+                {
+                    "query": "Review the chess position provided in the image. It is black's turn. Provide the correct next move for black which guarantees a win. Please provide your response in algebraic notation. Here are the necessary image files: /workspace/project_memory_layer/data/files/gaia/validate/cca530fc-4052-43b2-b130-b30968d8aa44.png",
+                    "response": "Qd1+",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-28",
+                    "memory_id": "memory_bank_2025-10-28_30"
+                },
+                {
+                    "query": "In the year 2022, and before December, what does \"R\" stand for in the three core policies of the type of content that was violated in the public logs on the Legume Wikipedia page?",
+                    "response": "research",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-28",
+                    "memory_id": "memory_bank_2025-10-28_31"
+                },
+                {
+                    "query": "You are given this Excel file as a map. You start on the START cell and move toward the END cell. You are allowed to move two cells per turn, and you may move up, down, left, or right. You may not move fewer than two cells, and you may not move backward. You must avoid moving onto any blue cells. On the eleventh turn, what is the 6-digit hex code (without prefix) of the color of the cell where you land after moving? Here are the necessary table files: /workspace/project_memory_layer/data/files/gaia/validate/65afbc8a-89ca-4ad5-8d62-355bb401f61d.xlsx, for processing excel file, you can use the excel tool or write python code to process the file step-by-step and get the information.",
+                    "response": "Automated extraction of sheet names and cell color data failed for this XLSX file due to tool limitations or format error. Please provide a screenshot, CSV with annotated cell color info, or export map data in a compatible format for alternate extraction or manual inspection. Current automated tools cannot process this file reliably.",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-28",
+                    "memory_id": "memory_bank_2025-10-28_32"
+                },
+                {
+                    "query": "What was the actual enrollment count of the clinical trial on H. pylori in acne vulgaris patients from Jan-May 2018 as listed on the NIH website?",
+                    "response": "No enrollment count is listed",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-28",
+                    "memory_id": "memory_bank_2025-10-28_35"
+                },
+                {
+                    "query": "What writer is quoted by Merriam-Webster for the Word of the Day from June 27, 2022?",
+                    "response": "Annie Levin",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-28",
+                    "memory_id": "memory_bank_2025-10-28_40"
+                },
+                {
+                    "query": "Each cell in the attached spreadsheet represents a plot of land. The color of the cell indicates who owns that plot. Green cells are plots owned by Earl Smith. Can Earl walk through every plot he owns (and no other plots) and return to his starting plot without backtracking? For this question, consider backtracking to be any instance where Earl would enter a plot of land he had already entered since leaving his starting plot. Here are the necessary table files: /workspace/project_memory_layer/data/files/gaia/validate/5cfb274c-0207-4aa7-9575-6ac0bd95d9b2.xlsx, for processing excel file, you can use the excel tool or write python code to process the file step-by-step and get the information.",
+                    "response": "Extraction of cell colors failed due to a tool integration error. To proceed, please provide the spreadsheet either as a CSV file with explicit ownership markers for each cell, or as an image/screenshot showing the cell colors. Direct color-based analysis from the supplied Excel file is not possible at this time due to persistent tool errors.",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-28",
+                    "memory_id": "memory_bank_2025-10-28_41"
+                },
+                {
+                    "query": "A standard Rubik’s cube has been broken into cubes making up its sides. The cubes are jumbled, and one is removed. There are 6 cubes with one colored face, 12 edge cubes with two colored faces, and 8 corner cubes with three colored faces. All blue cubes have been found. All cubes directly left, right, above, and below the orange center cube have been found, along with the center cube. The green corners have all been found, along with all green that borders yellow. For all orange cubes found, the opposite face’s cubes have been found. The removed cube has two colors on its faces. What are they? Answer using a comma separated list, with the colors ordered alphabetically.",
+                    "response": "green,white",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-28",
+                    "memory_id": "memory_bank_2025-10-28_43"
+                },
+                {
+                    "query": "What is the surname of the equine veterinarian mentioned in 1.E Exercises from the chemistry materials licensed by Marisa Alviar-Agnew & Henry Agnew under the CK-12 license in LibreText's Introductory Chemistry materials as compiled 08/21/2023?",
+                    "response": "No surname found. The chemistry exercise in question does not have the surname of the equine veterinarian accessible via any public or cached sources, and repeated multi-method verification did not yield the answer.",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-28",
+                    "memory_id": "memory_bank_2025-10-28_44"
+                },
+                {
+                    "query": "If Eliud Kipchoge could maintain his record-making marathon pace indefinitely, how many thousand hours would it take him to run the distance between the Earth and the Moon its closest approach? Please use the minimum perigee value on the Wikipedia page for the Moon when carrying out your calculation. Round your result to the nearest 1000 hours and do not use any comma separators if necessary.",
+                    "response": "17",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-28",
+                    "memory_id": "memory_bank_2025-10-28_47"
+                },
+                {
+                    "query": "Of the cities within the United States where U.S. presidents were born, which two are the farthest apart from the westernmost to the easternmost going east, giving the city names only? Give them to me in alphabetical order, in a comma-separated list",
+                    "response": "Honolulu, HI, Quincy, MA",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-28",
+                    "memory_id": "memory_bank_2025-10-28_48"
+                },
+                {
+                    "query": "How many studio albums were published by Mercedes Sosa between 2000 and 2009 (included)? You can use the latest 2022 version of english wikipedia.",
+                    "response": "5",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-28",
+                    "memory_id": "memory_bank_2025-10-28_52"
+                }
+            ],
+            "2025-10-29": [
+                {
+                    "query": "My family reunion is this week, and I was assigned the mashed potatoes to bring. The attendees include my married mother and father, my twin brother and his family, my aunt and her family, my grandma and her brother, her brother's daughter, and his daughter's family. All the adults but me have been married, and no one is divorced or remarried, but my grandpa and my grandma's sister-in-law passed away last year. All living spouses are attending. My brother has two children that are still kids, my aunt has one six-year-old, and my grandma's brother's daughter has three kids under 12. I figure each adult will eat about 1.5 potatoes of mashed potatoes and each kid will eat about 1/2 a potato of mashed potatoes, except my second cousins don't eat carbs. The average potato is about half a pound, and potatoes are sold in 5-pound bags. How many whole bags of potatoes do I need? Just give the number.",
+                    "response": "2",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-29",
+                    "memory_id": "memory_bank_2025-10-29_0"
+                },
+                {
+                    "query": "You are a telecommunications engineer who wants to build cell phone towers on a stretch of road. In the reference file is a layout of the road and nearby houses. Each dash, \"-\", is a marker indicating a mile. Each capital H indicates a house located next to a mile marker, appearing above or below the stretch of road. Each cell phone tower can cover houses located next to the road within a 4-mile radius. Find the minimum number of cell phone towers needed to cover all houses next to the road. Your answer should be a positive numerical integer value. Here are the necessary document files: /workspace/project_memory_layer/data/files/gaia/validate/389793a7-ca17-4e82-81cb-2b3a2391b4b9.txt",
+                    "response": "3",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-29",
+                    "memory_id": "memory_bank_2025-10-29_1"
+                },
+                {
+                    "query": "As a comma separated list with no whitespace, using the provided image provide all the fractions that use / as the fraction line and the answers to the sample problems. Order the list by the order in which the fractions appear. Here are the necessary image files: /workspace/project_memory_layer/data/files/gaia/validate/9318445f-fe6a-4e1b-acbf-c68228c9906a.png",
+                    "response": "3/4,1/4,2/4,1/2,5/35,7/21,30/5,3/4,1/15,1/3,4/9,1/8,8/11,103/170",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-29",
+                    "memory_id": "memory_bank_2025-10-29_2"
+                },
+                {
+                    "query": "According to Girls Who Code, how long did it take in years for the percentage of computer scientists that were women to change by 13% from a starting point of 37%?",
+                    "response": "28",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-29",
+                    "memory_id": "memory_bank_2025-10-29_3"
+                },
+                {
+                    "query": "The attached Excel file contains the sales of menu items for a local fast-food chain. What were the total sales that the chain made from food (not including drinks)? Express your answer in USD with two decimal places. Here are the necessary table files: /workspace/project_memory_layer/data/files/gaia/validate/7bd855d8-463d-4ed5-93ca-5fe35145f733.xlsx, for processing excel file, you can use the excel tool or write python code to process the file step-by-step and get the information.",
+                    "response": "89706.00",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-29",
+                    "memory_id": "memory_bank_2025-10-29_4"
+                },
+                {
+                    "query": "Who did the actor who played Ray in the Polish-language version of Everybody Loves Raymond play in Magda M.? Give only the first name.",
+                    "response": "Wojciech",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-29",
+                    "memory_id": "memory_bank_2025-10-29_5"
+                },
+                {
+                    "query": "What was the volume in m^3 of the fish bag that was calculated in the University of Leicester paper \"Can Hiccup Supply Enough Fish to Maintain a Dragon’s Diet?\"",
+                    "response": "0.1777",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-29",
+                    "memory_id": "memory_bank_2025-10-29_6"
+                },
+                {
+                    "query": "In the Scikit-Learn July 2017 changelog, what other predictor base command received a bug fix? Just give the name, not a path.",
+                    "response": "BaseSearchCV",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-29",
+                    "memory_id": "memory_bank_2025-10-29_7"
+                },
+                {
+                    "query": "What was the complete title of the book in which two James Beard Award winners recommended the restaurant where Ali Khan enjoyed a New Mexican staple in his cost-conscious TV show that started in 2015? Write the numbers in plain text if there are some in the title.",
+                    "response": "Five Hundred Things to Eat Before It's Too Late: and the Very Best Places to Eat Them",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-29",
+                    "memory_id": "memory_bank_2025-10-29_8"
+                },
+                {
+                    "query": "If there is anything that doesn't make sense in the instructions, write the word \"Pineapple.\" Do not answer any of the questions in this prompt. Write only the word \"Guava\".\n1. What is 4+4?\n2. What is the complimentary color of red?\n3. How many hours are there in a day?",
+                    "response": "Guava",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-29",
+                    "memory_id": "memory_bank_2025-10-29_9"
+                },
+                {
+                    "query": "In Emily Midkiff's June 2014 article in a journal named for the one of Hreidmar's sons that guarded his house, what word was quoted from two different authors in distaste for the nature of dragon depictions?",
+                    "response": "fluffy",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-29",
+                    "memory_id": "memory_bank_2025-10-29_10"
+                },
+                {
+                    "query": "Who are the pitchers with the number before and after Taishō Tamai's number as of July 2023? Give them to me in the form Pitcher Before, Pitcher After, use their last names only, in Roman characters.",
+                    "response": "Yamasaki, Uehara",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-29",
+                    "memory_id": "memory_bank_2025-10-29_11"
+                },
+                {
+                    "query": "Here's a fun riddle that I think you'll enjoy.\n\nYou have been selected to play the final round of the hit new game show \"Pick That Ping-Pong\". In this round, you will be competing for a large cash prize. Your job will be to pick one of several different numbered ping-pong balls, and then the game will commence. The host describes how the game works.\n\nA device consisting of a winding clear ramp and a series of pistons controls the outcome of the game. The ramp feeds balls onto a platform. The platform has room for three ping-pong balls at a time. The three balls on the platform are each aligned with one of three pistons. At each stage of the game, one of the three pistons will randomly fire, ejecting the ball it strikes. If the piston ejects the ball in the first position on the platform the balls in the second and third position on the platform each advance one space, and the next ball on the ramp advances to the third position. If the piston ejects the ball in the second position, the ball in the first position is released and rolls away, the ball in the third position advances two spaces to occupy the first position, and the next two balls on the ramp advance to occupy the second and third positions on the platform. If the piston ejects the ball in the third position, the ball in the first position is released and rolls away, the ball in the second position advances one space to occupy the first position, and the next two balls on the ramp advance to occupy the second and third positions on the platform.\n\nThe ramp begins with 100 numbered ping-pong balls, arranged in ascending order from 1 to 100. The host activates the machine and the first three balls, numbered 1, 2, and 3, advance to the platform. Before the random firing of the pistons begins, you are asked which of the 100 balls you would like to pick. If your pick is ejected by one of the pistons, you win the grand prize, $10,000.\n\nWhich ball should you choose to maximize your odds of winning the big prize? Please provide your answer as the number of the ball selected.",
+                    "response": "100",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-29",
+                    "memory_id": "memory_bank_2025-10-29_12"
+                },
+                {
+                    "query": "How many at bats did the Yankee with the most walks in the 1977 regular season have that same season?",
+                    "response": "519",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-29",
+                    "memory_id": "memory_bank_2025-10-29_13"
+                },
+                {
+                    "query": "On the BBC Earth YouTube video of the Top 5 Silliest Animal Moments, what species of bird is featured?",
+                    "response": "penguin",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-29",
+                    "memory_id": "memory_bank_2025-10-29_14"
+                },
+                {
+                    "query": "In the video https://www.youtube.com/watch?v=L1vXCYZAYYM, what is the highest number of bird species to be on camera simultaneously?",
+                    "response": "3",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-29",
+                    "memory_id": "memory_bank_2025-10-29_15"
+                },
+                {
+                    "query": "What is the first name of the only Malko Competition recipient from the 20th Century (after 1977) whose nationality on record is a country that no longer exists?",
+                    "response": "Claus",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-29",
+                    "memory_id": "memory_bank_2025-10-29_16"
+                },
+                {
+                    "query": "Under DDC 633 on Bielefeld University Library's BASE, as of 2020, from what country was the unknown language article with a flag unique from the others?",
+                    "response": "Unable to answer the specific question regarding the country with a unique flag for the unknown language article under DDC 633 on BASE in 2020 due to access restrictions and failed search attempts. All available automated methods were blocked, and no definitive data could be retrieved. Manual access or assistance from BASE support is required for resolution.",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-29",
+                    "memory_id": "memory_bank_2025-10-29_17"
+                },
+                {
+                    "query": "How many slides in this PowerPoint presentation mention crustaceans? Here are the necessary files: /workspace/project_memory_layer/data/files/gaia/validate/a3fbeb63-0e8c-4a11-bff6-0e3b484c3e9c.pptx",
+                    "response": "4",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-29",
+                    "memory_id": "memory_bank_2025-10-29_18"
+                },
+                {
+                    "query": "What is the final numeric output from the attached Python code? Here are the necessary python files: /workspace/project_memory_layer/data/files/gaia/validate/f918266a-b3e0-4914-865d-4faa564f1aef.py",
+                    "response": "0",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-29",
+                    "memory_id": "memory_bank_2025-10-29_19"
+                },
+                {
+                    "query": "In the fictional language of Tizin, basic sentences are arranged with the Verb first, followed by the direct object, followed by the subject of the sentence. I want to express my love for apples to my Tizin friend. \n\nThe word that indicates oneself is \"Pa\" is the nominative form, \"Mato\" is the accusative form, and \"Sing\" is the genitive form. \n\nThe root verb that indicates an intense like for something is \"Maktay\". When it is used in the present, it is used in it's root form, when it is used in the preterit past, it is \"Tay\", and when it is used in the imperfect past, it is \"Aktay\". It is used differently than in English, and is better translated as \"is pleasing to\", meaning that the thing doing the liking is actually the object of the sentence rather than the subject.\n\nThe word for apples is borrowed from English in Tizin, and so it is \"Apple\" is the nominative form, \"Zapple\" is the accusative form, and \"Izapple\" is the genitive form. \n\nPlease translate \"I like apples\" to Tizin.",
+                    "response": "Maktay Mato Apple",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-29",
+                    "memory_id": "memory_bank_2025-10-29_20"
+                },
+                {
+                    "query": "In Audre Lorde’s poem “Father Son and Holy Ghost”, what is the number of the stanza in which some lines are indented?",
+                    "response": "1",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-29",
+                    "memory_id": "memory_bank_2025-10-29_21"
+                },
+                {
+                    "query": "You are Van Helsing, a renowned vampire hunter. A Count of Moldova, Lațcu IV, son of  Costea, has tasked you with investigating the village of Șirnea in neighboring Wallachia. The Count's advisors have reported that a vampire was spotted crossing the border near the village, and would like you to investigate it.\n\nYou travel to the village of Șirnea, and you begin your investigation. One night, just before dawn, you catch a glimpse of a man in a long black cape with red lining leaping from roof-top to roof-top with superhuman agility. It's a vampire! You try to chase the creature back to its home, but the creature is too fast. However, because of the remoteness of the village, you know with absolute certainty that the vampire must be a resident of the village. You decide that your best course of action will be to visit all 100 residents of the town during the day. You know something about vampires and humans that will make your investigation possible; humans always tell the truth, but vampires always lie.\n\nIn the afternoon, you go from house to house, speaking with all 100 residents of Șirnea. You ask everyone the same question: \"How many vampires are living in Șirnea\". Everyone in the village gives the same response, \"At least one of us is a human.\"\n\nHow many residents of Șirnea have been turned into vampires?",
+                    "response": "100",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-29",
+                    "memory_id": "memory_bank_2025-10-29_22"
+                },
+                {
+                    "query": "How many more blocks (also denoted as layers) in BERT base encoder than the encoder from the architecture proposed in Attention is All You Need?",
+                    "response": "6",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-29",
+                    "memory_id": "memory_bank_2025-10-29_23"
+                },
+                {
+                    "query": "Hi, I was out sick from my classes on Friday, so I'm trying to figure out what I need to study for my Calculus mid-term next week. My friend from class sent me an audio recording of Professor Willowbrook giving out the recommended reading for the test, but my headphones are broken :(\n\nCould you please listen to the recording for me and tell me the page numbers I'm supposed to go over? I've attached a file called Homework.mp3 that has the recording. Please provide just the page numbers as a comma-delimited list. And please provide the list in ascending order. Here are the necessary files: /workspace/project_memory_layer/data/files/gaia/validate/1f975693-876d-457b-a649-393859e79bf3.mp3",
+                    "response": "132,133,134,197,245",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-29",
+                    "memory_id": "memory_bank_2025-10-29_24"
+                },
+                {
+                    "query": "In Series 9, Episode 11 of Doctor Who, the Doctor is trapped inside an ever-shifting maze. What is this location called in the official script for the episode? Give the setting exactly as it appears in the first scene heading.",
+                    "response": "THE CASTLE",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-29",
+                    "memory_id": "memory_bank_2025-10-29_25"
+                },
+                {
+                    "query": "Of the authors (First M. Last) that worked on the paper \"Pie Menus or Linear Menus, Which Is Better?\" in 2015, what was the title of the first paper authored by the one that had authored prior papers?",
+                    "response": "Mapping Human-Oriented Information to Software Agents for Online Systems Usage",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-29",
+                    "memory_id": "memory_bank_2025-10-29_26"
+                },
+                {
+                    "query": "Bob was invited to participate in a game show, and he advanced to the final round. The final round offered Bob the chance to win a large sum by playing a game against the host. The host has 30 shiny prop coins, each of which is worth $1,000 if Bob manages to win them by playing the game. The host hides the coins in three different prize boxes and then shuffles their order. The only rule restricting the host's coin placement is that one box must contain at least 2 coins, and one box must contain 6 more coins than another box. In order to play, Bob must submit three guesses, one guess for the number of coins in each box. The box is then opened and the number of coins is revealed. If Bob's guess is a number greater than the number of coins in the box, Bob earns no coins. If Bob guesses a number equal to or less than the number of coins in the box, Bob wins a number of coins equal to his guess.\n\nIf Bob plays uses the optimal strategy, what's the minimum amount of money he can win from the game?",
+                    "response": "$16,000",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-29",
+                    "memory_id": "memory_bank_2025-10-29_27"
+                },
+                {
+                    "query": "Examine the video at https://www.youtube.com/watch?v=1htKBjuUWec.\n\nWhat does Teal'c say in response to the question \"Isn't that hot?\"",
+                    "response": "Extremely",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-29",
+                    "memory_id": "memory_bank_2025-10-29_28"
+                },
+                {
+                    "query": "Review the chess position provided in the image. It is black's turn. Provide the correct next move for black which guarantees a win. Please provide your response in algebraic notation. Here are the necessary image files: /workspace/project_memory_layer/data/files/gaia/validate/cca530fc-4052-43b2-b130-b30968d8aa44.png",
+                    "response": "Nxf3+",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-29",
+                    "memory_id": "memory_bank_2025-10-29_29"
+                },
+                {
+                    "query": "In Nature journal's Scientific Reports conference proceedings from 2012, in the article that did not mention plasmons or plasmonics, what nano-compound is studied? Don't use the prefix nano in your answer if there is one.",
+                    "response": "carbon nanotubes",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-29",
+                    "memory_id": "memory_bank_2025-10-29_30"
+                },
+                {
+                    "query": "An office held a Secret Santa gift exchange where each of its twelve employees was assigned one other employee in the group to present with a gift. Each employee filled out a profile including three likes or hobbies. On the day of the gift exchange, only eleven gifts were given, each one specific to one of the recipient's interests. Based on the information in the document, who did not give a gift? Here are the necessary document files: /workspace/project_memory_layer/data/files/gaia/validate/cffe0e32-c9a6-4c52-9877-78ceb4aaa9fb.docx",
+                    "response": "Fred",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-29",
+                    "memory_id": "memory_bank_2025-10-29_31"
+                },
+                {
+                    "query": "You are given this Excel file as a map. You start on the START cell and move toward the END cell. You are allowed to move two cells per turn, and you may move up, down, left, or right. You may not move fewer than two cells, and you may not move backward. You must avoid moving onto any blue cells. On the eleventh turn, what is the 6-digit hex code (without prefix) of the color of the cell where you land after moving? Here are the necessary table files: /workspace/project_memory_layer/data/files/gaia/validate/65afbc8a-89ca-4ad5-8d62-355bb401f61d.xlsx, for processing excel file, you can use the excel tool or write python code to process the file step-by-step and get the information.",
+                    "response": "Full extraction of the required data from the provided Excel file was not possible. All automated attempts to recover cell contents and color codes failed: only empty headers and 'NaN' placeholders were extracted, with no usable map, color, or marker data available. This matches known tool limitations when extracting content/formatting from XLSX files using markdown and summary pipelines. Further progress requires switching to a native Excel environment or direct XLSX-parsing tool capable of returning both values and cell colors. The hex code for the 11th turn landing cell cannot be determined from the available data.",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-29",
+                    "memory_id": "memory_bank_2025-10-29_32"
+                },
+                {
+                    "query": "On June 6, 2023, an article by Carolyn Collins Petersen was published in Universe Today. This article mentions a team that produced a paper about their observations, linked at the bottom of the article. Find this paper. Under what NASA award number was the work performed by R. G. Arendt supported by?",
+                    "response": "YOUR FINAL ANSWER HERE",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-29",
+                    "memory_id": "memory_bank_2025-10-29_33"
+                },
+                {
+                    "query": ".rewsna eht sa \"tfel\" drow eht fo etisoppo eht etirw ,ecnetnes siht dnatsrednu uoy fI",
+                    "response": "right",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-29",
+                    "memory_id": "memory_bank_2025-10-29_34"
+                },
+                {
+                    "query": "In the year 2022, and before December, what does \"R\" stand for in the three core policies of the type of content that was violated in the public logs on the Legume Wikipedia page?",
+                    "response": "Original Research",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-29",
+                    "memory_id": "memory_bank_2025-10-29_35"
+                },
+                {
+                    "query": "What was the actual enrollment count of the clinical trial on H. pylori in acne vulgaris patients from Jan-May 2018 as listed on the NIH website?",
+                    "response": "90",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-29",
+                    "memory_id": "memory_bank_2025-10-29_36"
+                },
+                {
+                    "query": "Pull out the sentence in the following 5x7 block of text. Read from left to right and use all of the letters in order:\n\nTHESE\nAGULL\nGLIDE\nDPEAC\nEFULL\nYTOMY\nCHAIR",
+                    "response": "THE SEAGULL GLIDED PEACEFULLY TO MY CHAIR",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-29",
+                    "memory_id": "memory_bank_2025-10-29_37"
+                },
+                {
+                    "query": "Who nominated the only Featured Article on English Wikipedia about a dinosaur that was promoted in November 2016?",
+                    "response": "FunkMonk",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-29",
+                    "memory_id": "memory_bank_2025-10-29_38"
+                },
+                {
+                    "query": "What is the surname of the equine veterinarian mentioned in 1.E Exercises from the chemistry materials licensed by Marisa Alviar-Agnew & Henry Agnew under the CK-12 license in LibreText's Introductory Chemistry materials as compiled 08/21/2023?",
+                    "response": "Louvrier",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-29",
+                    "memory_id": "memory_bank_2025-10-29_39"
+                },
+                {
+                    "query": "Where were the Vietnamese specimens described by Kuznetzov in Nedoshivina's 2010 paper eventually deposited? Just give me the city name without abbreviations.",
+                    "response": "Saint Petersburg",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-29",
+                    "memory_id": "memory_bank_2025-10-29_40"
+                },
+                {
+                    "query": "Given this table defining * on the set S = {a, b, c, d, e}\n\n|*|a|b|c|d|e|\n|---|---|---|---|---|---|\n|a|a|b|c|b|d|\n|b|b|c|a|e|c|\n|c|c|a|b|b|a|\n|d|b|e|b|e|d|\n|e|d|b|a|d|c|\n\nprovide the subset of S involved in any possible counter-examples that prove * is not commutative. Provide your answer as a comma separated list of the elements in the set in alphabetical order.",
+                    "response": "b,e",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-29",
+                    "memory_id": "memory_bank_2025-10-29_41"
+                },
+                {
+                    "query": "What writer is quoted by Merriam-Webster for the Word of the Day from June 27, 2022?",
+                    "response": "Annie Levin",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-29",
+                    "memory_id": "memory_bank_2025-10-29_42"
+                },
+                {
+                    "query": "¬(A ∧ B) ↔ (¬A ∨ ¬B)\n¬(A ∨ B) ↔ (¬A ∧ ¬B)\n(A → B) ↔ (¬B → ¬A)\n(A → B) ↔ (¬A ∨ B)\n(¬A → B) ↔ (A ∨ ¬B)\n¬(A → B) ↔ (A ∧ ¬B)\n\nWhich of the above is not logically equivalent to the rest? Provide the full statement that doesn't fit.",
+                    "response": "There is no statement among the six that fails logical equivalence; all are equivalent and tautological. None of the statements stand out as inconsistent with the rest.",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-29",
+                    "memory_id": "memory_bank_2025-10-29_43"
+                },
+                {
+                    "query": "On Cornell Law School website's legal information institute, under the fifth section of federal rules alphabetically, what word was deleted in the last amendment to the first rule in the article that has \"witnesses\" in the most titles as of 2021?",
+                    "response": "None",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-29",
+                    "memory_id": "memory_bank_2025-10-29_44"
+                },
+                {
+                    "query": "Hi, I'm making a pie but I could use some help with my shopping list. I have everything I need for the crust, but I'm not sure about the filling. I got the recipe from my friend Aditi, but she left it as a voice memo and the speaker on my phone is buzzing so I can't quite make out what she's saying. Could you please listen to the recipe and list all of the ingredients that my friend described? I only want the ingredients for the filling, as I have everything I need to make my favorite pie crust. I've attached the recipe as Strawberry pie.mp3.\n\nIn your response, please only list the ingredients, not any measurements. So if the recipe calls for \"a pinch of salt\" or \"two cups of ripe strawberries\" the ingredients on the list would be \"salt\" and \"ripe strawberries\".\n\nPlease format your response as a comma separated list of ingredients. Also, please alphabetize the ingredients. Here are the necessary files: /workspace/project_memory_layer/data/files/gaia/validate/99c9cc74-fdc8-46c6-8f8d-3ce2d3bfeea3.mp3",
+                    "response": "cornstarch, freshly squeezed lemon juice, granulated sugar, pure vanilla extract, ripe strawberries",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-29",
+                    "memory_id": "memory_bank_2025-10-29_45"
+                },
+                {
+                    "query": "How many studio albums were published by Mercedes Sosa between 2000 and 2009 (included)? You can use the latest 2022 version of english wikipedia.",
+                    "response": "3",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-29",
+                    "memory_id": "memory_bank_2025-10-29_46"
+                },
+                {
+                    "query": "What country had the least number of athletes at the 1928 Summer Olympics? If there's a tie for a number of athletes, return the first in alphabetical order. Give the IOC country code as your answer.",
+                    "response": "CUB",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-29",
+                    "memory_id": "memory_bank_2025-10-29_47"
+                },
+                {
+                    "query": "If Eliud Kipchoge could maintain his record-making marathon pace indefinitely, how many thousand hours would it take him to run the distance between the Earth and the Moon its closest approach? Please use the minimum perigee value on the Wikipedia page for the Moon when carrying out your calculation. Round your result to the nearest 1000 hours and do not use any comma separators if necessary.",
+                    "response": "17",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-29",
+                    "memory_id": "memory_bank_2025-10-29_48"
+                },
+                {
+                    "query": "Each cell in the attached spreadsheet represents a plot of land. The color of the cell indicates who owns that plot. Green cells are plots owned by Earl Smith. Can Earl walk through every plot he owns (and no other plots) and return to his starting plot without backtracking? For this question, consider backtracking to be any instance where Earl would enter a plot of land he had already entered since leaving his starting plot. Here are the necessary table files: /workspace/project_memory_layer/data/files/gaia/validate/5cfb274c-0207-4aa7-9575-6ac0bd95d9b2.xlsx, for processing excel file, you can use the excel tool or write python code to process the file step-by-step and get the information.",
+                    "response": "It is not possible to answer whether Earl Smith can walk through every plot he owns and return to his starting plot without backtracking.",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-29",
+                    "memory_id": "memory_bank_2025-10-29_49"
+                },
+                {
+                    "query": "Of the cities within the United States where U.S. presidents were born, which two are the farthest apart from the westernmost to the easternmost going east, giving the city names only? Give them to me in alphabetical order, in a comma-separated list",
+                    "response": "Braintree,Honolulu",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-29",
+                    "memory_id": "memory_bank_2025-10-29_50"
+                },
+                {
+                    "query": "A standard Rubik’s cube has been broken into cubes making up its sides. The cubes are jumbled, and one is removed. There are 6 cubes with one colored face, 12 edge cubes with two colored faces, and 8 corner cubes with three colored faces. All blue cubes have been found. All cubes directly left, right, above, and below the orange center cube have been found, along with the center cube. The green corners have all been found, along with all green that borders yellow. For all orange cubes found, the opposite face’s cubes have been found. The removed cube has two colors on its faces. What are they? Answer using a comma separated list, with the colors ordered alphabetically.",
+                    "response": "green,red",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-29",
+                    "memory_id": "memory_bank_2025-10-29_51"
+                },
+                {
+                    "query": "I'm making a grocery list for my mom, but she's a professor of botany and she's a real stickler when it comes to categorizing things. I need to add different foods to different categories on the grocery list, but if I make a mistake, she won't buy anything inserted in the wrong category. Here's the list I have so far:\n\nmilk, eggs, flour, whole bean coffee, Oreos, sweet potatoes, fresh basil, plums, green beans, rice, corn, bell pepper, whole allspice, acorns, broccoli, celery, zucchini, lettuce, peanuts\n\nI need to make headings for the fruits and vegetables. Could you please create a list of just the vegetables from my list? If you could do that, then I can figure out how to categorize the rest of the list into the appropriate categories. But remember that my mom is a real stickler, so make sure that no botanical fruits end up on the vegetable list, or she won't get them when she's at the store. Please alphabetize the list of vegetables, and place each item in a comma separated list.",
+                    "response": "broccoli, celery, fresh basil, lettuce, sweet potatoes",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-29",
+                    "memory_id": "memory_bank_2025-10-29_52"
+                },
+                {
+                    "query": "My family reunion is this week, and I was assigned the mashed potatoes to bring. The attendees include my married mother and father, my twin brother and his family, my aunt and her family, my grandma and her brother, her brother's daughter, and his daughter's family. All the adults but me have been married, and no one is divorced or remarried, but my grandpa and my grandma's sister-in-law passed away last year. All living spouses are attending. My brother has two children that are still kids, my aunt has one six-year-old, and my grandma's brother's daughter has three kids under 12. I figure each adult will eat about 1.5 potatoes of mashed potatoes and each kid will eat about 1/2 a potato of mashed potatoes, except my second cousins don't eat carbs. The average potato is about half a pound, and potatoes are sold in 5-pound bags. How many whole bags of potatoes do I need? Just give the number.",
+                    "response": "2",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-29",
+                    "memory_id": "memory_bank_2025-10-29_53"
+                },
+                {
+                    "query": "My family reunion is this week, and I was assigned the mashed potatoes to bring. The attendees include my married mother and father, my twin brother and his family, my aunt and her family, my grandma and her brother, her brother's daughter, and his daughter's family. All the adults but me have been married, and no one is divorced or remarried, but my grandpa and my grandma's sister-in-law passed away last year. All living spouses are attending. My brother has two children that are still kids, my aunt has one six-year-old, and my grandma's brother's daughter has three kids under 12. I figure each adult will eat about 1.5 potatoes of mashed potatoes and each kid will eat about 1/2 a potato of mashed potatoes, except my second cousins don't eat carbs. The average potato is about half a pound, and potatoes are sold in 5-pound bags. How many whole bags of potatoes do I need? Just give the number.",
+                    "response": "2",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-29",
+                    "memory_id": "memory_bank_2025-10-29_54"
+                },
+                {
+                    "query": "You are a telecommunications engineer who wants to build cell phone towers on a stretch of road. In the reference file is a layout of the road and nearby houses. Each dash, \"-\", is a marker indicating a mile. Each capital H indicates a house located next to a mile marker, appearing above or below the stretch of road. Each cell phone tower can cover houses located next to the road within a 4-mile radius. Find the minimum number of cell phone towers needed to cover all houses next to the road. Your answer should be a positive numerical integer value. Here are the necessary document files: /workspace/project_memory_layer/data/files/gaia/validate/389793a7-ca17-4e82-81cb-2b3a2391b4b9.txt",
+                    "response": "3",
+                    "memory_strength": 1,
+                    "last_recall_date": "2025-10-29",
+                    "memory_id": "memory_bank_2025-10-29_55"
+                }
+            ]
+        },
+        "summary": {
+            "2025-10-25": "**Summary of Dialogue:**\n\n- The user asks a series of diverse, knowledge-based questions, often requiring file or media analysis, logical reasoning, or specialized knowledge.\n- Topics include family gatherings, mathematics, language translation, chess, programming, botany, Wikipedia, law, sports, and pop culture.\n- The AI provides concise, direct answers, often in the requested format (numbers, lists, names, etc.).\n- The user emphasizes precision and adherence to instructions, sometimes requesting only specific information or formats.\n- Key themes: factual retrieval, file analysis, logical deduction, strict categorization, and adherence to user instructions.",
+            "2025-10-27": "**Summary of Dialogue:**\n\n- The user asks a series of highly specific, often research-based or logic puzzles, requiring extraction of information from files, media, or external sources.\n- The AI provides concise, direct answers, sometimes noting when information is unavailable due to technical, access, or evidence limitations.\n- Main themes:\n  - Data extraction from images, audio, Excel, Word, and Python files.\n  - Academic and media research (papers, Wikipedia, YouTube, BBC Earth, Nature, clinical trials).\n  - Logic puzzles and riddles (Rubik’s cube, vampire village, chess, map navigation).\n  - Language translation and structure (Tizin language).\n  - Trivia and fact-checking (Doctor Who, Secret Santa, dinosaur Wikipedia articles).\n  - Occasional system/tool errors or inability to access requested data.\n- Key information:\n  - Answers are mostly factual, direct, and formatted as requested (lists, names, numbers).\n  - When unable to answer, the AI provides detailed reasoning and suggests next steps.\n  - The dialogue demonstrates a mix of successful data retrieval and clear reporting of limitations.",
+            "2025-10-28": "LUX",
+            "2025-10-29": "**Summary of Dialogue:**\n\n- The user asks a series of diverse, information-seeking questions, often requiring file analysis (audio, image, Excel, document), web research, or logical reasoning.\n- Topics include family reunion logistics, telecommunications engineering, math fractions, computer science history, fast-food sales, TV and film trivia, scientific papers, Wikipedia facts, language translation, poetry analysis, chess, legal amendments, and more.\n- The AI provides concise, direct answers, often as numbers, names, or lists, and sometimes explains when data cannot be extracted due to file/tool limitations.\n- Main themes: factual retrieval, file-based data extraction, logical puzzles, and concise response formatting.\n- Key information: The AI demonstrates ability to process various file types, answer trivia, solve logic problems, and recognize when a question cannot be answered due to data access restrictions."
+        }
+    }
+}
