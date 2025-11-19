@@ -34,17 +34,18 @@ from mas_arena.utils.score import question_scorer
 from mas_arena.utils.llm_utils import RetryWrapper
 
 # 导入外部工具（统一管理，避免重复导入）
-from mas_arena.tools.external_tools import (
+from mas_arena.tools import (
     # 媒体工具
-    AudioInspectorTool, VideoInspectorTool, VisualInspectorTool,
+    AudioInspectorTool, VisualInspectorTool,
     # 网络工具  
-    BrowserTool, DownloadTool, SearchTool, TextInspectorTool, ArxivTool,
-    SimpleCrawler, CrawlerArchiveSearchTool, CrawlerReadTool,
+    SearchTool, SimpleCrawler, CrawlerArchiveSearchTool, CrawlerReadTool, WikipediaSearchTool,
     # 文档工具
     CSVExtractorTool, MarkdownConverterTool, SheetExtractorTool, 
     TextExtractorTool, ZipExtractorTool,
-    # 系统工具
-    TerminalTool,
+    # masarena工具
+    FinalAnswerTool, 
+    # 本地工具
+    PythonInterpreterTool,
     # 工具集合
     ALL_EXTERNAL_TOOLS,
 )
@@ -59,9 +60,6 @@ from mas_arena.agents.agent_core import (
     ToolCallingAgent,
     OpenAIServerModel,
     Tool,
-    FinalAnswerTool,
-    PythonInterpreterTool,
-    WikipediaSearchTool,
 )
 
 from mas_arena.agents.base import logger
@@ -406,7 +404,7 @@ Handles complex multi-step problems, writes Python code, and processes data."""
         # 设置评估器
         original_evaluator = self.evaluator_name
         self.evaluator_name = benchmark_name
-        self.format_prompt = self.format_prompt()
+        self.format_prompt = self.format_prompts()
         
         try:
             # 调用基类的evaluate方法
@@ -892,3 +890,5 @@ AgentSystemRegistry.register(
     verbosity_level=1,
     description="High-performance, easy-to-use benchmark agent with pluggable tools and memory support"
 )
+
+

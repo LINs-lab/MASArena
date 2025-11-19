@@ -68,13 +68,13 @@ class AgentSystem(abc.ABC):
         self.responses_dir.mkdir(parents=True, exist_ok=True)
         self.visualizations_dir.mkdir(parents=True, exist_ok=True)
 
-        self.format_prompt = self.format_prompt()
+        self.format_prompt = self.format_prompts()
         # ToolManager is now initialized by the ToolIntegrationWrapper, not the base agent
         self.tool_manager = None
 
         self.meta_memory:Optional[BaseMemory] = None
 
-    def format_prompt(self) -> str:
+    def format_prompts(self) -> str:
         """
         Format the prompt for different benchmarks.
         

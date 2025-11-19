@@ -10,10 +10,8 @@ from .agents import MultiStepAgent, CodeAgent, ToolCallingAgent
 from .models import OpenAIServerModel
 
 # 从tools模块导入工具类
-from mas_arena.tools.local_tools import (
-    Tool, FinalAnswerTool, PythonInterpreterTool, WikipediaSearchTool, 
-    CalculatorTool, WebSearchTool, ToolManager
-)
+from smolagents import Tool
+from mas_arena.tools.tool_manager import ToolManager
 
 __all__ = [
     # 步骤类
@@ -31,10 +29,5 @@ __all__ = [
     
     # 工具类
     "Tool",
-    "FinalAnswerTool",
-    "PythonInterpreterTool",
-    "WikipediaSearchTool",
-    "CalculatorTool",
-    "WebSearchTool",
     "ToolManager",
 ]
