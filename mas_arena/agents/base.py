@@ -17,6 +17,7 @@ import time
 import yaml
 from mas_arena.agents.format import task_format
 from mas_arena.agents.format_prompts import get_format_prompt
+from mas_arena.agents.agent_core import AgentResult
 from openai.types.completion_usage import CompletionUsage
 import aiofiles
 
@@ -551,7 +552,7 @@ class AgentSystem(abc.ABC):
                 self._record_agent_responses(problem_id, messages)
                 response_file = await self.save_agent_responses(problem_id, run_id, problem)
                 visualization_file = await self.save_visualization_data(problem_id, run_id)
-                return {
+                raw_responses  =  {
                     "status": "error",
                     "score": 0.0,
                     "is_correct": False,
@@ -564,8 +565,19 @@ class AgentSystem(abc.ABC):
                     "visualization_file": str(visualization_file) if visualization_file else None,
                     "run_id": run_id,
                 }
+                
+                return AgentResult(
+                    final_answer=run_output.get("final_answer", ""),
+                    is_correct=False,
+                    trajectory=[],  # No meaningful trajectory on error
+                    raw_responses=raw_responses,
+                    error=run_output["error"],
+                )
 
             messages = run_output.get("messages", [])
+            print("******************************************")
+            print(messages)
+            print("******************************************")
             usage_metrics = self._record_token_usage(problem_id, execution_time_ms, messages)
             
             self._record_agent_responses(problem_id, messages)
@@ -586,6 +598,15 @@ class AgentSystem(abc.ABC):
                 f"manager_agent_steps: {run_output.get('manager_agent_steps', [])}"
                 + f"search_agent_steps: {run_output.get('search_agent_steps', [])}"
             )
+            
+            # Build trajectory for visualization — make it structured instead of string
+            trajectory = []
+            if "manager_agent_steps" in run_output:
+                for step in run_output["manager_agent_steps"]:
+                    trajectory.append({"agent": "manager", "action": step})
+            if "search_agent_steps" in run_output:
+                for step in run_output["search_agent_steps"]:
+                    trajectory.append({"agent": "search", "action": step})
             
             if self.meta_memory:
                 await self.meta_memory.add_memory(
@@ -609,7 +630,7 @@ class AgentSystem(abc.ABC):
                     tags={"agent_system": self.name, "evaluator": self.evaluator.name, "run_id": run_id}
                 )
             
-            return {
+            raw_responses =  {
                 "status": "success",
                 **eval_result,
                 "messages": messages,
@@ -619,6 +640,14 @@ class AgentSystem(abc.ABC):
                 "visualization_file": str(visualization_file) if visualization_file else None,
                 "run_id": run_id
             }
+            
+            return AgentResult(
+                final_answer=eval_result.get("extracted_answer", ""),
+                is_correct=eval_result.get("is_correct", False),
+                trajectory=trajectory,
+                raw_responses=raw_responses,
+                error=None,
+            )
             
         except Exception as e:
             # Record error
@@ -636,7 +665,7 @@ class AgentSystem(abc.ABC):
                 )
             print(f"Evaluation failed with error: {str(e)}")
             # Return a failure result instead of re-raising
-            return {
+            raw_responses = {
                 "status": "error",
                 "score": 0.0,
                 "is_correct": False,
@@ -646,8 +675,15 @@ class AgentSystem(abc.ABC):
                 "llm_usage": {"total_tokens": 0, "message_count": 0, "agent_usage": []},
                 "response_file": None,
                 "visualization_file": None,
-                "run_id": run_id
+                "run_id": run_id,
             }
+            return AgentResult(
+                final_answer="",
+                is_correct=False,
+                trajectory=[],
+                raw_responses=raw_responses,
+                error=str(e),
+            )
     
     def with_timing(self, func_name: str, tags: Dict[str, str] = None) -> Callable:
         """

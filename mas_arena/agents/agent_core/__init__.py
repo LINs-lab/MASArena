@@ -8,6 +8,7 @@ Agent核心框架 - 本地Agent系统实现
 from .steps import ActionStep, PlanningStep, TaskStep
 from .agents import MultiStepAgent, CodeAgent, ToolCallingAgent
 from .models import OpenAIServerModel
+from .agent_result import AgentResult
 
 # 从tools模块导入工具类
 from smolagents import Tool
@@ -30,4 +31,7 @@ __all__ = [
     # 工具类
     "Tool",
     "ToolManager",
+    
+    # 结果类
+    "AgentResult",
 ]

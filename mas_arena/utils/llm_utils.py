@@ -5,7 +5,7 @@ from dataclasses import dataclass
 import os
 from mas_arena.agents import AgentSystem
 import httpx
-from tenacity import retry, stop_after_attempt, wait_exponential
+from tenacity import retry, stop_after_attempt, wait_exponential,retry_if_exception
 from typing import Any
 
 
@@ -91,7 +91,8 @@ class RetryWrapper:
         # 保存原始模型ID以防被修改
         if hasattr(self._model, 'model_id'):
             self._original_model_id = self._model.model_id
-
+    
+    @staticmethod
     def _should_retry(self, exception: BaseException) -> bool:
         """Return True if we should retry on this exception."""
         if isinstance(exception, httpx.HTTPStatusError):
@@ -112,7 +113,7 @@ class RetryWrapper:
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=2, max=60),
-        retry=_should_retry
+        retry=retry_if_exception(_should_retry) 
     )
     def __call__(self, *args, **kwargs) -> Any:
         """Delegate the call to the wrapped model with retry logic."""
