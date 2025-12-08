@@ -540,6 +540,84 @@ Task:
                 "final_answer": error_message,
                 "error": str(e),
             }
+    
+    async def run_agent_step(self, augmented_question: str, additional_args: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        简化版单步运行（类似 llm.invoke）
+        - 输入完整的 prompt（augmented_question）
+        - 保留工具调用、记忆检索等能力
+        - 不做答案校验/重试，直接返回一次运行结果
+        """
+        self.execution_log = []
+        search_keywords = ""
+        additional_args = dict(additional_args or {})
+        additional_knowledge = ""
+
+        # 如启用记忆，先生成搜索关键词并检索相关记忆
+        if self.meta_memory is not None:
+            try:
+                template_str = prompts["build_search_keywords_prompt"]
+                template = Template(template_str)
+                build_search_keywords_prompt = template.substitute(
+                    question=augmented_question, true_answer=additional_args.get("expected_answer", "")
+                )
+
+                search_keywords = await asyncio.to_thread(
+                    call_model,
+                    build_search_keywords_prompt,
+                    self.config.get("model_name", "gpt-4o-mini"),
+                )
+
+                successful_trajectories, _, insights = await self.meta_memory.retrieve_memory(
+                    task_search_keywords=search_keywords,
+                    task_question=augmented_question,
+                    successful_topk=os.environ.get("SUCCESSFUL_TOPK", 2),
+                    failed_topk=os.environ.get("FAILED_TOPK", 1),
+                    insight_topk=os.environ.get("INSIGHTS_TOPK", 3),
+                    threshold=os.environ.get("THRESHOLD", 0.3),
+                )
+                additional_knowledge = "\n\n".join([insight for insight in insights])
+                logger.info(
+                    f"Retrieved {len(successful_trajectories)} successful trajectories and {len(insights)} insights"
+                )
+            except Exception as e:
+                logger.error(f"Error retrieving memory in run_agent_step: {str(e)}")
+                additional_knowledge = None
+
+        # 合并附加知识传递给代理
+        additional_args["additional_knowledge"] = additional_knowledge
+
+        # 同步运行代理（包含所有工具调用等）
+        try:
+            result = await asyncio.to_thread(self._run_agent_sync, augmented_question, additional_args)
+            final_answer = self.extract_final_answer(result)
+
+            # 构建对话与步骤摘要
+            conversation_messages = self._extract_conversation_history(augmented_question, final_answer)
+            self.conversation_history.extend(conversation_messages)
+            manager_agent_steps, search_agent_steps = self._extract_agent_steps()
+
+            return {
+                "messages": conversation_messages,
+                "final_answer": final_answer,
+                "manager_agent_steps": manager_agent_steps,
+                "search_agent_steps": search_agent_steps,
+                "search_keywords": search_keywords,
+            }
+        except Exception as e:
+            error_message = f"Error running BenchAgent (step): {str(e)}"
+            error_ai_message = {
+                "content": error_message,
+                "name": "bench_agent_error",
+                "role": "assistant",
+                "message_type": "error_response",
+                "usage_metadata": None,
+            }
+            return {
+                "messages": [error_ai_message],
+                "final_answer": error_message,
+                "error": str(e),
+            }
 
     def _run_agent_sync(self, augmented_question: str, additional_args: Dict[str, Any]) -> Any:
         """同步运行代理"""
