@@ -151,7 +151,8 @@ class SwarmSystem(AgentSystem):
             "max_steps": self.config.get("max_steps", 15),
             "search_max_steps": self.config.get("search_max_steps", 10),
             "verbosity_level": self.config.get("verbosity_level", 1),
-            "additional_instructions": self.config.get("additional_instructions"),
+            # 如果未显式提供 additional_instructions，则自动落到 format_prompt（如 math 的 \boxed{} 约束）
+            "additional_instructions": self.config.get("additional_instructions")
         }
 
     def _create_agents(self, problem_input: Dict[str, Any], feedback: Dict[str, Any] = None) -> Dict[str, List]:

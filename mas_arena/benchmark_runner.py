@@ -18,6 +18,7 @@ from openai.types.completion_usage import CompletionUsage
 import traceback
 from rich import print as rprint
 import time
+import logging
 
 from mas_arena.metrics import MetricsRegistry, MetricsCollector
 from mas_arena.agents import create_agent_system, AVAILABLE_AGENT_SYSTEMS
@@ -67,6 +68,7 @@ class BenchmarkRunner:
         self.agent_config = None  # Store agent configuration
         self.metrics_registry = None
         self.metrics_collector = None
+        self._logging_setup = False
 
         # Create directories
         os.makedirs(results_dir, exist_ok=True)
@@ -77,6 +79,42 @@ class BenchmarkRunner:
 
         # Create centralized metrics collector
         self.metrics_collector = MetricsCollector(self.metrics_registry)
+
+    def _setup_logging(self, log_file: str):
+        """Set up logging to a file only (no console), and redirect stdout/stderr to the file."""
+        if not log_file or self._logging_setup:
+            return
+
+        Path(log_file).parent.mkdir(parents=True, exist_ok=True)
+
+        # Configure root logger to write only to file
+        logger = logging.getLogger()
+        logger.setLevel(logging.INFO)
+
+        # Remove existing StreamHandlers (console) to avoid duplicate console output
+        for h in list(logger.handlers):
+            if isinstance(h, logging.StreamHandler):
+                logger.removeHandler(h)
+
+        # Add file handler if not already present for this file
+        file_path_str = str(Path(log_file))
+        if not any(isinstance(h, logging.FileHandler) and getattr(h, 'baseFilename', None) == file_path_str for h in logger.handlers):
+            file_handler = logging.FileHandler(log_file, mode='a', encoding='utf-8')
+            file_formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+            file_handler.setFormatter(file_formatter)
+            logger.addHandler(file_handler)
+
+        # Redirect stdout and stderr to the log file (only file)
+        try:
+            import sys as _sys
+            file_stream = open(log_file, 'a', encoding='utf-8')
+            _sys.stdout = file_stream
+            _sys.stderr = file_stream
+        except Exception:
+            # If redirecting fails, ignore (logging to file still works)
+            pass
+
+        self._logging_setup = True
 
     def _setup_metrics(self):
         """Set up metrics collection"""
@@ -577,6 +615,7 @@ class BenchmarkRunner:
         data_id=None,
         memory_type=None,
         pass_at_k=1,
+        log_file=None,
     ):
         """
         Run a benchmark sequentially. This is a wrapper around arun.
@@ -593,6 +632,7 @@ class BenchmarkRunner:
                 concurrency=1,  # Run sequentially
                 memory_type=memory_type,
                 pass_at_k=pass_at_k,
+                log_file=log_file,
             )
         )
 
@@ -608,7 +648,9 @@ class BenchmarkRunner:
         concurrency=10,
         memory_type=None,
         pass_at_k=1,
+        log_file=None,
     ):
+        self._setup_logging(log_file)
         # Prepare benchmark; we only need problems and config here
         problems, benchmark_config, output_file = self._prepare_benchmark(
             benchmark_name,

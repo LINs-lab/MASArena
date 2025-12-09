@@ -553,6 +553,10 @@ Task:
         additional_args = dict(additional_args or {})
         additional_knowledge = ""
 
+        # 在单步模式也附加格式提示，确保最终答案符合基准要求
+        if self.format_prompt:
+            augmented_question = f"{augmented_question.rstrip()}\n\n{self.format_prompt.strip()}"
+
         # 如启用记忆，先生成搜索关键词并检索相关记忆
         if self.meta_memory is not None:
             try:

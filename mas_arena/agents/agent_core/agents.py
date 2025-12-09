@@ -473,6 +473,15 @@ Always break down complex problems into smaller steps and use code to solve them
 
     def _extract_final_answer(self, text: str) -> Optional[str]:
         """提取最终答案"""
+        # 优先捕捉常见的格式化答案
+        boxed_matches = re.findall(r"\\boxed\s*\{([^{}]+)\}", text, re.DOTALL)
+        if boxed_matches:
+            return boxed_matches[-1].strip()
+
+        tag_match = re.search(r"<answer>\s*(.*?)\s*</answer>", text, re.IGNORECASE | re.DOTALL)
+        if tag_match:
+            return tag_match.group(1).strip()
+
         # 查找各种最终答案标记
         patterns = [
             r"Final answer[:\s]*(.+)",
@@ -482,9 +491,14 @@ Always break down complex problems into smaller steps and use code to solve them
         ]
 
         for pattern in patterns:
-            match = re.search(pattern, text, re.IGNORECASE)
+            match = re.search(pattern, text, re.IGNORECASE | re.DOTALL)
             if match:
                 return match.group(1).strip()
+
+        # 回退到最后一行的内容，避免完全提取失败
+        lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
+        if lines:
+            return lines[-1]
 
         return None
 
