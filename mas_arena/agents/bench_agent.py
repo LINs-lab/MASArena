@@ -26,6 +26,7 @@ from typing_extensions import override
 from openai.types.completion_usage import CompletionUsage
 import yaml
 import asyncio
+import inspect
 
 from mas_arena.utils.llm_utils import call_model
 from mas_arena.agents.base import AgentSystem, AgentSystemRegistry
@@ -115,9 +116,9 @@ class BenchAgent(AgentSystem):
         memory: Optional[str] = None,
         api_key: Optional[str] = None,
         api_base: Optional[str] = None,
-        max_steps: int = 15,
+        max_steps: int = 15,  
         search_max_steps: int = 10,
-        verbosity_level: int = 1,
+        verbosity_level: int = 2,
         additional_instructions: Optional[str] = None,
         name: str = "bench_agent",
         **kwargs
@@ -140,6 +141,14 @@ class BenchAgent(AgentSystem):
             **kwargs: 其他配置参数
         """
         # 构建配置
+        frame = inspect.currentframe()
+        args_info = inspect.getargvalues(frame)
+        init_args = {key: args_info.locals[key] for key in args_info.args}
+        init_args.update(kwargs)  # 合并 **kwargs
+        
+        print("Initializing BenchAgent with parameters:")
+        self.benchmark_name = init_args.get("config", {}).get('evaluator')
+        
         config = {
             "model_name": model,
             "api_key": api_key,
@@ -190,7 +199,7 @@ class BenchAgent(AgentSystem):
         """初始化语言模型"""
         api_key = self.config.get("api_key") or os.getenv("OPENAI_API_KEY")
         api_base = self.config.get("api_base") or os.getenv("OPENAI_API_BASE", "https://api.openai.com/v1")
-        model_name = self.config.get("model_name", "gpt-4o-mini")
+        model_name = os.getenv("MODEL_NAME") or  self.config.get("model_name", "gpt-4o-mini")
         
         if not api_key:
             raise ValueError(
@@ -204,7 +213,6 @@ class BenchAgent(AgentSystem):
             api_key=api_key,
             timeout=int(os.getenv("OPENAI_API_TIMEOUT", "300")),
         )
-        
         # 创建用于代理的LLM模型
         self.llm = OpenAIServerModel(
             model_id=model_name,
@@ -390,7 +398,7 @@ Handles complex multi-step problems, writes Python code, and processes data."""
         if hasattr(self.llm, "aclose"):
             await self.llm.aclose()
 
-    async def evaluate(self, benchmark_name: str, problem: Dict[str, Any]) -> Dict[str, Any]:
+    async def evaluate(self, problem: Dict[str, Any], metrics_registry=None) -> Dict[str, Any]:
         """
         评估单个问题
         
@@ -403,12 +411,11 @@ Handles complex multi-step problems, writes Python code, and processes data."""
         """
         # 设置评估器
         original_evaluator = self.evaluator_name
-        self.evaluator_name = benchmark_name
+        self.evaluator_name = self.benchmark_name
         self.format_prompt = self.format_prompts()
         
         try:
-            # 调用基类的evaluate方法
-            result = await super().evaluate(problem)
+            result = await self.run_agent(problem)
             return result
         finally:
             # 恢复原始评估器

@@ -323,7 +323,7 @@ Always break down complex problems into smaller steps and use code to solve them
         for step_num in range(self.max_steps):
             if self.verbosity_level > 0:
                 print(f"Code Agent Step {step_num + 1}/{self.max_steps}")
-
+            
             try:
                 # 生成响应
                 response_text = self.model(messages)
@@ -331,7 +331,26 @@ Always break down complex problems into smaller steps and use code to solve them
 
                 if self.verbosity_level > 1:
                     print(f"Agent thinking: {response_text}")
-
+                # 检查FinalAnswer 工具调用    
+                tool_final_answer = self._extract_final_answer_tool_call(response_text)
+                
+                if tool_final_answer:
+                    # 记录工具调用步骤（可选，但推荐）
+                    action_step = ActionStep(
+                        tool_calls=[
+                            {
+                                "function": "final_answer",
+                                "arguments": {"answer": tool_final_answer},
+                            }
+                        ],
+                        observations=[f"Final answer provided: {tool_final_answer}"],
+                        model_output=response_text,
+                        agent_name=self.name,
+                    )
+                    self.memory.add_step(action_step)
+                    self._call_step_callbacks(action_step)
+                    
+                    return tool_final_answer # 立即终止循环并返回答案
                 # 检查是否有代码块需要执行
                 code_blocks = self._extract_code_blocks(response_text)
 
@@ -471,6 +490,34 @@ Always break down complex problems into smaller steps and use code to solve them
         matches = re.findall(pattern, text, re.DOTALL)
         return [match.strip() for match in matches if match.strip()]
 
+    def _extract_final_answer_tool_call(self, text: str) -> Optional[str]:
+        """
+        专门用于从模型输出中解析 final_answer 工具调用，
+        并提取其 'answer' 参数。
+        
+        匹配模式示例：
+        1. final_answer("The result is 42.")
+        2. final_answer(answer="The result is 42.")
+        3. Final_Answer('The result is 42.')
+        """
+        
+        # 匹配 final_answer(answer="...") 或 final_answer("...") 
+        # 使用非贪婪匹配 (.*?) 来防止匹配到多个答案
+        # re.I 使匹配不区分大小写 (e.g., Final_Answer)
+        
+        # 模式1: final_answer("...") 或 final_answer(answer="...")
+        pattern_quotes = r'final_answer\s*\((?:answer\s*=\s*)?["\'](.*?)["\']\s*\)'
+        
+        # 模式2: final_answer(answer=valid) - 匹配不带引号的简单答案（虽然不推荐，但为兼容性考虑）
+        # 由于不带引号的答案容易出错，我们主要依赖带引号的模式1
+        
+        match = re.search(pattern_quotes, text, re.IGNORECASE | re.DOTALL)
+        
+        if match:
+            return match.group(1).strip()
+            
+        return None
+    
     def _extract_final_answer(self, text: str) -> Optional[str]:
         """提取最终答案"""
         # 优先捕捉常见的格式化答案
