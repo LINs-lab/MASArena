@@ -58,7 +58,6 @@
 #                 )
 
 #                 response_content = response.choices[0].message.content
-
 #                 ai_message = {
 #                     'content': response_content,
 #                     'name': agent_name,
