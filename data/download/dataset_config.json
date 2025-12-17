@@ -1,0 +1,67 @@
+{
+    "math": {
+        "repo_id": "", 
+        "filename": "math_test.jsonl", 
+        "local_name": "math_test.jsonl"
+    },
+    "gsm8k": {
+        "repo_id": "", 
+        "filename": "gsm8k_test.jsonl", 
+        "local_name": "gsm8k_test.jsonl"
+    },
+    "hotpotqa": {
+        "repo_id": "", 
+        "filename": "hotpotqa_test.jsonl", 
+        "local_name": "hotpotqa_test.jsonl"
+    },
+    "humaneval": {
+        "repo_id": "", 
+        "filename": "humaneval_test.jsonl", 
+        "local_name": "humaneval_test.jsonl"
+    },
+    "mbpp": {
+        "repo_id": "", 
+        "filename": "mbpp_test.jsonl", 
+        "local_name": "mbpp_test.jsonl"
+    },
+    "drop": {
+        "repo_id": "ucinlp/drop", 
+        "filename": "null", 
+        "local_name": "drop_test.jsonl"
+    },
+    "gaia": {
+        "repo_id": "", 
+        "filename": "gaia_test.jsonl", 
+        "local_name": "gaia_test.jsonl"
+    },
+    "mmlu_pro": {
+        "repo_id": "", 
+        "filename": "mmlu_pro_test.jsonl", 
+        "local_name": "mmlu_pro_test.jsonl"
+    },
+    "musique": {
+        "repo_id": "", 
+        "filename": "musique_test.jsonl", 
+        "local_name": "musique_test.jsonl"
+    },
+    "swebench_lite": {
+        "repo_id": "", 
+        "filename": "swebench_lite_test.jsonl", 
+        "local_name": "swebench_lite_test.jsonl"
+    },
+    "ifeval": {
+        "repo_id": "", 
+        "filename": "ifeval_test.jsonl", 
+        "local_name": "ifeval_test.jsonl"
+    },
+    "aime": {
+        "repo_id": "math-ai/aime25", 
+        "filename": "test.jsonl", 
+        "local_name": "aime_test.jsonl"
+    },
+    "bbh": {
+        "repo_id": "lukaemon/bbh", 
+        "filename": null, 
+        "local_name": "bbh_test.jsonl"
+    }
+}
