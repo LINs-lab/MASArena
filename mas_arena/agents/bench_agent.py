@@ -164,7 +164,8 @@ class BenchAgent(AgentSystem):
         super().__init__(name, config)
         
         # 存储工具配置
-        self.manager_tools_config = manager_tools or ["python_interpreter", "final_answer"]
+        # 默认不包含 final_answer，因为它会自动被添加
+        self.manager_tools_config = manager_tools or ["python_interpreter"]
         self.search_tools_config = search_tools or ["search", "browser", "wikipedia"]
         self.memory_type = memory
         
@@ -233,7 +234,7 @@ class BenchAgent(AgentSystem):
         # 初始化搜索工具
         self.search_tools = self._build_tool_list(self.search_tools_config, is_manager=False)
         
-        # 确保必要的工具存在
+        # 确保必要的工具存在 - FinalAnswerTool 是必须的
         if not any(isinstance(tool, FinalAnswerTool) for tool in self.manager_tools):
             self.manager_tools.append(FinalAnswerTool())
         
@@ -979,5 +980,3 @@ AgentSystemRegistry.register(
     verbosity_level=1,
     description="High-performance, easy-to-use benchmark agent with pluggable tools and memory support"
 )
-
-

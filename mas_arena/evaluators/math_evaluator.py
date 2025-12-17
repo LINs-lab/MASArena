@@ -416,5 +416,6 @@ class MathEvaluator(BaseEvaluator):
         return {
             "final_answer": final_answer,
             "score": score,
+            "is_correct": score == 1,  # Explicitly return is_correct
             "extracted_answer": extracted_answer,
         }

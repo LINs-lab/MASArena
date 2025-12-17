@@ -127,10 +127,11 @@ class LLMDebate(AgentSystem):
         
         # 6. 调用聚合器 BenchAgent，综合所有智能体的答案生成最终统一答案
         aggregated_answer_result = await self._aggregate_answers(query, final_answers)
+        final_answer = aggregated_answer_result.get('final_answer')
         
         # 7. 构造聚合器的消息对象，并加入消息列表
         aggregation_message = {
-            'content': aggregated_answer_result.get('final_answer'),
+            'content': final_answer,
             'name': 'debate_aggregator',
             'role': 'assistant',
             'message_type': 'aggregation',
@@ -138,9 +139,14 @@ class LLMDebate(AgentSystem):
         }
         all_messages.append(aggregation_message)
         
+        # 8. Calculate score if evaluator is available (though BenchmarkRunner usually does this)
+        # We can try to use the self.evaluate method logic or let BenchmarkRunner handle it.
+        # But to be safe, we should return 'extracted_answer'.
+        
         return {
             "messages": all_messages,
-            "final_answer": aggregated_answer_result.get('final_answer'),
+            "final_answer": final_answer,
+            "extracted_answer": final_answer, # Required by BenchmarkRunner
             "agent_responses": final_answers,
             "rounds_completed": self.rounds_num,
             "agents_participated": self.agents_num

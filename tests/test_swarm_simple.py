@@ -18,13 +18,14 @@ if __name__ == "__main__":
         "verbosity_level": 1,
         "evaluator": "math",
     }
-    summary = BenchmarkRunner().arun(
+    summary = asyncio.run(BenchmarkRunner().arun(
         benchmark_name="math",
         agent_system="swarm",
         agent_config=agent_config,
         limit=5,
         pass_at_k=1,
         log_file="logs/swarm_simple.log",
+    )
     )
     print("==== Swarm简易测试结果 ====")
     print(summary)
