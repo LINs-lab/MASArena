@@ -165,6 +165,28 @@ class BenchmarkRunner:
 
         output_file = Path(self.results_dir) / f"{benchmark_name}_{agent_system}_{self.timestamp}.json"
 
+        # Auto-download dataset if missing
+        if not os.path.exists(data_path):
+            if verbose:
+                print(f"Data file not found at {data_path}. Attempting to download...")
+            try:
+                import importlib.util
+                # Assume running from project root, check relative path first
+                download_script_path = Path("data/download/download_dataset.py")
+                if not download_script_path.exists():
+                    # Fallback to finding it relative to this file
+                    download_script_path = Path(__file__).parent.parent.parent / "data" / "download" / "download_dataset.py"
+                
+                if download_script_path.exists():
+                    spec = importlib.util.spec_from_file_location("download_dataset", str(download_script_path))
+                    if spec and spec.loader:
+                        download_module = importlib.util.module_from_spec(spec)
+                        spec.loader.exec_module(download_module)
+                        if hasattr(download_module, "ensure_dataset_exists"):
+                            download_module.ensure_dataset_exists(benchmark_name, str(data_path))
+            except Exception as e:
+                print(f"Warning: Failed to attempt automatic download: {e}")
+
         try:
             with open(data_path, "r", encoding="utf-8") as f:
                 problems = [json.loads(line) for line in f]
