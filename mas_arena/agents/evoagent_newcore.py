@@ -54,8 +54,15 @@ class BenchEnhancedAgent:
     result: Dict[str, Any] = field(default_factory=dict)
     
 
-    bench_agent: BenchAgent = field(init=False, repr=False)
+    bench_agent: Any = field(default=None, repr=False)
     
+    # def __init__(self,agent_id,name,model_name,system_prompt,bench_agent):
+    #     self.agent_id = agent_id
+    #     self.name = name 
+    #     self.model_name = model_name
+    #     self.system_prompt = system_prompt
+    #     self.bench_agent = bench_agent
+        
     def __post_init__(self):
         """Initialize BenchAgent after dataclass init."""
 
@@ -178,7 +185,7 @@ class EvoAgent(AgentSystem):
                 name=name,
                 model_name=self.model_name,
                 system_prompt=system_prompt,
-                bench_agent=self.bench_agent_executor
+                bench_agent = self.bench_agent_executor
             )
             
             base_agents.append(agent)

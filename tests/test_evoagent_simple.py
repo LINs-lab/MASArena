@@ -17,20 +17,18 @@ if __name__ == "__main__":
         "final_agents_count": 5,          
         "crossover_rate": 0.7,            
         "mutation_rate": 0.3,             
-        "verbosity_level": 1,             
+        "verbosity_level": 2,             
         "evaluator": "math",
         "manager_tools": ["python_interpreter", "final_answer"],
         "search_tools": ["search", "wikipedia"],
         "memory": None,              
     }
 
-    # 3. 运行 BenchmarkRunner
-    # 将 agent_system 指定为 "evoagent" (假设你在系统中已注册该名称)
     summary = asyncio.run(BenchmarkRunner().arun(
         benchmark_name="math",          
         agent_system="evoagent",         
         agent_config=agent_config,       
-        limit=5,                         
+        limit=1,                         
         pass_at_k=1,                     
         log_file="logs/evoagent_test.log" 
     ))
