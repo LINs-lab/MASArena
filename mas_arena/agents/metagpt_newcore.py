@@ -337,11 +337,11 @@ Output in plain text with markdown formatting, wrapped in <answer> tags:
         task_result = {"content": content, "agent": agent_name}
 
 
-        ai_message = type('AIMessageMock', (object,), {
-            'content': content, 
-            'name': agent_name, 
-            'usage_metadata': usage_metadata,
-        })()
+        ai_message = AIMessage(
+            content=content,
+            name=agent_name,
+            usage_metadata=usage_metadata
+        )
         self.message_history.append(ai_message)
 
         self._publish_message(
@@ -447,7 +447,7 @@ Output in plain text with markdown formatting, wrapped in <answer> tags:
             return {
                 "result": result_chain,
                 "execution_time": time.time() - start,
-                "messages": messages,
+                "messages": self.message_history,
                 "final_answer": tester_out,
             }
 
