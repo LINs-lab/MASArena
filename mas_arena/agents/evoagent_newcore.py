@@ -12,6 +12,7 @@ from langchain_community.callbacks.openai_info import OpenAICallbackHandler
 from mas_arena.agents.base import AgentSystem, AgentSystemRegistry
 from mas_arena.agents.bench_agent import BenchAgent
 from mas_arena.agents.agent_core import Tool
+import os 
 
 import nest_asyncio
 nest_asyncio.apply()
@@ -55,13 +56,6 @@ class BenchEnhancedAgent:
     
 
     bench_agent: Any = field(default=None, repr=False)
-    
-    # def __init__(self,agent_id,name,model_name,system_prompt,bench_agent):
-    #     self.agent_id = agent_id
-    #     self.name = name 
-    #     self.model_name = model_name
-    #     self.system_prompt = system_prompt
-    #     self.bench_agent = bench_agent
         
     def __post_init__(self):
         """Initialize BenchAgent after dataclass init."""
@@ -151,8 +145,8 @@ class EvoAgent(AgentSystem):
         
         self.bench_agent_executor = BenchAgent(
             model=self.config.get("model_name", "gpt-4o-mini"),
-            api_key=self.config.get("api_key"),
-            api_base=self.config.get("api_base"),
+            api_key=self.config.get("api_key") or os.getenv("OPENAI_API_KEY"),
+            api_base=self.config.get("api_base") or os.getenv("OPENAI_API_BASE"),
             search_max_steps=self.config.get("search_max_steps", 10),
             verbosity_level=self.config.get("verbosity_level", 2),
             manager_tools= self.config.get("manager_tools"),
@@ -746,7 +740,7 @@ class EvoAgent(AgentSystem):
             summary_message.usage_metadata = summary_usage
             
         messages.append(summary_message)
-        
+        print("summary_message:",summary_message)
         # Return results, including messages, execution time and evolution metrics
         return {
             "messages": messages,
