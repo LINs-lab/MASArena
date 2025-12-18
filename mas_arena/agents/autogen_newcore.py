@@ -105,7 +105,14 @@ class AutoGen(AgentSystem):
                         print("final_answer:",final_answer)
 
                     if agent_name == "critic" and "approve" in response_content.lower():
-                        all_messages.append(ai_message)
+                        summary_message = {
+                            'content': final_answer,
+                            'name': 'system_final',
+                            'role': 'assistant',
+                            'message_type': 'ai_response'
+                        }
+                        all_messages.append(summary_message)
+                        # all_messages.append(ai_message)
                         print("final_answer:",final_answer)
                         return {
                             "messages": all_messages,
