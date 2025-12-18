@@ -447,7 +447,7 @@ Output in plain text with markdown formatting, wrapped in <answer> tags:
             return {
                 "result": result_chain,
                 "execution_time": time.time() - start,
-                "messages": self.message_history,
+                "messages":  self.message_history,
                 "final_answer": tester_out,
             }
 
