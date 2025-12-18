@@ -69,10 +69,12 @@ class MetaGPT(AgentSystem):
             model=self.config.get("model_name", "gpt-4o-mini"),
             api_key=self.config.get("api_key"),
             api_base=self.config.get("api_base"),
-            max_steps=self.config.get("max_steps", 15),
             search_max_steps=self.config.get("search_max_steps", 10),
             verbosity_level=self.config.get("verbosity_level", 2),
-
+            manager_tools= self.config.get("manager_tools"),
+            search_tools= self.config.get("search_tools"),
+            memory= self.config.get("memory"),
+            additional_instructions=self.config.get("additional_instructions")
         )
         
         self._create_agents()

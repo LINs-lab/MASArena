@@ -231,15 +231,12 @@ class Camel(AgentSystem):
 
         bench_agent_config = {
             "model": self.model_name,
-
             "api_key": os.getenv("OPENAI_API_KEY"),
             "api_base": os.getenv("OPENAI_API_BASE"),
-            "max_steps": self.config.get("max_steps", 15),
             "search_max_steps": self.config.get("search_max_steps", 10),
             "verbosity_level": self.config.get("verbosity_level", 2),
             "additional_instructions": self.config.get("additional_instructions"),
             "name": "camel_bench_agent",
-
             "manager_tools": self.config.get("manager_tools"),
             "search_tools": self.config.get("search_tools"),
         }

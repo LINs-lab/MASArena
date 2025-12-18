@@ -48,7 +48,6 @@ class LLMDebate(AgentSystem):
             "memory": self.config.get("memory"),
             "api_key": self.config.get("api_key") or os.getenv("OPENAI_API_KEY"),
             "api_base": self.config.get("api_base") or os.getenv("OPENAI_API_BASE"),
-            "max_steps": self.config.get("max_steps", 15),
             "search_max_steps": self.config.get("search_max_steps", 10),
             "verbosity_level": self.config.get("verbosity_level", 1),
             # additional_instructions 用于将 format_prompt 传递给 BenchAgent

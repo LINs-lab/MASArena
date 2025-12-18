@@ -142,12 +142,23 @@ class EvoAgent(AgentSystem):
         self.crossover_rate = self.config.get("crossover_rate", 0.7)
         self.mutation_rate = self.config.get("mutation_rate", 0.3)
         
+        self.bench_agent_executor = BenchAgent(
+            model=self.config.get("model_name", "gpt-4o-mini"),
+            api_key=self.config.get("api_key"),
+            api_base=self.config.get("api_base"),
+            search_max_steps=self.config.get("search_max_steps", 10),
+            verbosity_level=self.config.get("verbosity_level", 2),
+            manager_tools= self.config.get("manager_tools"),
+            search_tools= self.config.get("search_tools"),
+            memory= self.config.get("memory"),
+            additional_instructions=self.config.get("additional_instructions")
+        )
+        
    
         
     def _initialize_base_agents(self) -> List[BenchEnhancedAgent]: 
         """Initialize base agents"""
         base_agents = []
-        
         # Base system prompt templates
         base_prompts = [
             "You are a mathematics expert, skilled in solving mathematical problems. Please think step by step and solve the problem.",
@@ -166,7 +177,8 @@ class EvoAgent(AgentSystem):
                 agent_id=agent_id,
                 name=name,
                 model_name=self.model_name,
-                system_prompt=system_prompt
+                system_prompt=system_prompt,
+                bench_agent=self.bench_agent_executor
             )
             
             base_agents.append(agent)

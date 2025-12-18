@@ -23,7 +23,7 @@ if __name__ == "__main__":
         "manager_tools": ["python_interpreter"], # final_answer 现在会自动添加
         "search_tools": ["search", "wikipedia"],
         "memory": None,
-        "verbosity_level": 1,
+        "verbosity_level": 2,
         "evaluator": "math",        # 使用 Math 评估器
     }
     
@@ -36,7 +36,7 @@ if __name__ == "__main__":
         benchmark_name="math",
         agent_system="llm_debate",  # 指定 llm_debate 系统
         agent_config=agent_config,
-        limit=2,                    # 限制只跑2个问题用于快速测试
+        limit=1,                    # 限制只跑2个问题用于快速测试
         pass_at_k=1,
         log_file=log_file,
     ))
