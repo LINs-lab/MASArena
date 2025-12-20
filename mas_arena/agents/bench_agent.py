@@ -246,7 +246,18 @@ class BenchAgent(AgentSystem):
         tools = []
         crawler = SimpleCrawler()  # 为爬虫工具创建共享实例
         
-        for tool_config in tool_configs:
+        # 处理 "ALL" 关键字，将其展开为所有可用工具名称
+        processed_configs = []
+        if isinstance(tool_configs, list):
+            for cfg in tool_configs:
+                if isinstance(cfg, str) and cfg.upper() == "ALL":
+                    processed_configs.extend(self.AVAILABLE_TOOLS.keys())
+                else:
+                    processed_configs.append(cfg)
+        else:
+            processed_configs = tool_configs or []
+
+        for tool_config in processed_configs:
             if isinstance(tool_config, Tool):
                 # 直接使用Tool对象
                 tools.append(tool_config)

@@ -36,8 +36,8 @@ if __name__ == "__main__":
         benchmark_name="math",
         agent_system="llm_debate",  # 指定 llm_debate 系统
         agent_config=agent_config,
-        limit=1,                    # 限制只跑2个问题用于快速测试
-        pass_at_k=1,
+        limit=10,                    # 限制只跑2个问题用于快速测试
+        pass_at_k=2,
         log_file=log_file,
     ))
     
