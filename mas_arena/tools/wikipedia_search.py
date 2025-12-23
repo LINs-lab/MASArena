@@ -2,9 +2,6 @@ from typing import Optional, Dict, Any
 from smolagents import Tool
 import logging
 
-logger = logging.getLogger(__name__)
-
-
 class WikipediaSearchTool(Tool):
     """Wikipedia search tool for retrieving article summaries."""
 
@@ -27,6 +24,9 @@ class WikipediaSearchTool(Tool):
 
     def __init__(self):
         super().__init__()
+        import logging
+        logger = logging.getLogger(__name__)
+        
         self._wikipedia_available = False
         self._wikipedia = None
 
@@ -44,6 +44,8 @@ class WikipediaSearchTool(Tool):
 
     def forward(self, query: str, max_sentences: Optional[int] = None) -> str:
         """Search Wikipedia and return a summary."""
+        import logging
+        logger = logging.getLogger(__name__)
         max_sentences = max_sentences or 3
 
         if not self._wikipedia_available:

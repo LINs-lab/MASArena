@@ -302,6 +302,8 @@ class BenchAgent(AgentSystem):
                 return SearchTool(reflection=False)
             elif tool_name == "wikipedia":
                 return WikipediaSearchTool()
+            elif tool_name == "python_interpreter":
+                return tool_class(authorized_imports=AUTHORIZED_IMPORTS)
             else:
                 # 对于不需要特殊参数的工具
                 return tool_class()

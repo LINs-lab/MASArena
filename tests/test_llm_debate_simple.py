@@ -15,16 +15,17 @@ from mas_arena.benchmark_runner import BenchmarkRunner
 logging.basicConfig(level=logging.INFO)
 
 if __name__ == "__main__":
+    evaluator = "hotpotqa"
     # 配置 LLM Debate 参数
     agent_config = {
         "agents_num": 2,            # 2个辩手
         "rounds_num": 2,            # 2轮辩论
-        "model_name": "gpt-4o-mini",   # 模型
+        "model_name": "gpt-4.1",   # 模型
         "manager_tools": ["python_interpreter"], # final_answer 现在会自动添加
         "search_tools": ["search", "wikipedia"],
         "memory": None,
-        "verbosity_level": 2,
-        "evaluator": "math",        # 使用 Math 评估器
+        "verbosity_level": 10,
+        "evaluator": evaluator,        # 使用 Math 评估器
     }
     
     # 生成带时间戳的日志文件名
@@ -33,7 +34,7 @@ if __name__ == "__main__":
     
     # 使用 asyncio.run 运行异步方法
     summary = asyncio.run(BenchmarkRunner().arun(
-        benchmark_name="math",
+        benchmark_name=evaluator,
         agent_system="llm_debate",  # 指定 llm_debate 系统
         agent_config=agent_config,
         limit=10,                    # 限制只跑2个问题用于快速测试
