@@ -283,7 +283,10 @@ You can also delegate tasks to the following managed agents:
 
 {self.instructions}
 
-Always break down complex problems into smaller steps and use code to solve them systematically."""
+Always break down complex problems into smaller steps and use code to solve them systematically.
+IMPORTANT: When you use Python, you MUST use the following format:\n```python\nyour_code_here.
+IMPORTANT: When using Python, you MUST use print() to output the final result of your calculation, otherwise the system will not be able to receive the data.
+"""
 
         return base_prompt
 
@@ -407,6 +410,7 @@ Always break down complex problems into smaller steps and use code to solve them
                         )
                         self.memory.add_step(action_step)
                         self._call_step_callbacks(action_step)
+                        continue
 
                 # 检查是否提到了管理的代理
                 agent_delegation = self._check_agent_delegation(
@@ -450,6 +454,7 @@ Always break down complex problems into smaller steps and use code to solve them
                         )
                         self.memory.add_step(task_step)
                         self._call_step_callbacks(task_step)
+                        continue
 
                 # 检查是否有最终答案
                 final_answer = self._extract_final_answer(response_text)
@@ -543,9 +548,9 @@ Always break down complex problems into smaller steps and use code to solve them
                 return match.group(1).strip()
 
         # 回退到最后一行的内容，避免完全提取失败
-        lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
-        if lines:
-            return lines[-1]
+        # lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
+        # if lines:
+        #     return lines[-1]
 
         return None
 
