@@ -25,7 +25,28 @@ class ToolManager:
 
     def get_tools_schema(self) -> List[Dict[str, Any]]:
         """获取所有工具的OpenAI函数调用格式"""
-        return [tool.to_dict() for tool in self.tools.values()]
+        schemas = []
+        for tool in self.tools.values():
+            raw_schema = tool.to_dict()
+            
+            # 兼容性处理：确保符合 OpenAI Tools API 格式
+            if "type" in raw_schema and raw_schema["type"] == "function" and "function" in raw_schema:
+                # 已经是标准格式
+                schemas.append(raw_schema)
+            else:
+                # 假设是 Function 定义，进行包装
+                # 注意：smolagents 的 to_dict 可能包含 type 字段但不是 'function' (例如可能是 output type)
+                # 我们需要清理不应该出现在 function definition 中的字段
+                
+                function_def = raw_schema.copy()
+                # 移除可能导致冲突的顶层字段
+                function_def.pop("type", None) 
+                
+                schemas.append({
+                    "type": "function",
+                    "function": function_def
+                })
+        return schemas
 
     def execute_tool(self, name: str, *args, **kwargs) -> str:
         """执行工具"""

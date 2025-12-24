@@ -286,8 +286,10 @@ class BenchAgent(AgentSystem):
                 return CrawlerReadTool(crawler)
             elif tool_name == "crawler_archive_search":
                 return CrawlerArchiveSearchTool(crawler)
-            elif tool_name in ["browser", "arxiv", "markdown_converter", "terminal", "download"]:
+            elif tool_name in ["arxiv", "markdown_converter", "terminal", "download"]:
                 return tool_class(model=self.llm, text_limit=1000)
+            elif tool_name == "browser":
+                return tool_class() # Browser wrapper doesn't need model arg usually, or has default
             elif tool_name == "text_inspector":
                 return tool_class(self.llm, text_limit=100000)
             elif tool_name in ["csv_extractor", "zip_extractor"]:
@@ -539,9 +541,16 @@ Task:
             # 提取步骤信息
             manager_agent_steps, search_agent_steps = self._extract_agent_steps()
             
+            # 计算最终分数
+            score = 1.0 if question_scorer(final_answer, problem["solution"]) else 0.0
+            is_correct = score == 1.0
+            
             return {
                 "messages": conversation_messages,
                 "final_answer": final_answer,
+                "extracted_answer": final_answer, # Alias for BenchmarkRunner compatibility
+                "score": score,
+                "is_correct": is_correct,
                 "manager_agent_steps": manager_agent_steps,
                 "search_agent_steps": search_agent_steps,
                 "search_keywords": search_keywords,

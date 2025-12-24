@@ -335,6 +335,8 @@ Always break down complex problems into smaller steps and use code to solve them
                 tool_final_answer = self._extract_final_answer_tool_call(response_text)
                 
                 if tool_final_answer:
+                    if self.verbosity_level > 0:
+                        print(f"CodeAgent returning final answer from tool call: {tool_final_answer}")
                     # 记录工具调用步骤（可选，但推荐）
                     action_step = ActionStep(
                         tool_calls=[
@@ -454,6 +456,8 @@ Always break down complex problems into smaller steps and use code to solve them
                 # 检查是否有最终答案
                 final_answer = self._extract_final_answer(response_text)
                 if final_answer:
+                    if self.verbosity_level > 0:
+                        print(f"CodeAgent returning final answer found in text: {final_answer}")
                     return final_answer
 
                 # 如果没有代码执行或代理委托，继续下一步
@@ -514,7 +518,10 @@ Always break down complex problems into smaller steps and use code to solve them
         match = re.search(pattern_quotes, text, re.IGNORECASE | re.DOTALL)
         
         if match:
-            return match.group(1).strip()
+            answer = match.group(1).strip()
+            if self.verbosity_level > 1:
+                print(f"DEBUG: Extracted final answer via tool call pattern: {answer}")
+            return answer
             
         return None
     
@@ -523,10 +530,14 @@ Always break down complex problems into smaller steps and use code to solve them
         # 优先捕捉常见的格式化答案
         boxed_matches = re.findall(r"\\boxed\s*\{([^{}]+)\}", text, re.DOTALL)
         if boxed_matches:
+            if self.verbosity_level > 1:
+                print(f"DEBUG: Extracted final answer via \\boxed: {boxed_matches[-1].strip()}")
             return boxed_matches[-1].strip()
 
         tag_match = re.search(r"<answer>\s*(.*?)\s*</answer>", text, re.IGNORECASE | re.DOTALL)
         if tag_match:
+            if self.verbosity_level > 1:
+                print(f"DEBUG: Extracted final answer via <answer> tag: {tag_match.group(1).strip()}")
             return tag_match.group(1).strip()
 
         # 查找各种最终答案标记
@@ -540,12 +551,16 @@ Always break down complex problems into smaller steps and use code to solve them
         for pattern in patterns:
             match = re.search(pattern, text, re.IGNORECASE | re.DOTALL)
             if match:
+                if self.verbosity_level > 1:
+                    print(f"DEBUG: Extracted final answer via pattern '{pattern}': {match.group(1).strip()}")
                 return match.group(1).strip()
 
-        # 回退到最后一行的内容，避免完全提取失败
-        lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
-        if lines:
-            return lines[-1]
+        # 回退到最后一行的内容 - 禁用此回退，因为它会导致中间思考过程被误判为最终答案
+        # lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
+        # if lines:
+        #     if self.verbosity_level > 1:
+        #         print(f"DEBUG: Extracted final answer via fallback (last line): {lines[-1]}")
+        #     return lines[-1]
 
         return None
 
