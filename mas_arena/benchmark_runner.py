@@ -220,6 +220,7 @@ class BenchmarkRunner:
 
         try:
             results = await agent.evaluate(normalized_problem, metrics_registry=self.metrics_registry)
+            results = results.raw_responses
             problem_duration_ms = self.metrics_collector.stop_timer(f"mas_arena.problem.{problem_id}")
 
             duration_ms = results.get("execution_time_ms", problem_duration_ms)
