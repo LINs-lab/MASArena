@@ -519,6 +519,8 @@ class AgentSystem(abc.ABC):
         This method handles running the agent, evaluating the results,
         and collecting metrics.
         """
+        self.evaluator_name = kwargs.get("evaluator_name", self.evaluator_name)
+        print(self.evaluator_name)
         metrics_registry = kwargs.get("metrics_registry", self.metrics_registry)
         if metrics_registry:
             self.metrics_registry = metrics_registry
