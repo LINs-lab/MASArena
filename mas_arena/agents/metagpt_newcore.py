@@ -18,34 +18,15 @@ class Agent:
     constraints: List[str]
     role: str
     system_prompt: str
+    memory: Dict[str, Any] = None
+    llm: Any = field(init=False, repr=False)
 
-    bench_agent: BenchAgent = field(init=False, repr=False)
-    memory: Dict[str, Any] = None 
-    
-
-    def __init__(
-        self,
-        name: str,
-        description: str,
-        goals: List[str],
-        constraints: List[str],
-        role: str,
-        system_prompt: str,
-        bench_agent: BenchAgent, 
-        memory: Dict[str, Any] = None,
-    ):
-        self.name = name
-        self.description = description
-        self.goals = goals
-        self.constraints = constraints
-        self.role = role
-        self.system_prompt = system_prompt
-        self.bench_agent = bench_agent  
-        if memory is None:
+    def __post_init__(self):
+        if self.memory is None:
             self.memory = {"messages": [], "knowledge": {}, "tasks": [], "completed_tasks": []}
-        else:
-            self.memory = memory
-
+        self.llm = ChatOpenAI(
+            model_name=os.getenv("MODEL_NAME", "gpt-4o-mini"),
+        )
 
     def add_to_memory(self, key: str, value: Any):
         if key not in self.memory:
@@ -61,22 +42,10 @@ class Agent:
         else:
             self.memory = {"messages": [], "knowledge": {}, "tasks": [], "completed_tasks": []}
 
+
 class MetaGPT(AgentSystem):
     def __init__(self, name: str = None, config: Dict[str, Any] = None):
         super().__init__(name, config)
-
-        self.bench_agent_executor = BenchAgent(
-            model=self.config.get("model_name", "gpt-4o-mini"),
-            api_key=self.config.get("api_key"),
-            api_base=self.config.get("api_base"),
-            search_max_steps=self.config.get("search_max_steps", 10),
-            verbosity_level=self.config.get("verbosity_level", 2),
-            manager_tools= self.config.get("manager_tools"),
-            search_tools= self.config.get("search_tools"),
-            memory= self.config.get("memory"),
-            additional_instructions=self.config.get("additional_instructions")
-        )
-        
         self._create_agents()
         self.message_queue = []
         self.task_status = {
@@ -85,13 +54,29 @@ class MetaGPT(AgentSystem):
             "iteration_count": 0,
             "max_iterations": self.config.get("max_iterations", 3),
         }
+        self.llm = ChatOpenAI(
+            model_name=os.getenv("MODEL_NAME", "gpt-4o-mini"),
+        )
+        self.bench_agent = self._init_bench_agent()
         self.message_history = []
+        
+    def _init_bench_agent(self):
+        """初始化具有工具调用能力的 BenchAgent"""
+        # 这里假设 BenchAgent 类已经定义并可用
+        return BenchAgent(
+            model=self.config.get("model_name", "gpt-4o-mini"),
+            api_key=self.config.get("api_key", os.getenv("OPENAI_API_KEY")),
+            api_base=self.config.get("api_base", os.getenv("OPENAI_API_BASE")),
+            search_max_steps=self.config.get("search_max_steps", 10),
+            verbosity_level=self.config.get("verbosity_level", 2),
+            manager_tools=self.config.get("manager_tools"),
+            search_tools=self.config.get("search_tools"),
+            memory=self.config.get("memory"),
+            additional_instructions=self.config.get("additional_instructions")
+        )
         
     def _create_agents(self) -> Dict[str, List[Agent]]:
         agents_dict = {}
-
-
-        bench_agent = self.bench_agent_executor 
 
         # Product Manager
         agents_dict["product_manager"] = Agent(
@@ -143,8 +128,7 @@ Output in plain text with markdown formatting, wrapped in <answer> tags:
 ## Scope
 - {Scope description}
 </answer>
-""", 
-            bench_agent=bench_agent,
+""",
         )
 
         # Architect
@@ -176,8 +160,7 @@ Output in plain text with markdown formatting, wrapped in <answer> tags:
 ## Technology Stack
 - Python
 </answer>
-""", 
-            bench_agent=bench_agent,
+""",
         )
 
         # Project Manager
@@ -208,8 +191,7 @@ Output in plain text with markdown formatting, wrapped in <answer> tags:
 - Examples: {List key examples}
 - Architecture Notes: {Key architecture points}
 </answer>
-""", 
-            bench_agent=bench_agent,
+""",
         )
 
         # Engineer
@@ -248,8 +230,7 @@ Output in plain text with markdown formatting, wrapped in <answer> tags:
 ## Optimizations
 - {Optimization 1 or "None"}
 </answer>
-""", 
-            bench_agent=bench_agent,
+""",
         )
 
         # QA Engineer
@@ -288,13 +269,11 @@ Output in plain text with markdown formatting, wrapped in <answer> tags:
 {Final validated Python code}
 ```
 </answer>
-""", 
-            bench_agent=bench_agent,
+""",
         )
 
         self.agents = agents_dict
         return {"workers": list(agents_dict.values())}
-        
 
     def _publish_message(self, from_agent: str, to_agent: str, message_type: str, content: Any):
         message = {
@@ -307,54 +286,69 @@ Output in plain text with markdown formatting, wrapped in <answer> tags:
         self.message_queue.append(message)
         if to_agent in self.agents:
             self.agents[to_agent].add_to_memory("messages", message)
-            
+
     def _subscribe_messages(self, agent_name: str, message_type: str = None) -> List[Dict[str, Any]]:
         messages = []
         for message in self.message_queue:
             if message["to"] == agent_name and (message_type is None or message["type"] == message_type):
                 messages.append(message)
         return messages
-    
+
     async def _run_agent_task(self, agent_name: str, task: Dict[str, Any]) -> Dict[str, Any]:
+        if agent_name == "engineer":
+            # 构建发送给 BenchAgent 的提示词
+            # 整合 PM 的需求、架构设计和任务分配
+            augmented_prompt = f"""
+            System Role: {self.agents['engineer'].system_prompt}
+            
+            Task Context:
+            - Product Requirements: {task.get('product_manager_result', {}).get('content', '')}
+            - Architecture: {task.get('architect_result', {}).get('content', '')}
+            - Assignment: {task.get('project_manager_result', {}).get('content', '')}
+            
+            Please implement the code. Ensure the final code is wrapped in <answer> tags.
+            """
+            
+            # 调用 BenchAgent 的 run_agent_step
+            bench_result = await self.bench_agent.run_agent_step(
+                augmented_question=augmented_prompt,
+                additional_args={"task_data": task}
+            )
+            
+            content = bench_result.get("final_answer", "")
+            
+            # 适配消息记录格式
+            ai_message = AIMessage(content=content)
+            ai_message.name = "engineer_benchagent"
+            self.message_history.append(ai_message)
+            
+            return {"content": content, "agent": "engineer"}
+        
         agent = self.agents[agent_name]
-        
+        messages = [SystemMessage(content=agent.system_prompt), HumanMessage(content=str(task))]
 
-        augmented_question = f"{agent.system_prompt}\n\nTask:\n{str(task)}"
-        
+        response = await agent.llm.ainvoke(messages)
+        content = response.content
+        usage_metadata = response.usage_metadata if hasattr(response, "usage_metadata") else None
 
-        additional_args = {"agent_name": agent_name}
-        
+        result = {"content": content, "agent": agent_name}
 
-        result = await agent.bench_agent.run_agent_step(
-            augmented_question=augmented_question,
-            additional_args=additional_args
-        )
-        
-        content = result.get("content", result.get("final_answer", ""))
-        usage_metadata = result.get("usage_metadata")
-
-
-        task_result = {"content": content, "agent": agent_name}
-
-
-        ai_message = AIMessage(
-            content=content,
-            name=agent_name,
-            usage_metadata=usage_metadata
-        )
+        ai_message = AIMessage(content=content)
+        ai_message.name = agent_name
+        if usage_metadata:
+            ai_message.usage_metadata = usage_metadata
         self.message_history.append(ai_message)
 
         self._publish_message(
-            agent_name, "system", "task_result", {"content": task_result, "usage_metadata": usage_metadata}
+            agent_name, "system", "task_result", {"content": result, "usage_metadata": usage_metadata}
         )
 
-        return task_result
-    
+        return result
+
     async def _process_task(self, task: Dict[str, Any]) -> Dict[str, Any]:
         max_iterations = self.task_status["max_iterations"]
         iteration = 0
         result = None
-
         while iteration < max_iterations:
             self.task_status["iteration_count"] = iteration
             self.task_status["current_task"] = task
@@ -439,15 +433,13 @@ Output in plain text with markdown formatting, wrapped in <answer> tags:
             # Return the raw QA output without specific extraction
             tester_out = result_chain.get("tester_result", {}).get("content", "")
 
-            messages = [
-                m for m in self.message_history 
-                if hasattr(m, "usage_metadata") and m.usage_metadata is not None
-            ]
-
             return {
                 "result": result_chain,
                 "execution_time": time.time() - start,
-                "messages":  self.message_history,
+                "messages": [
+                    m for m in self.message_history
+                    if getattr(m, "usage_metadata", None)
+                ],
                 "final_answer": tester_out,
             }
 
@@ -461,3 +453,49 @@ Output in plain text with markdown formatting, wrapped in <answer> tags:
 
 
 AgentSystemRegistry.register("metagpt", MetaGPT, max_iterations=3)
+
+if __name__ == "__main__":
+    # Create MetaGPT instance
+    config = {"max_iterations": 3}
+    metagpt = MetaGPT(name="Test System", config=config)
+
+    # Create test problem
+    test_problem = {
+        "id": "test_001",
+        "type": "code_generation",
+        "description": "Create a simple Python function to add two numbers",
+        "requirements": [
+            "Function name should be add_numbers",
+            "Accept two parameters a and b",
+            "Return the result of a+b",
+            "Include appropriate type hints",
+            "Include docstring",
+        ],
+    }
+
+    # Run test
+    try:
+        print("Starting MetaGPT system test...")
+        result = metagpt.run_agent(test_problem, problem_type="code_generation")
+
+        print("\nTest Results:")
+        print("-" * 50)
+        print(f"Execution time: {result['execution_time']:.2f}s")
+
+        print("\nTask Execution Results:")
+        print("-" * 50)
+        print(result["final_answer"])
+
+        print("\nMessage History:")
+        print("-" * 50)
+        for msg in result.get("messages", []):
+            print(f"\n{msg.name}'s message:")
+            print("-" * 20)
+            if hasattr(msg, "content"):
+                print(msg.content)
+            if hasattr(msg, "usage_metadata") and msg.usage_metadata:
+                print("\nToken usage:")
+                print(json.dumps(msg.usage_metadata, ensure_ascii=False, indent=2))
+
+    except Exception as e:
+        print(f"Error occurred during test: {str(e)}")
