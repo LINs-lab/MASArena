@@ -15,7 +15,10 @@ class BrowserTool(Tool):
             "action": {
                 "type": "string",
                 "description": "The action to perform: 'navigate', 'get_content', 'get_url', 'screenshot', 'close'.",
-                "enum": ["navigate", "get_content", "get_url", "screenshot", "close"]
+                "enum": ["navigate", "get_content", "get_url", "screenshot", "close"],
+                # smolagents validates nullability based on function signature defaults.
+                # Since forward(action: str = None, ...) allows None, inputs must declare it nullable.
+                "nullable": True,
             },
             "url": {
                 "type": "string",
@@ -41,16 +44,18 @@ class BrowserTool(Tool):
             self.available = False
             self.browser_instance = None
 
-    def forward(self, action: str = None, url: str = None, **kwargs) -> str:
+    # NOTE:
+    # smolagents.Tool validates that `forward()`'s named parameters exactly match `self.inputs` keys.
+    # Using `**kwargs` makes smolagents treat it as an extra parameter named "kwargs", which breaks
+    # tool creation. Keep the signature strictly aligned with `inputs` ("action", "url").
+    def forward(self, action: str = None, url: str = None) -> str:
         # Re-import strictly required modules for sandbox execution context
         # But self.browser_instance is an instance attribute, so we rely on it being available.
         
-        # Handle cases where action is implicit or passed as a keyword argument mixed with others
+        # Handle cases where action is implicit
         if action is None:
             if url:
                 action = "navigate"
-            elif kwargs.get("action"):
-                action = kwargs["action"]
             else:
                 return "Error: 'action' argument is required for browser tool (e.g., action='navigate', action='get_content')."
         
