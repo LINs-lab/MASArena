@@ -632,9 +632,14 @@ class AgentSystem(abc.ABC):
                     tags={"agent_system": self.name, "evaluator": self.evaluator.name, "run_id": run_id}
                 )
             
+            # Determine correctness from score if is_correct is not provided
+            score = eval_result.get("score", 0)
+            is_correct = eval_result.get("is_correct", score == 1)
+
             raw_responses =  {
                 "status": "success",
                 **eval_result,
+                "is_correct": is_correct,
                 "messages": messages,
                 "execution_time_ms": execution_time_ms,
                 "llm_usage": usage_metrics,
@@ -645,7 +650,7 @@ class AgentSystem(abc.ABC):
             
             return AgentResult(
                 final_answer=eval_result.get("extracted_answer", ""),
-                is_correct=eval_result.get("is_correct", False),
+                is_correct=is_correct,
                 trajectory=trajectory,
                 raw_responses=raw_responses,
                 error=None,
