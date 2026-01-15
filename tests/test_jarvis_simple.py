@@ -37,7 +37,7 @@ if __name__ == "__main__":
         benchmark_name=evaluator,
         agent_system="jarvis",  # 指定 jarvis 系统
         agent_config=agent_config,
-        limit=5,                    # 限制只跑2个问题用于快速测试
+        limit=4,                    # 限制只跑2个问题用于快速测试
         pass_at_k=1,
         log_file=log_file,
 

@@ -66,9 +66,24 @@ class GSM8KEvaluator(BaseEvaluator):
         Returns:
             Tuple of (score, prediction) where score is 1.0 for correct, 0.0 for incorrect
         """
-        if prediction is None:
+        # Be defensive: missing / unparsable numbers should not crash evaluation
+        if expected_output is None or prediction is None:
             return 0.0, prediction
         return 1.0 if abs(expected_output - prediction) <= 1e-6 else 0.0, prediction
+
+    def _get_problem_text(self, problem: Dict[str, Any]) -> str:
+        """
+        GSM8K problems are normalized upstream to use standard keys:
+        - problem["problem"]  : question text
+        - problem["solution"] : reference answer text
+
+        But we keep backward compatibility with raw GSM8K keys ("question"/"answer").
+        """
+        return str(problem.get("problem") or problem.get("question") or "")
+
+    def _get_solution_text(self, problem: Dict[str, Any]) -> str:
+        # Standard normalized key first; fall back to raw/legacy keys.
+        return str(problem.get("solution") or problem.get("answer") or problem.get("expected") or "")
 
     def create_run(
         self,
@@ -79,15 +94,17 @@ class GSM8KEvaluator(BaseEvaluator):
     ) -> Run:
         """Create a LangSmith run for evaluation"""
         import uuid
+        question_text = self._get_problem_text(problem)
+        expected_text = self._get_solution_text(problem)
 
         return Run(
             id=str(uuid.uuid4()),
             name=f"{self.name.upper()}_Evaluation",
-            inputs={"question": problem["question"]},
+            inputs={"question": question_text},
             outputs={
                 "prediction": final_answer,
                 "extracted_answer": extracted_answer,
-                "expected": problem["answer"],
+                "expected": expected_text,
                 "score": score,
                 "passed": score == 1.0,
             },
@@ -101,7 +118,8 @@ class GSM8KEvaluator(BaseEvaluator):
         Evaluate a problem given the agent's response.
 
         Args:
-            problem: The problem dictionary with "question" and "answer" keys
+            problem: The (normalized) problem dictionary with standard keys "problem" and "solution"
+                     (legacy raw keys "question"/"answer" are also supported).
             run_result: The result from running the agent system
 
         Returns:
@@ -110,8 +128,10 @@ class GSM8KEvaluator(BaseEvaluator):
         # Extract the final answer
         final_answer = run_result.get("final_answer", "")
 
+        expected_text = self._get_solution_text(problem)
+
         # Extract numbers
-        expected_number = self.extract_number(problem["answer"])
+        expected_number = self.extract_number(expected_text)
         predicted_number = self.extract_number(final_answer)
 
         # Calculate score
