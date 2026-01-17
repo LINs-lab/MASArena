@@ -12,6 +12,7 @@ from io import StringIO
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional, Union, Callable
 import logging
+import multiprocessing
 
 from .steps import ActionStep, PlanningStep, TaskStep, StepMemory
 from .models import OpenAIServerModel
@@ -377,7 +378,17 @@ IMPORTANT: When using Python, you MUST use print() to output the final result of
                         )
 
                         if python_tool:
-                            result = python_tool.forward(code)
+                            timeout =30
+                            
+                            with multiprocessing.Pool(processes=1) as pool:
+                                result_obj = pool.apply_async(python_tool.forward, (code,))
+                                try:
+                                    # get() 会阻塞直到结果返回或超时
+                                    result = result_obj.get(timeout=timeout)
+                                except multiprocessing.TimeoutError:
+                                    result = f"Error: Execution timed out after {timeout} seconds."
+                                except Exception as e:
+                                    result = f"Error: {str(e)}"
                             execution_results.append(result)
 
                             if self.verbosity_level > 1:
