@@ -40,7 +40,7 @@ class AutoGen(AgentSystem):
         self.agents = [
             {
                 "name": "primary",
-                "system_prompt": """You are a helpful AI assistant, skilled at generating creative and accurate content. Your current task is to generate the initial content or revise it based on the critic's feedback. Use the tool 'final_answer' only when the content is approved by the critic."""
+                "system_prompt": """You are a helpful AI assistant, skilled at generating creative and accurate content."""
             },
             {
                 "name": "critic",
@@ -69,7 +69,6 @@ class AutoGen(AgentSystem):
                 agent_prompt = agent["system_prompt"]
                 try:
                     if agent_name == "primary":
-                        # --- Primary 逻辑：继续使用 BenchAgent ---
                         full_input_prompt = [
                             f"System Prompt for {agent_name}: {agent_prompt}",
                             "\n--- Conversation History ---\n",
@@ -78,25 +77,24 @@ class AutoGen(AgentSystem):
                             role = msg.get("name") or msg.get("role")
                             full_input_prompt.append(f"{role.upper()}: {msg['content']}")
                         
-                        current_turn_prompt = f"\n\nNow, as the PRIMARY agent, generate or revise content. Respond directly."
+                        current_turn_prompt = f"\n\nNow, as the PRIMARY agent, generate or revise content. Respond directly.If the input is a multiple-choice question, output the letter of the correct answer ONLY. Do not provide any explanations, context, or additional characters."
                         augmented_question = "\n".join(full_input_prompt) + current_turn_prompt
 
                         result = await self.bench_agent.run_agent_step(
                             augmented_question=augmented_question, 
                             additional_args=additional_args
                         )
+                        bench_messages = result.get("messages", [])
+                        all_messages.extend(bench_messages)
+                        
                         response_content = result["final_answer"]
-                        steps = result.get("manager_agent_steps", []) + result.get("search_agent_steps", [])
-
+                        final_answer = response_content
+                        
                     else:
-                        # --- Critic 逻辑：改用 AsyncOpenAI ---
-                        # 构造标准的 OpenAI 消息格式
                         messages = [{"role": "system", "content": agent_prompt}]
-                        # 将对话历史喂给 Critic
                         for msg in conversation_history:
                             messages.append({"role": msg["role"], "content": msg["content"]})
                         
-                        # 添加明确的指令给 Critic
                         messages.append({
                             "role": "user", 
                             "content": "Please review the latest response above. Respond with 'APPROVE' if it is correct, or provide feedback."
@@ -107,92 +105,33 @@ class AutoGen(AgentSystem):
                             messages=messages,
                             temperature=0.7
                         )
-                        response_content = response.choices[0].message.content
-                        steps = [] # OpenAI 原生调用没有 BenchAgent 的内部 steps
                         
-                    # --- 通用处理逻辑 ---
-                    ai_message = {
-                        'content': response_content,
-                        'name': agent_name,
-                        'role': 'assistant', 
-                        'message_type': 'ai_response',
-                        'bench_agent_steps': steps,
-                    }
+                        response_content = response.choices[0].message.content
+                        critic_msg = {
+                            'content': response_content,
+                            'name': agent_name,
+                            'role': 'assistant', 
+                            'message_type': 'ai_response',
+                            'usage_metadata': response.usage 
+                        }
+                        all_messages.append(critic_msg)
 
                     conversation_history.append({"role": "assistant", "content": response_content, "name": agent_name})
-
-                    if agent_name == "primary":
-                        final_answer = response_content
 
                     if agent_name == "critic" and "approve" in response_content.lower():
                         summary_message = {
                             'content': final_answer,
                             'name': 'system_final',
                             'role': 'assistant',
-                            'message_type': 'ai_response'
+                            'message_type': 'ai_response',
+                            'usage_metadata': None 
                         }
-                        all_messages.append(ai_message) # 记录 Critic 的 APPROVE 消息
+                        
                         all_messages.append(summary_message)
                         return {
                             "messages": all_messages,
                             "final_answer": final_answer
                         }
-                        
-                    all_messages.append(ai_message)
-                # full_input_prompt = [
-                #     f"System Prompt for {agent_name}: {agent_prompt}",
-                #     "\n--- Conversation History ---\n",
-                # ]
-                
-                # for msg in conversation_history:
-                #     role = msg.get("name") or msg.get("role")
-                #     full_input_prompt.append(f"{role.upper()}: {msg['content']}")
-                    
-                # if agent_name == "primary":
-                #     current_turn_prompt = f"\n\nNow, as the {agent_name.upper()} agent, based on the above discussion, generate the initial content or revise it. DO NOT use the critic's system prompt. Respond directly with your content."
-                # elif agent_name == "critic":
-                #     current_turn_prompt = f"\n\nNow, as the {agent_name.upper()} agent, provide constructive feedback on the {conversation_history[-1].get('name', 'assistant')}'s latest output. Respond with 'APPROVE' if you find it satisfactory."
-                
-                # augmented_question = "\n".join(full_input_prompt) + current_turn_prompt
-
-                # try:
-                #     result = await self.bench_agent.run_agent_step(
-                #         augmented_question=augmented_question, 
-                #         additional_args=additional_args
-                #     )
-                    
-                #     response_content = result["final_answer"]
-                    
-                #     ai_message = {
-                #         'content': response_content,
-                #         'name': agent_name,
-                #         'role': 'assistant', 
-                #         'message_type': 'ai_response',
-                #         'bench_agent_steps': result.get("manager_agent_steps", []) + result.get("search_agent_steps", []),
-                #     }
-
-                #     conversation_history.append({"role": "assistant", "content": response_content, "name": agent_name})
-
-                #     if agent_name == "primary":
-                #         final_answer = response_content
-                #         print("final_answer:",final_answer)
-
-                #     if agent_name == "critic" and "approve" in response_content.lower():
-                #         summary_message = {
-                #             'content': final_answer,
-                #             'name': 'system_final',
-                #             'role': 'assistant',
-                #             'message_type': 'ai_response'
-                #         }
-                #         all_messages.append(summary_message)
-                #         # all_messages.append(ai_message)
-                #         print("final_answer:",final_answer)
-                #         return {
-                #             "messages": all_messages,
-                #             "final_answer": final_answer
-                #         }
-                        
-                #     all_messages.append(ai_message)
 
                 except Exception as e:
                     error_message = f"Error during {agent_name} step: {str(e)}"

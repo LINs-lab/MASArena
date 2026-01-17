@@ -92,7 +92,7 @@ class RetryWrapper:
         if hasattr(self._model, 'model_id'):
             self._original_model_id = self._model.model_id
     
-    @staticmethod
+    
     def _should_retry(self, exception: BaseException) -> bool:
         """Return True if we should retry on this exception."""
         if isinstance(exception, httpx.HTTPStatusError):
