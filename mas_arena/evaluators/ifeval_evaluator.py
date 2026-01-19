@@ -33,6 +33,12 @@ class IFEvalEvaluator(BaseEvaluator):
     def __init__(self, name: str = "ifeval", config: Dict[str, Any] | None = None):
         super().__init__(name, config)
         self.run_evaluator = RunEvaluator()
+        
+        import nltk
+        try:
+            nltk.data.find('tokenizers/punkt_tab')
+        except LookupError:
+            nltk.download('punkt_tab')
 
     @classmethod
     def from_config(cls, name: str, config: Dict[str, Any] = None):
