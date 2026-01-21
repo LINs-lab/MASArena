@@ -13,7 +13,15 @@ import shutil
 from pathlib import Path
 from datetime import datetime
 import asyncio
-from tqdm.asyncio import tqdm
+try:
+    from tqdm.asyncio import tqdm
+except ImportError:
+    class tqdm:
+        @staticmethod
+        async def gather(*args, **kwargs):
+            kwargs.pop("desc", None)
+            return await asyncio.gather(*args, **kwargs)
+
 from openai.types.completion_usage import CompletionUsage
 import traceback
 from rich import print as rprint
