@@ -151,13 +151,14 @@ class CrawlerArchiveSearchTool(Tool):
     }
     output_type = "string"
 
-    def __init__(self, crawler: SimpleCrawler, read_type: str = "jina_read"):
+    def __init__(self, crawler: SimpleCrawler = None, read_type: str = "jina_read"):
         super().__init__()
         self.crawler = crawler
         self.read_type = read_type
 
     def forward(self, url: str, date: str) -> str:
         """Find and read archived URL."""
+        import requests
         try:
             no_timestamp_url = f"https://archive.org/wayback/available?url={url}"
             archive_url = no_timestamp_url + f"&timestamp={date}"
@@ -209,7 +210,7 @@ class CrawlerReadTool(Tool):
     }
     output_type = "string"
 
-    def __init__(self, crawler: SimpleCrawler, read_type: str = "jina_read"):
+    def __init__(self, crawler: SimpleCrawler = None, read_type: str = "jina_read"):
         super().__init__()
         self.crawler = crawler
         self.read_type = read_type

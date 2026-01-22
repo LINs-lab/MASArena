@@ -48,7 +48,7 @@ class BrowserTool(Tool):
     # smolagents.Tool validates that `forward()`'s named parameters exactly match `self.inputs` keys.
     # Using `**kwargs` makes smolagents treat it as an extra parameter named "kwargs", which breaks
     # tool creation. Keep the signature strictly aligned with `inputs` ("action", "url").
-    def forward(self, action: str = None, url: str = None) -> str:
+    async def forward(self, action: str = None, url: str = None) -> str:
         # Re-import strictly required modules for sandbox execution context
         # But self.browser_instance is an instance attribute, so we rely on it being available.
         
@@ -74,15 +74,15 @@ class BrowserTool(Tool):
             if action == "navigate":
                 if not url:
                     return "Error: URL is required for navigation."
-                return self.browser_instance.navigate(url)
+                return await self.browser_instance.navigate(url)
             elif action == "get_content":
-                return self.browser_instance.get_page_content()
+                return await self.browser_instance.get_page_content()
             elif action == "get_url":
-                return self.browser_instance.get_current_url()
+                return await self.browser_instance.get_current_url()
             elif action == "screenshot":
-                return self.browser_instance.screenshot()
+                return await self.browser_instance.screenshot()
             elif action == "close":
-                self.browser_instance.close()
+                await self.browser_instance.close()
                 return "Browser closed."
             else:
                 return f"Unknown browser action: {action}"
@@ -90,8 +90,4 @@ class BrowserTool(Tool):
             return f"Error executing browser action '{action}': {str(e)}"
 
     def __del__(self):
-        if hasattr(self, 'browser_instance') and self.browser_instance:
-            try:
-                self.browser_instance.close()
-            except:
-                pass
+        pass

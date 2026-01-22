@@ -31,12 +31,13 @@ Use this tool when you need to extract and analyze the contents of ZIP archives.
     }
     output_type = "string"
 
-    def __init__(self, model: Model, text_limit: int = 8000):
+    def __init__(self, model: Model = None, text_limit: int = 8000):
         super().__init__()
         self.model = model
         self.text_limit = text_limit
 
     def _validate_file_type(self, file_path: str):
+        import zipfile
         """Validate if the file type is a supported ZIP format"""
         if not file_path.lower().endswith(".zip"):
             raise ValueError(
@@ -49,6 +50,9 @@ Use this tool when you need to extract and analyze the contents of ZIP archives.
     def extract_zip_files(
         self, file_path: str, extract_dir: str = "extracted_files"
     ) -> List[str]:
+        import os      
+        import zipfile
+        from typing import List
         """Extract ZIP files and return list of extracted file paths"""
         # Create the extraction directory if it doesn't exist
         os.makedirs(extract_dir, exist_ok=True)
@@ -81,6 +85,7 @@ Use this tool when you need to extract and analyze the contents of ZIP archives.
         extract_dir: Optional[str] = None,
         question: Optional[str] = None,
     ) -> str:
+        from smolagents.models import MessageRole
         # Validate file type
         self._validate_file_type(file_path)
 

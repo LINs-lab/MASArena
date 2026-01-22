@@ -84,6 +84,7 @@ Provides comprehensive text analysis with statistics and LLM-friendly formatted 
 
     def _validate_file_path(self, file_path: str) -> Path:
         """Validate and resolve file path."""
+        from pathlib import Path
         path = Path(file_path)
 
         if not path.exists():
@@ -121,13 +122,18 @@ Provides comprehensive text analysis with statistics and LLM-friendly formatted 
             pass
 
         # Check if most bytes are printable ASCII
-        printable_count = sum(
-            1 for byte in data if 32 <= byte <= 126 or byte in [9, 10, 13]
-        )
-        return printable_count / len(data) > 0.7
+        printable_count = 0
+        for i in range(len(data)):
+            char_code = data[i]
+            # 检查是否为可打印 ASCII 或常见的制表/换行符
+            if (32 <= char_code <= 126) or (char_code in [9, 10, 13]):
+                printable_count += 1
+        
+        return (printable_count / len(data)) > 0.7
 
     def _detect_encoding(self, file_path: Path) -> dict:
         """Detect file encoding and characteristics."""
+        import chardet
         encoding_info = {
             "detected_encoding": "utf-8",
             "confidence": 0.0,
@@ -392,6 +398,8 @@ Provides comprehensive text analysis with statistics and LLM-friendly formatted 
         question: Optional[str] = None,
         max_length: Optional[int] = None,
     ) -> str:
+        import time
+        from pathlib import Path
         """Extract and analyze text content from files."""
         try:
             # Validate file path

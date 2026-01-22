@@ -34,7 +34,8 @@ This tool supports the following image formats: [".jpg", ".jpeg", ".png", ".gif"
     }
     output_type = "string"
 
-    def __init__(self, model: Model, text_limit: int):
+    def __init__(self, model: Model = None, text_limit: int=500):
+        import os
         super().__init__()
         self.model = model
         self.text_limit = text_limit
@@ -42,15 +43,23 @@ This tool supports the following image formats: [".jpg", ".jpeg", ".png", ".gif"
         self.gpt_url = os.getenv("OPENAI_API_BASE")
 
     def _validate_file_type(self, file_path: str):
-        if not any(
-            file_path.lower().endswith(ext)
-            for ext in [".jpg", ".jpeg", ".png", ".gif", ".bmp"]
-        ):
+        supported_extensions = [".jpg", ".jpeg", ".png", ".gif", ".bmp"]
+        is_valid = False
+        lowered_path = file_path.lower()
+        
+        for extension in supported_extensions:
+            if lowered_path.endswith(extension):
+                is_valid = True
+                break
+        
+        if not is_valid:
             raise ValueError(
-                "Unsupported file type. Use the appropriate tool for text/audio files."
+                f"Unsupported file type. Supported: {supported_extensions}"
             )
 
     def _resize_image(self, image_path: str) -> str:
+        import os
+        from PIL import Image
         img = Image.open(image_path)
         width, height = img.size
         img = img.resize((int(width / 2), int(height / 2)))
@@ -59,6 +68,12 @@ This tool supports the following image formats: [".jpg", ".jpeg", ".png", ".gif"
         return new_image_path
 
     def _encode_image(self, image_path: str) -> str:
+        import os
+        import base64
+        import requests
+        import uuid
+        import mimetypes
+        
         if image_path.startswith("http"):
             user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36 Edg/119.0.0.0"
             request_kwargs = {
@@ -87,6 +102,9 @@ This tool supports the following image formats: [".jpg", ".jpeg", ".png", ".gif"
             return base64.b64encode(image_file.read()).decode("utf-8")
 
     def forward(self, file_path: str, question: Optional[str] = None) -> str:
+        import mimetypes
+        import requests
+        
         self._validate_file_type(file_path)
 
         if not question:

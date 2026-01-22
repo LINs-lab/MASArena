@@ -31,7 +31,8 @@ This tool supports the following audio formats: [".mp3", ".m4a", ".wav"]. For ot
     }
     output_type = "string"
 
-    def __init__(self, model: Model, text_limit: int):
+    def __init__(self, model: Model = None, text_limit: int = 1000):
+        import os
         super().__init__()
         self.model = model
         self.text_limit = text_limit
@@ -40,13 +41,17 @@ This tool supports the following audio formats: [".mp3", ".m4a", ".wav"]. For ot
 
     def _validate_file_type(self, file_path: str):
         """Validate if the file type is a supported audio format"""
-        if not any(file_path.endswith(ext) for ext in [".mp3", ".m4a", ".wav"]):
+        if not file_path.lower().endswith((".mp3", ".m4a", ".wav")):
             raise ValueError(
                 "Unsupported file type. Use the appropriate tool for text/image files."
             )
 
     def extract_metadata(self, file_path: str) -> Dict[str, Any]:
         """Extract metadata from audio file using mutagen"""
+        from mutagen._file import File as MutagenFile
+        from datetime import timedelta
+        import os
+        from typing import Dict, Any
         try:
             audio_file = MutagenFile(file_path)
             if audio_file is None:
@@ -112,6 +117,7 @@ This tool supports the following audio formats: [".mp3", ".m4a", ".wav"]. For ot
 
     def transcribe_audio(self, file_path: str) -> str:
         """Transcribe audio using OpenAI Whisper API"""
+        import openai
         client = openai.OpenAI(api_key=self.api_key, base_url=self.base_url)
         try:
             with open(file_path, "rb") as audio_file:
@@ -124,6 +130,7 @@ This tool supports the following audio formats: [".mp3", ".m4a", ".wav"]. For ot
 
     def forward(self, file_path: str, question: Optional[str] = None) -> str:
         # 确认文件类型
+        from smolagents.models import MessageRole
         self._validate_file_type(file_path)
 
         # 提取音频元信息

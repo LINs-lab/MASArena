@@ -40,8 +40,9 @@ Supports .xlsx and .xls files. For basic content extraction, use other text proc
     }
     output_type = "string"
 
-    def __init__(self, model: Model, workspace_path: Optional[str] = None):
+    def __init__(self, model: Model =None, workspace_path: Optional[str] = None):
         super().__init__()
+        from pathlib import Path
         self.model = model
         self.workspace_path = Path(workspace_path) if workspace_path else Path.cwd()
 
@@ -54,6 +55,7 @@ Supports .xlsx and .xls files. For basic content extraction, use other text proc
 
     def _validate_file_type(self, file_path: str):
         """Validate if the file type is a supported Excel format"""
+        from pathlib import Path
         path = Path(file_path)
         if not path.exists():
             raise FileNotFoundError(f"File not found: {file_path}")
@@ -72,6 +74,8 @@ Supports .xlsx and .xls files. For basic content extraction, use other text proc
     def _extract_cell_colors(
         self, file_path: str, sheet_name: Optional[str] = None
     ) -> dict:
+        from pathlib import Path
+        from openpyxl import load_workbook
         """Extract cell background colors from Excel file using openpyxl."""
         try:
             path = Path(file_path)
@@ -135,6 +139,9 @@ Supports .xlsx and .xls files. For basic content extraction, use other text proc
 
     def _extract_embedded_media(self, file_path: str) -> list:
         """Extract embedded media from XLSX files."""
+        import zipfile # 内部导入
+        from pathlib import Path
+        from openpyxl import load_workbook
         saved_media = []
 
         try:
@@ -252,6 +259,7 @@ Supports .xlsx and .xls files. For basic content extraction, use other text proc
         sheet_name: Optional[str] = None,
         question: Optional[str] = None,
     ) -> str:
+        from smolagents.models import MessageRole # 内部导入
         try:
             # Validate file type for most operations
             if feature_type != "formats":
@@ -264,12 +272,13 @@ Supports .xlsx and .xls files. For basic content extraction, use other text proc
                     return f"Error extracting colors: {result['error']}"
 
                 # Count cells with colors
-                colored_cells = sum(
-                    1
-                    for info in result.values()
-                    if info.get("color") and info["color"] != "FFFFFF"
-                )
-                base_response = f"Successfully extracted colors from {len(result)} cells. Found {colored_cells} cells with non-default background colors."
+                colored_count = 0
+                for coord in result:
+                    info = result[coord]
+                    if info.get("color") and info["color"] != "FFFFFF":
+                        colored_count += 1
+                
+                base_response = f"Successfully extracted colors from {len(result)} cells. Found {colored_count} cells with non-default background colors."
 
                 if not question:
                     return f"{base_response}\n\nColor data available for analysis."
@@ -297,48 +306,21 @@ Supports .xlsx and .xls files. For basic content extraction, use other text proc
 
             elif feature_type == "media":
                 result = self._extract_embedded_media(file_path)
-                if any("error" in item for item in result if isinstance(item, dict)):
-                    errors = [
-                        item["error"]
-                        for item in result
-                        if isinstance(item, dict) and "error" in item
-                    ]
-                    return (
-                        f"Media extraction completed with errors: {'; '.join(errors)}"
-                    )
+                
+                # 修复 3: 这里的 item 在列表推导式中定义，确保逻辑严密
+                errors = [it["error"] for it in result if isinstance(it, dict) and "error" in it]
+                if errors: return f"Errors: {'; '.join(errors)}"
 
-                media_count = len(
-                    [
-                        item
-                        for item in result
-                        if isinstance(item, dict) and "type" in item
-                    ]
-                )
-                base_response = f"Successfully extracted {media_count} media files from the Excel document."
+                media_files = [it.get("filename") for it in result if isinstance(it, dict) and "filename" in it]
+                base_response = f"Extracted {len(media_files)} media files."
 
-                if not question:
-                    return f"{base_response}\n\nExtracted files: {[item.get('filename', 'unknown') for item in result if isinstance(item, dict) and 'filename' in item]}"
+                if not question: return f"{base_response} Files: {media_files}"
 
-                # Use model to answer question about media
                 messages = [
-                    {
-                        "role": MessageRole.SYSTEM,
-                        "content": [
-                            {
-                                "type": "text",
-                                "text": f"Here is extracted media data from an Excel file:\n{str(result)[:1500]}\n"
-                                "Answer the following question about the media content.",
-                            }
-                        ],
-                    },
-                    {
-                        "role": MessageRole.USER,
-                        "content": [{"type": "text", "text": f"Question: {question}"}],
-                    },
+                    {"role": MessageRole.SYSTEM, "content": [{"type": "text", "text": f"Media Data: {str(result)[:1500]}"}]},
+                    {"role": MessageRole.USER, "content": [{"type": "text", "text": question}]}
                 ]
-
-                content = self.model(messages).content
-                return f"{base_response}\n\nAnalysis: {content}"
+                return f"{base_response}\nAnalysis: {self.model(messages).content}"
 
             elif feature_type == "formats":
                 return self._list_supported_formats()
