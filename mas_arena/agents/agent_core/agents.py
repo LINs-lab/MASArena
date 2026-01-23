@@ -20,6 +20,7 @@ from .models import OpenAIServerModel
 from smolagents import Tool
 from mas_arena.tools.tool_manager import ToolManager
 from mas_arena.tools.python_interpreter import PythonInterpreterTool
+from func_timeout import func_timeout, FunctionTimedOut
 
 logger = logging.getLogger(__name__)
 
@@ -385,16 +386,23 @@ IMPORTANT: Separation of Concerns: Never use a final answer tool (e.g., final_an
 
                         if python_tool:
                             timeout =30
-                            
-                            with multiprocessing.Pool(processes=1) as pool:
-                                result_obj = pool.apply_async(python_tool.forward, (code,))
-                                try:
-                                    # get() 会阻塞直到结果返回或超时
-                                    result = result_obj.get(timeout=timeout)
-                                except multiprocessing.TimeoutError:
-                                    result = f"Error: Execution timed out after {timeout} seconds."
-                                except Exception as e:
-                                    result = f"Error: {str(e)}"
+                            # result = python_tool.forward(code)
+                            try:
+                                # 直接调用，设置超时时间
+                                result = func_timeout(timeout, python_tool.forward, args=(code,))
+                            except FunctionTimedOut:
+                                result = f"Error: Execution timed out after {timeout} seconds."
+                            except Exception as e:
+                                result = f"Error: {str(e)}"
+                            # with multiprocessing.Pool(processes=1) as pool:
+                            #     result_obj = pool.apply_async(python_tool.forward, (code,))
+                            #     try:
+                            #         # get() 会阻塞直到结果返回或超时
+                            #         result = result_obj.get(timeout=timeout)
+                            #     except multiprocessing.TimeoutError:
+                            #         result = f"Error: Execution timed out after {timeout} seconds."
+                            #     except Exception as e:
+                            #         result = f"Error: {str(e)}"
                             execution_results.append(result)
 
                             if self.verbosity_level > 1:

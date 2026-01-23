@@ -256,6 +256,7 @@ dependencies = [
     "pysqlite3>=0.5.4; sys_platform == 'linux'",
     "fastapi>=0.116.2",
     "wikipedia>=1.4.0",
+    "func-timeout>=4.3.5",
 ]
 
 [tool.ruff]
