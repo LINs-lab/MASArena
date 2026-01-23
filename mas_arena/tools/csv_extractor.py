@@ -55,7 +55,7 @@ Provides automatic encoding and delimiter detection, statistical analysis, and m
     }
     output_type = "string"
 
-    def __init__(self, model: Model, text_limit: int = 50000):
+    def __init__(self, model: Model =None, text_limit: int = 50000):
         super().__init__()
         self.model = model
         self.text_limit = text_limit
@@ -63,16 +63,20 @@ Provides automatic encoding and delimiter detection, statistical analysis, and m
 
     def _validate_file_type(self, file_path: str):
         """Validate if the file type is a supported CSV format"""
-        if not any(
-            file_path.lower().endswith(ext) for ext in self.supported_extensions
-        ):
+        is_valid = False
+        for ext in self.supported_extensions:
+            if file_path.lower().endswith(ext):
+                is_valid = True
+                break
+        
+        if not is_valid:
             raise ValueError(
-                f"Unsupported file type. This tool supports: {', '.join(self.supported_extensions)}. "
-                "Use the appropriate tool for other file types."
+                f"Unsupported file type. Supported: {list(self.supported_extensions)}"
             )
 
     def _detect_encoding(self, file_path: Path) -> str:
         """Detect file encoding using chardet."""
+        import chardet
         try:
             with open(file_path, "rb") as f:
                 raw_data = f.read(10000)  # Read first 10KB for detection
@@ -115,6 +119,8 @@ Provides automatic encoding and delimiter detection, statistical analysis, and m
         encoding: Optional[str] = None,
         delimiter: Optional[str] = None,
     ) -> dict:
+        import pandas as pd
+        import time
         """Extract content from CSV file using pandas."""
         start_time = time.time()
 
@@ -162,6 +168,7 @@ Provides automatic encoding and delimiter detection, statistical analysis, and m
         output_format: str = "markdown",
         include_stats: bool = True,
     ) -> str:
+        import json
         """Format extracted CSV content to be LLM-friendly."""
         if output_format.lower() == "markdown":
             # Convert to markdown table
@@ -226,6 +233,8 @@ Provides automatic encoding and delimiter detection, statistical analysis, and m
         encoding: Optional[str] = None,
         delimiter: Optional[str] = None,
     ) -> str:
+        from pathlib import Path  
+        from smolagents.models import MessageRole
         """Main method to process CSV files and return formatted content."""
 
         # Validate file type

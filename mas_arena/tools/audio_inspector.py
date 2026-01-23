@@ -121,6 +121,7 @@ This tool supports the following audio formats: [".mp3", ".m4a", ".wav"]. For ot
     def transcribe_audio(self, file_path: str) -> str:
         """Transcribe audio using OpenAI Whisper API"""
         import openai
+        import openai
         client = openai.OpenAI(api_key=self.api_key, base_url=self.base_url)
         try:
             with open(file_path, "rb") as audio_file:
@@ -133,6 +134,7 @@ This tool supports the following audio formats: [".mp3", ".m4a", ".wav"]. For ot
 
     def forward(self, file_path: str, question: Optional[str] = None) -> str:
         # 确认文件类型
+        from smolagents.models import MessageRole
         self._validate_file_type(file_path)
 
         # 提取音频元信息

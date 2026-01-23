@@ -40,7 +40,7 @@ This tool supports the following image formats: [".jpg", ".jpeg", ".png", ".gif"
         supported_extensions = (".jpg", ".jpeg", ".png", ".gif", ".bmp")
         if not file_path.lower().endswith(supported_extensions):
             raise ValueError(
-                "Unsupported file type. Use the appropriate tool for text/audio files."
+                f"Unsupported file type. Supported: {supported_extensions}"
             )
 
     def _resize_image(self, image_path: str) -> str:

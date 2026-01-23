@@ -5,9 +5,8 @@ from pathlib import Path
 from typing import List
 import sys
 import importlib
-
+import asyncio
 from langchain.tools import StructuredTool
-
 from mas_arena.tools_old.base import ToolFactory
 
 BROWSER = "browser"
@@ -71,47 +70,45 @@ class Browser:
         self.record_trace = kwargs.get("enable_recording", False)
         self.sleep_after_init = kwargs.get("sleep_after_init", False)
 
-        self.init()
-
-    def init(self) -> None:
-        from playwright.sync_api import sync_playwright
+    async def init(self) -> None:
+        from playwright.async_api import async_playwright
 
         if self.initialized:
             return
 
-        self.context_manager = sync_playwright()
-        self.playwright = self.context_manager.start()
-        self.browser = self._create_browser()
-        self.context = self._create_browser_context()
+        self.context_manager = await async_playwright()
+        self.playwright = await self.context_manager.start()
+        self.browser = await self._create_browser()
+        self.context = await self._create_browser_context()
 
         if self.record_trace:
-            self.context.tracing.start(screenshots=True, snapshots=True)
+            await self.context.tracing.start(screenshots=True, snapshots=True)
 
-        self.page = self.context.new_page()
+        self.page = await self.context.new_page()
         self.initialized = True
 
-    def _create_browser(self):
+    async def _create_browser(self):
         browse_name = "chromium"
         browse = getattr(self.playwright, browse_name)
         headless = True
         slow_mo = 0
         disable_security_args = ['--disable-web-security', '--disable-site-isolation-trials', '--disable-features=IsolateOrigins,site-per-process']
         args = ['--no-sandbox', '--disable-crash-reporter', '--disable-blink-features=AutomationControlled', '--disable-infobars', '--disable-background-timer-throttling', '--disable-popup-blocking', '--disable-backgrounding-occluded-windows', '--disable-renderer-backgrounding', '--disable-window-activation', '--disable-focus-on-load', '--no-first-run', '--no-default-browser-check', '--no-startup-window', '--window-position=0,0', '--window-size=1280,720'] + disable_security_args
-        browser = browse.launch(
+        browser = await browse.launch(
             headless=headless,
             slow_mo=slow_mo,
             args=args,
         )
         return browser
 
-    def _create_browser_context(self):
-        from playwright.sync_api import ViewportSize
+    async def _create_browser_context(self):
+        from playwright.async_api import ViewportSize
 
         browser = self.browser
         viewport_size = ViewportSize(width=1280, height=720)
         disable_security = True
 
-        context = browser.new_context(viewport=viewport_size,
+        context = await browser.new_context(viewport=viewport_size,
                                       no_viewport=False,
                                       java_script_enabled=True,
                                       bypass_csp=disable_security,
@@ -119,20 +116,22 @@ class Browser:
                                       device_scale_factor=1)
         return context
 
-    def navigate(self, url: str) -> str:
+    async def navigate(self, url: str) -> str:
         """Navigate to a URL."""
+        if not self.initialized: await self.init()
         try:
-            self.page.goto(url)
+            await self.page.goto(url)
             return f"Navigated to {url}"
         except Exception as e:
             return f"Failed to navigate to {url}: {e}"
 
-    def get_page_content(self, clean=True) -> str:
+    async def get_page_content(self, clean=True) -> str:
         """
         Get the text content of the current page.
         Args:
             clean: Whether to run a cleaning script to remove irrelevant content.
         """
+        if not self.initialized: await self.init()
         try:
             if clean:
                 # A simple script to remove common clutter like nav, footer, scripts, styles
@@ -141,25 +140,27 @@ class Browser:
                     doc.querySelectorAll('nav, footer, script, style, aside, [role="navigation"], [role="banner"], [role="contentinfo"]').forEach(el => el.remove());
                     return doc.body.innerText;
                 }"""
-                return self.page.evaluate(js_script)
+                return await self.page.evaluate(js_script)
             else:
-                return self.page.inner_text('body')
+                return await self.page.inner_text('body')
         except Exception as e:
             return f"Failed to get page content: {e}"
 
-    def get_current_url(self) -> str:
+    async def get_current_url(self) -> str:
+        if not self.initialized: await self.init()
         """Get the current URL."""
         return self.page.url
 
-    def screenshot(self, full_page: bool = False) -> str:
+    async def screenshot(self, full_page: bool = False) -> str:
         """Returns a base64 encoded screenshot of the current page."""
+        if not self.initialized: await self.init()
         try:
-            self.page.bring_to_front()
+            await self.page.bring_to_front()
             self.page.wait_for_load_state(timeout=2000)
         except:
             pass
 
-        screenshot = self.page.screenshot(
+        screenshot = await self.page.screenshot(
             full_page=full_page,
             animations='disabled',
             timeout=600000
@@ -167,17 +168,17 @@ class Browser:
         screenshot_base64 = base64.b64encode(screenshot).decode('utf-8')
         return screenshot_base64
 
-    def close(self) -> None:
+    async def close(self) -> None:
         if not self.initialized:
             return
         if self.record_trace:
             self.save_trace("trace.zip")
 
-        self.page.close()
-        self.context.close()
-        self.browser.close()
+        await self.page.close()
+        await self.context.close()
+        await self.browser.close()
         if hasattr(self, 'context_manager') and self.context_manager:
-            self.context_manager.stop()
+            await self.context_manager.stop()
         self.initialized = False
 
     def save_trace(self, trace_path: str | Path) -> None:

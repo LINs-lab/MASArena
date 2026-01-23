@@ -32,7 +32,7 @@ For pure text files or already markdown files, use the text_inspector tool inste
     }
     output_type = "string"
 
-    def __init__(self, model: Model, text_limit: int = 50000):
+    def __init__(self, model: Model = None, text_limit: int = 50000):
         super().__init__()
         self.model = model
         self.text_limit = text_limit
@@ -64,20 +64,24 @@ For pure text files or already markdown files, use the text_inspector tool inste
         ]
 
     def _validate_file_or_url(self, file_path: str):
+        import os
         """Validate if the file type is supported or if it's a URL"""
         # Check if it's a YouTube URL
         if "youtube.com" in file_path or "youtu.be" in file_path:
             return True
 
-        # Check if it's a URL
         if file_path.startswith(("http://", "https://")):
             return True
 
-        # Check if it's a supported file extension
-        if any(file_path.lower().endswith(ext) for ext in self.supported_extensions):
+        is_supported_ext = False
+        for ext in self.supported_extensions:
+            if file_path.lower().endswith(ext):
+                is_supported_ext = True
+                break
+        
+        if is_supported_ext:
             return True
 
-        # Check if file exists (for files without extensions or special cases)
         if os.path.exists(file_path):
             return True
 
@@ -85,6 +89,7 @@ For pure text files or already markdown files, use the text_inspector tool inste
 
     def convert_to_markdown(self, file_path: str, enable_plugins: bool = False) -> str:
         """Convert file to markdown using MarkItDown"""
+        from markitdown import MarkItDown
         try:
             md = MarkItDown(enable_plugins=enable_plugins)
             result = md.convert(file_path)
@@ -98,6 +103,7 @@ For pure text files or already markdown files, use the text_inspector tool inste
         question: Optional[str] = None,
         enable_plugins: Optional[bool] = None,
     ) -> str:
+        from smolagents.models import MessageRole
         # Set default for enable_plugins
         if enable_plugins is None:
             enable_plugins = False

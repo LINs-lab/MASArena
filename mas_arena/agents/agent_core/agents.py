@@ -4,6 +4,7 @@
 这个模块实现了各种类型的代理，包括基础的多步骤代理、代码代理和工具调用代理。
 """
 
+import asyncio
 import json
 import re
 import ast
@@ -111,7 +112,7 @@ Always use tools when needed to complete tasks effectively."""
 class ToolCallingAgent(MultiStepAgent):
     """工具调用代理"""
 
-    def run(self, task: str, additional_args: Optional[Dict[str, Any]] = None) -> str:
+    async def run(self, task: str, additional_args: Optional[Dict[str, Any]] = None) -> str:
         """运行工具调用代理"""
         self.memory.clear()
         additional_args = additional_args or {}
@@ -135,7 +136,7 @@ class ToolCallingAgent(MultiStepAgent):
             try:
                 # 调用模型生成工具调用
                 tools_schema = self.tool_manager.get_tools_schema()
-                response = self.model.generate_with_tools(messages, tools_schema)
+                response = await self.model.generate_with_tools(messages, tools_schema)
 
                 assistant_message = response.choices[0].message
                 messages.append(assistant_message.dict())
@@ -158,12 +159,16 @@ class ToolCallingAgent(MultiStepAgent):
                         result = self.tool_manager.execute_tool(
                             function_name, **function_args
                         )
-
+                        
+                        if asyncio.iscoroutine(result): # 检查是否是异步函数
+                            result = await result
+                        result_str = str(result)
+                        
                         tool_calls.append(
                             {
                                 "function": function_name,
                                 "arguments": function_args,
-                                "result": result,
+                                "result": result_str,
                             }
                         )
                         observations.append(result)
@@ -287,6 +292,7 @@ You can also delegate tasks to the following managed agents:
 Always break down complex problems into smaller steps and use code to solve them systematically.
 IMPORTANT: When you use Python, you MUST use the following format:\n```python\nyour_code_here.
 IMPORTANT: When using Python, you MUST use print() to output the final result of your calculation, otherwise the system will not be able to receive the data.
+IMPORTANT: Separation of Concerns: Never use a final answer tool (e.g., final_answer()) inside a Python code block.
 """
 
         return base_prompt
