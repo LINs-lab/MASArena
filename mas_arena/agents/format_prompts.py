@@ -103,45 +103,35 @@ Begin now. Remember: output only the compliant answer.
     ),
     "code": FormatPrompt(
         name="CODE",
-        prompt="""
-- Ensure the code follows these formatting requirements:
-  1. Use markdown code blocks with python syntax highlighting
-  2. Include clear section headers in markdown format
-  3. Wrap final answers in <answer> tags
-  4. Structure the response with these sections:
-     - Implementation Details
-     - Features Implemented
-     - Optimizations
-     - Validated Code (in markdown code block)
+        prompt="""- For code validation and output:
 
-- For code validation:
-  1. Test against all provided test cases
-  2. Verify function signature matches requirements
-  3. Check edge cases and constraints
-  4. Ensure code is properly formatted and documented
+  1. FIRST, write the code in a markdown python block to test and verify your logic.
 
-- For code output:
-  1. Include docstrings and type hints
-  2. Follow PEP 8 style guidelines
-  3. Provide clear explanations of implementation
-  4. List any optimizations or improvements made
+  2. Wait for the execution results to ensure all test cases pass.
+
+  3. ONLY after verification is complete, provide your FINAL response.
+
+
+
+- Final Response Strict Constraints:
+
+  1. The final response MUST be wrapped in <answer> tags.
+
+  2. NO PROSE/TEXT OUTSIDE TAGS: Do not include any greetings, conversational fillers, or "Here is the code" style sentences.
+
+  3. NO MARKDOWN CODE BLOCKS: Inside <answer>, strictly provide plain text. Do not use ``` or any other syntax highlighting.
+
+  4. CONCISE METADATA: Keep the Implementation/Features/Optimizations sections extremely brief (one-sentence max) to prevent hallucinated commentary.
+
+
+
+- Final Structure (Follow exactly):
 
 <answer>
-## Implementation Details
-{Implementation explanation}
 
-## Features Implemented
-{List of implemented features}
+(Insert raw code here, no backticks, no comments unless inside the code)
 
-## Optimizations
-{List of optimizations or "None"}
-
-## Validated Code
-```python
-{Final validated Python code}
-```
-</answer>
-""",
+</answer>""",
         description="Format prompt for code generation tasks",
         dataset_type=DatasetType.CODE,
     ),

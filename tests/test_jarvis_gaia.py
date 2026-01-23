@@ -15,23 +15,23 @@ from mas_arena.benchmark_runner import BenchmarkRunner
 logging.basicConfig(level=logging.INFO)
 
 if __name__ == "__main__":
-    evaluator = ""
-    # 配置 LLM Debate 参数
+    evaluator = "gaia"
+    # 配置 Jarvis 参数
     agent_config = {
-        "agents_num": 2,            # 2个辩手
-        "rounds_num": 2,            # 2轮辩论
         "model_name": "gpt-4.1",   # 模型
         "manager_tools": ["python_interpreter"], # final_answer 现在会自动添加
         "search_tools": ["ALL"],
         "memory": None,
-        "verbosity_level": 10,
+        "verbosity_level": 1,
         "evaluator": evaluator,        
     }
     
     # 生成带时间戳的日志文件名
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    log_file = f"logs/jarvis_simple_{evaluator}_{timestamp}.log"
+    log_file = f"logs/jarvis_gaia_{timestamp}.log"
     
+    print(f"Running Jarvis GAIA test... Log: {log_file}")
+
     # 使用 asyncio.run 运行异步方法
     summary = asyncio.run(BenchmarkRunner().arun(
         benchmark_name=evaluator,
@@ -43,5 +43,6 @@ if __name__ == "__main__":
 
     ))
     
-    print("\n==== Jarvis 简易测试结果 ====")
+    print("\n==== Jarvis GAIA 测试结果 ====")
     print(summary)
+

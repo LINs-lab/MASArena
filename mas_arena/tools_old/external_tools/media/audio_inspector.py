@@ -40,7 +40,10 @@ This tool supports the following audio formats: [".mp3", ".m4a", ".wav"]. For ot
 
     def _validate_file_type(self, file_path: str):
         """Validate if the file type is a supported audio format"""
-        if not any(file_path.endswith(ext) for ext in [".mp3", ".m4a", ".wav"]):
+        # NOTE: keep this implementation extremely simple because some tool validators
+        # may not understand generator/comprehension local variables (e.g. `ext`).
+        supported_extensions = (".mp3", ".m4a", ".wav")
+        if not file_path.endswith(supported_extensions):
             raise ValueError(
                 "Unsupported file type. Use the appropriate tool for text/image files."
             )

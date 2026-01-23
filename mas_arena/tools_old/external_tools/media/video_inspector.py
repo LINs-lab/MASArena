@@ -1,16 +1,7 @@
 from typing import Optional, Dict, Any, List
-import os
-import base64
-from datetime import timedelta
-
-import cv2
 
 from smolagents import Tool
-from smolagents.models import MessageRole, Model
-
-from dotenv import load_dotenv
-
-load_dotenv()
+from smolagents.models import Model
 
 
 class VideoInspectorTool(Tool):
@@ -47,17 +38,21 @@ This tool supports the following video formats: [".mp4", ".avi", ".mov", ".mkv",
     }
     output_type = "string"
 
-    def __init__(self, model: Model, text_limit: int):
+    def __init__(self, model: Model = None, text_limit: int = 1000):
+        # Local imports to satisfy tool validators in sandboxed execution
+        from dotenv import load_dotenv
+
+        load_dotenv()
         super().__init__()
         self.model = model
         self.text_limit = text_limit
-        self.supported_extensions = {".mp4", ".avi", ".mov", ".mkv", ".webm", ".flv"}
+        self.supported_extensions = (".mp4", ".avi", ".mov", ".mkv", ".webm", ".flv")
 
     def _validate_file_type(self, file_path: str):
         """Validate if the file type is a supported video format"""
-        if not any(
-            file_path.lower().endswith(ext) for ext in self.supported_extensions
-        ):
+        # NOTE: keep this implementation extremely simple because some tool validators
+        # may not understand generator/comprehension local variables (e.g. `ext`).
+        if not file_path.lower().endswith(self.supported_extensions):
             raise ValueError(
                 f"Unsupported file type. Supported video formats: {list(self.supported_extensions)}. "
                 "Use the appropriate tool for text/image/audio files."
@@ -65,6 +60,11 @@ This tool supports the following video formats: [".mp4", ".avi", ".mov", ".mkv",
 
     def extract_metadata(self, file_path: str) -> Dict[str, Any]:
         """Extract metadata from video file using OpenCV"""
+        from typing import Dict, Any
+        import os
+        from datetime import timedelta
+
+        import cv2
         try:
             cap = cv2.VideoCapture(file_path)
             if not cap.isOpened():
@@ -117,6 +117,10 @@ This tool supports the following video formats: [".mp4", ".avi", ".mov", ".mkv",
         end_time: Optional[float] = None,
     ) -> List[Dict[str, Any]]:
         """Extract frames from video with given sample rate"""
+        from typing import Optional, List, Dict, Any
+        import base64
+
+        import cv2
         try:
             cap = cv2.VideoCapture(file_path)
             if not cap.isOpened():
@@ -177,6 +181,8 @@ This tool supports the following video formats: [".mp4", ".avi", ".mov", ".mkv",
         self, prompt: str, frames: List[Dict[str, Any]]
     ) -> List[Dict[str, Any]]:
         """Create content for LLM consumption with frames"""
+        from typing import List, Dict, Any
+
         content: List[Dict[str, Any]] = [{"type": "text", "text": prompt}]
 
         for frame in frames:
@@ -192,6 +198,9 @@ This tool supports the following video formats: [".mp4", ".avi", ".mov", ".mkv",
         start_time: Optional[float] = None,
         end_time: Optional[float] = None,
     ) -> str:
+        from typing import Optional
+        from smolagents.models import MessageRole
+
         # Set defaults
         sample_rate = sample_rate or 1.0
         start_time = start_time or 0.0

@@ -32,7 +32,7 @@ This tool supports the following audio formats: [".mp3", ".m4a", ".wav"]. For ot
     output_type = "string"
 
     def __init__(self, model: Model = None, text_limit: int = 1000):
-        import os
+        import os;
         super().__init__()
         self.model = model
         self.text_limit = text_limit
@@ -41,17 +41,20 @@ This tool supports the following audio formats: [".mp3", ".m4a", ".wav"]. For ot
 
     def _validate_file_type(self, file_path: str):
         """Validate if the file type is a supported audio format"""
-        if not file_path.lower().endswith((".mp3", ".m4a", ".wav")):
+        # NOTE: keep this implementation extremely simple because some tool validators
+        # may not understand generator/comprehension local variables (e.g. `ext`).
+        supported_extensions = (".mp3", ".m4a", ".wav")
+        if not file_path.endswith(supported_extensions):
             raise ValueError(
                 "Unsupported file type. Use the appropriate tool for text/image files."
             )
 
     def extract_metadata(self, file_path: str) -> Dict[str, Any]:
         """Extract metadata from audio file using mutagen"""
-        from mutagen._file import File as MutagenFile
-        from datetime import timedelta
-        import os
         from typing import Dict, Any
+        import os
+        from datetime import timedelta
+        from mutagen._file import File as MutagenFile
         try:
             audio_file = MutagenFile(file_path)
             if audio_file is None:
@@ -118,6 +121,7 @@ This tool supports the following audio formats: [".mp3", ".m4a", ".wav"]. For ot
     def transcribe_audio(self, file_path: str) -> str:
         """Transcribe audio using OpenAI Whisper API"""
         import openai
+        import openai
         client = openai.OpenAI(api_key=self.api_key, base_url=self.base_url)
         try:
             with open(file_path, "rb") as audio_file:
@@ -151,6 +155,7 @@ This tool supports the following audio formats: [".mp3", ".m4a", ".wav"]. For ot
         if not question:
             return f"{metadata_str}Audio transcription:\n{transcript[:self.text_limit]}"
 
+        from smolagents.models import MessageRole, Model
         messages = [
             {
                 "role": MessageRole.SYSTEM,

@@ -1,18 +1,7 @@
-import base64
-import mimetypes
-import os
-import uuid
 from typing import Optional
-
-import requests
-from dotenv import load_dotenv
-from PIL import Image
 
 from smolagents import Tool
 from smolagents.models import Model
-from PIL import Image
-
-load_dotenv()
 
 
 class VisualInspectorTool(Tool):
@@ -34,8 +23,11 @@ This tool supports the following image formats: [".jpg", ".jpeg", ".png", ".gif"
     }
     output_type = "string"
 
-    def __init__(self, model: Model = None, text_limit: int=500):
+    def __init__(self, model: Model = None, text_limit: int = 1000):
         import os
+        from dotenv import load_dotenv
+
+        load_dotenv()
         super().__init__()
         self.model = model
         self.text_limit = text_limit
@@ -43,16 +35,10 @@ This tool supports the following image formats: [".jpg", ".jpeg", ".png", ".gif"
         self.gpt_url = os.getenv("OPENAI_API_BASE")
 
     def _validate_file_type(self, file_path: str):
-        supported_extensions = [".jpg", ".jpeg", ".png", ".gif", ".bmp"]
-        is_valid = False
-        lowered_path = file_path.lower()
-        
-        for extension in supported_extensions:
-            if lowered_path.endswith(extension):
-                is_valid = True
-                break
-        
-        if not is_valid:
+        # NOTE: keep this implementation extremely simple because some tool validators
+        # may not understand generator/comprehension local variables (e.g. `ext`).
+        supported_extensions = (".jpg", ".jpeg", ".png", ".gif", ".bmp")
+        if not file_path.lower().endswith(supported_extensions):
             raise ValueError(
                 f"Unsupported file type. Supported: {supported_extensions}"
             )
@@ -60,6 +46,7 @@ This tool supports the following image formats: [".jpg", ".jpeg", ".png", ".gif"
     def _resize_image(self, image_path: str) -> str:
         import os
         from PIL import Image
+
         img = Image.open(image_path)
         width, height = img.size
         img = img.resize((int(width / 2), int(height / 2)))
@@ -68,12 +55,13 @@ This tool supports the following image formats: [".jpg", ".jpeg", ".png", ".gif"
         return new_image_path
 
     def _encode_image(self, image_path: str) -> str:
-        import os
         import base64
-        import requests
-        import uuid
         import mimetypes
-        
+        import os
+        import uuid
+
+        import requests
+
         if image_path.startswith("http"):
             user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36 Edg/119.0.0.0"
             request_kwargs = {
@@ -91,6 +79,7 @@ This tool supports the following image formats: [".jpg", ".jpeg", ".png", ".gif"
 
             fname = str(uuid.uuid4()) + extension
             download_path = os.path.abspath(os.path.join("downloads", fname))
+            os.makedirs(os.path.dirname(download_path), exist_ok=True)
 
             with open(download_path, "wb") as fh:
                 for chunk in response.iter_content(chunk_size=512):
@@ -102,9 +91,11 @@ This tool supports the following image formats: [".jpg", ".jpeg", ".png", ".gif"
             return base64.b64encode(image_file.read()).decode("utf-8")
 
     def forward(self, file_path: str, question: Optional[str] = None) -> str:
+        # Local imports to satisfy tool validators in sandboxed execution
+        from typing import Optional
         import mimetypes
         import requests
-        
+
         self._validate_file_type(file_path)
 
         if not question:

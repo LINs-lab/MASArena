@@ -60,6 +60,7 @@ class LLMDebate(AgentSystem):
             agent_name = f"bench_agent_{i+1}"
             agent = BenchAgent(
                 name=agent_name,
+                evaluator='llm_debate',
                 config={**self.config, 'evaluator': 'llm_debate'}, # 传递 evaluator 等 config
                 **self.bench_agent_params
             )
@@ -68,6 +69,7 @@ class LLMDebate(AgentSystem):
         # 聚合器也使用一个 BenchAgent
         self.aggregator_agent = BenchAgent(
             name="aggregator_bench_agent",
+            evaluator='llm_debate_aggregator',
             config={**self.config, 'evaluator': 'llm_debate_aggregator'},
             **self.bench_agent_params
         )
