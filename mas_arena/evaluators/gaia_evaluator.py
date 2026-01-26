@@ -256,7 +256,8 @@ If the answer is strictly required to be a specific word, then it must match tha
         last_result: OpenAIResult | None = None
         while attempts < 2:  # first attempt + one retry
             attempts += 1
-            result = await self._evaluate_with_openai_sync(
+            # Directly await the async method since we are in an async function
+            result = await self._evaluate_with_openai(
                 problem=problem_statement,
                 solution=ground_truth,
                 answer=answer,

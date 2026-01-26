@@ -101,24 +101,17 @@ class JarvisAgent(AgentSystem):
     async def run_agent(self, problem: Dict[str, Any], **kwargs) -> Dict[str, Any]:
         """
         Run the Jarvis agent to solve a problem.
-        Delegates to BenchAgent.run_agent_step for robust execution.
+        Delegates to BenchAgent.run_agent to preserve full capabilities:
+        - GAIA `files` attachment handling (auto descriptions + tool usage)
+        - semantic check / retry loop (when enabled in BenchAgent)
+        - consistent logging/steps collection
         """
-        # 1. Input Preparation
-        query = problem["problem"]
-        
-        # 'expected_answer' is useful for memory retrieval if enabled
-        additional_args = {
-            "expected_answer": problem.get("solution") or problem.get("expected_answer"),
-            **kwargs
-        }
-        
-        # 2. Execution (Delegated to BenchAgent Core)
-        # This ensures we use the exact same ReAct/Python loop as other agents.
+        # NOTE: `BenchAgent.run_agent_step()` is intentionally a simplified single-shot
+        # mode and does NOT run the attachment preprocessing in `BenchAgent.run_agent()`.
+        # GAIA tasks frequently include local files (png/xlsx/docx/mp3, etc.), so we must
+        # call the full `run_agent()` path here.
         try:
-            result = await self.bench_agent.run_agent_step(
-                augmented_question=query, 
-                additional_args=additional_args
-            )
+            result = await self.bench_agent.run_agent(problem, **kwargs)
         except Exception as e:
             # Fallback error handling
             error_msg = f"Jarvis execution failed: {str(e)}"
@@ -134,14 +127,12 @@ class JarvisAgent(AgentSystem):
                 "error": str(e)
             }
         
-        # 3. Output Formatting
-        # Standardize output for BenchmarkRunner
+        # Standardize output for BenchmarkRunner: pass-through + safe defaults
         final_answer = result.get("final_answer", "No answer generated.")
-        
         return {
             "messages": result.get("messages", []),
             "final_answer": final_answer,
-            "extracted_answer": final_answer, 
+            "extracted_answer": result.get("extracted_answer", final_answer),
             "manager_agent_steps": result.get("manager_agent_steps", []),
             "search_agent_steps": result.get("search_agent_steps", []),
             "search_keywords": result.get("search_keywords", ""),

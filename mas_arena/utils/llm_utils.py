@@ -93,11 +93,14 @@ class RetryWrapper:
             self._original_model_id = self._model.model_id
     
     
-    def _should_retry(self, exception: BaseException) -> bool:
+    @staticmethod
+    def _should_retry(exception: BaseException) -> bool:
         """Return True if we should retry on this exception."""
         if isinstance(exception, httpx.HTTPStatusError):
-            # Retry on 5xx server errors, including 524
-            return 500 <= exception.response.status_code < 600 or exception.response.status_code == 400
+            # Retry on transient server/network style errors.
+            # Do NOT retry on quota/auth errors like 401/403.
+            code = exception.response.status_code
+            return 500 <= code < 600 or code in (408, 429)
         if isinstance(exception, httpx.TimeoutException):
             return True
         return False

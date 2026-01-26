@@ -27,6 +27,7 @@ import traceback
 from rich import print as rprint
 import time
 import logging
+import os
 
 from mas_arena.metrics import MetricsRegistry, MetricsCollector
 from mas_arena.agents import create_agent_system, AVAILABLE_AGENT_SYSTEMS
@@ -99,9 +100,18 @@ class BenchmarkRunner:
         logger = logging.getLogger()
         logger.setLevel(logging.INFO)
 
-        # Remove existing StreamHandlers (console) to avoid duplicate console output
+        # Reduce noisy HTTP client logs under high concurrency.
+        # These INFO logs can create heavy contention on the global logging lock and make runs appear "hung".
+        # Allow override via env if needed for debugging.
+        silence_http_logs = os.getenv("MAS_ARENA_SILENCE_HTTP_LOGS", "1").strip() not in ("0", "false", "False")
+        if silence_http_logs:
+            for name in ("httpx", "httpcore", "openai"):
+                logging.getLogger(name).setLevel(logging.WARNING)
+
+        # Remove existing console StreamHandlers to avoid duplicate console output.
+        # NOTE: FileHandler is a subclass of StreamHandler, so don't remove it here.
         for h in list(logger.handlers):
-            if isinstance(h, logging.StreamHandler):
+            if isinstance(h, logging.StreamHandler) and not isinstance(h, logging.FileHandler):
                 logger.removeHandler(h)
 
         # Add file handler if not already present for this file
@@ -115,7 +125,8 @@ class BenchmarkRunner:
         # Redirect stdout and stderr to the log file (only file)
         try:
             import sys as _sys
-            file_stream = open(log_file, 'a', encoding='utf-8')
+            # Use line buffering so final summary prints are flushed promptly
+            file_stream = open(log_file, 'a', encoding='utf-8', buffering=1)
             _sys.stdout = file_stream
             _sys.stderr = file_stream
         except Exception:
@@ -733,9 +744,18 @@ class BenchmarkRunner:
 
         all_results = await tqdm.gather(*tasks, desc="Processing Problems")
 
-        # if hasattr(agent, "aclose"):
-        #     await agent.aclose()
-
+        # Clean up agent system if needed (e.g. close client sessions)
+        # Note: We create a fresh agent instance inside process_with_semaphore, so we can't easily access it here.
+        # However, AgentSystem implementation (like Jarvis) might need explicit cleanup if it uses shared resources.
+        # But since we create agents locally in the loop, they should be garbage collected.
+        # If there are shared global resources (like a shared connection pool), they should be managed carefully.
+        
+        # For now, we rely on garbage collection or explicit close within _process_one_problem if we were returning the agent.
+        # But since we are not returning the agent, we can't call aclose() on it here.
+        
+        # Workaround: If there are known global cleanup tasks, do them here.
+        # For example, if httpx clients are left open.
+        
         return self._finalize_benchmark(
             all_results,
             benchmark_name,

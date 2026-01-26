@@ -113,6 +113,51 @@ Always use tools when needed to complete tasks effectively."""
 class ToolCallingAgent(MultiStepAgent):
     """工具调用代理"""
 
+    def _safe_parse_tool_arguments(self, raw_args: Union[str, Dict[str, Any], None]) -> Dict[str, Any]:
+        """
+        Tool-call arguments should be strict JSON strings, but models sometimes emit malformed JSON.
+        This parser is best-effort and should never raise; it returns {} on failure.
+        """
+        if raw_args is None:
+            return {}
+        if isinstance(raw_args, dict):
+            return raw_args
+        if not isinstance(raw_args, str):
+            return {}
+
+        # 1) Fast path: strict JSON
+        try:
+            parsed = json.loads(raw_args)
+            return parsed if isinstance(parsed, dict) else {}
+        except Exception:
+            pass
+
+        # 2) Extract likely JSON object substring
+        s = raw_args.strip()
+        start = s.find("{")
+        end = s.rfind("}")
+        if start != -1 and end != -1 and end > start:
+            s = s[start : end + 1]
+
+        # 3) Remove trailing commas before closing braces/brackets
+        try:
+            s2 = re.sub(r",\s*([}\]])", r"\1", s)
+            parsed = json.loads(s2)
+            return parsed if isinstance(parsed, dict) else {}
+        except Exception:
+            pass
+
+        # 4) Python-literal fallback (handles single quotes / True/False/None)
+        try:
+            s3 = s
+            s3 = re.sub(r"\bnull\b", "None", s3)
+            s3 = re.sub(r"\btrue\b", "True", s3, flags=re.IGNORECASE)
+            s3 = re.sub(r"\bfalse\b", "False", s3, flags=re.IGNORECASE)
+            parsed = ast.literal_eval(s3)
+            return parsed if isinstance(parsed, dict) else {}
+        except Exception:
+            return {}
+
     async def run(self, task: str, additional_args: Optional[Dict[str, Any]] = None) -> str:
         """运行工具调用代理"""
         self.memory.clear()
@@ -137,7 +182,16 @@ class ToolCallingAgent(MultiStepAgent):
             try:
                 # 调用模型生成工具调用
                 tools_schema = self.tool_manager.get_tools_schema()
-                response = await self.model.generate_with_tools(messages, tools_schema)
+                
+                # Attempt to use async generation if available
+                if hasattr(self.model, "agenerate_with_tools"):
+                    response = await self.model.agenerate_with_tools(messages, tools_schema)
+                else:
+                    # Fallback to generate_with_tools
+                    response = self.model.generate_with_tools(messages, tools_schema)
+                    # If it happens to return a coroutine (e.g. wrapped async method), await it
+                    if asyncio.iscoroutine(response):
+                        response = await response
 
                 assistant_message = response.choices[0].message
                 messages.append(assistant_message.dict())
@@ -149,17 +203,24 @@ class ToolCallingAgent(MultiStepAgent):
 
                     for tool_call in assistant_message.tool_calls:
                         function_name = tool_call.function.name
-                        function_args = json.loads(tool_call.function.arguments)
+                        function_args = self._safe_parse_tool_arguments(getattr(tool_call.function, "arguments", None))
 
                         if self.verbosity_level > 1:
                             print(
                                 f"Calling tool: {function_name} with args: {function_args}"
                             )
 
-                        # 执行工具调用
-                        result = self.tool_manager.execute_tool(
-                            function_name, **function_args
-                        )
+                        # 如果参数解析失败，避免直接炸整个 step；把错误作为 observation 喂回去让模型自我修复
+                        if not function_args and getattr(tool_call.function, "arguments", None):
+                            result = (
+                                "Error: Failed to parse tool arguments as JSON. "
+                                f"tool={function_name}, raw_arguments={tool_call.function.arguments!r}"
+                            )
+                        else:
+                            # 执行工具调用
+                            result = self.tool_manager.execute_tool(
+                                function_name, **function_args
+                            )
                         
                         if asyncio.iscoroutine(result): # 检查是否是异步函数
                             result = await result
@@ -268,10 +329,49 @@ class CodeAgent(MultiStepAgent):
 
         super().__init__(tools, model, max_steps, **kwargs)
 
+        # Prepare managed agent wrappers for Python interpreter
+        additional_globals = {}
+        if self.managed_agents:
+            for agent in self.managed_agents:
+                # Create a wrapper function that calls agent.run
+                def create_wrapper(agent_instance):
+                    def agent_wrapper(task: str, **kwargs):
+                        # print(f"Calling managed agent '{agent_instance.name}' with task: {task}")
+                        import asyncio
+                        try:
+                            # If we are in a thread without a loop (asyncio.to_thread), use asyncio.run
+                            return asyncio.run(agent_instance.run(task, additional_args=kwargs))
+                        except RuntimeError:
+                            # Fallback if somehow there is a loop or other issue
+                             loop = asyncio.new_event_loop()
+                             asyncio.set_event_loop(loop)
+                             return loop.run_until_complete(agent_instance.run(task, additional_args=kwargs))
+                    return agent_wrapper
+                
+                additional_globals[agent.name] = create_wrapper(agent)
+
         # 确保有Python解释器工具
-        if not any(isinstance(tool, PythonInterpreterTool) for tool in self.tools):
-            self.tools.append(PythonInterpreterTool())
-            self.tool_manager.register_tool(PythonInterpreterTool())
+        python_tool_found = False
+        for tool in self.tools:
+            if isinstance(tool, PythonInterpreterTool):
+                python_tool_found = True
+                # Inject globals into existing tool
+                if hasattr(tool, "additional_globals"):
+                    tool.additional_globals.update(additional_globals)
+                else:
+                    tool.additional_globals = additional_globals
+                # Ensure imports are set
+                if hasattr(tool, "authorized_imports"):
+                    # Union of existing and new imports
+                     tool.authorized_imports = list(set(tool.authorized_imports + self.additional_authorized_imports))
+                break
+        
+        if not python_tool_found:
+            self.tools.append(PythonInterpreterTool(
+                authorized_imports=self.additional_authorized_imports,
+                additional_globals=additional_globals
+            ))
+            self.tool_manager.register_tool(self.tools[-1])
 
         # 管理的代理字典
         self.managed_agents_dict = {agent.name: agent for agent in self.managed_agents}
@@ -291,9 +391,18 @@ You can also delegate tasks to the following managed agents:
 {self.instructions}
 
 Always break down complex problems into smaller steps and use code to solve them systematically.
-IMPORTANT: When you use Python, you MUST use the following format:\n```python\nyour_code_here.
-IMPORTANT: When using Python, you MUST use print() to output the final result of your calculation, otherwise the system will not be able to receive the data.
-IMPORTANT: Separation of Concerns: Never use a final answer tool (e.g., final_answer()) inside a Python code block.
+
+IMPORTANT: FORMATTING RULES
+1. When you want to use a tool or perform a calculation, you MUST write Python code inside a code block.
+2. The format MUST be exactly:
+```python
+# Your code here
+result = tool_name(arg1="value", arg2=123)
+print(result)
+```
+3. DO NOT use plain text actions like "Action: tool_name" or "I will use tool_name". These will be ignored.
+4. You MUST use print() to output the final result of your calculation or tool usage.
+5. Separation of Concerns: Never use a final answer tool (e.g., final_answer()) inside a Python code block.
 """
 
         return base_prompt
@@ -395,15 +504,14 @@ IMPORTANT: Separation of Concerns: Never use a final answer tool (e.g., final_an
                         )
 
                         if python_tool:
-                            timeout =30
-                            # result = python_tool.forward(code)
+                            timeout = 30
                             try:
                                 # 直接调用，设置超时时间
                                 result = func_timeout(timeout, python_tool.forward, args=(code,))
                             except FunctionTimedOut:
-                                result = f"Error: Execution timed out after {timeout} seconds."
+                                result = f"Error: Execution timed out after {timeout} seconds. Your code took too long to run. Please optimize it."
                             except Exception as e:
-                                result = f"Error: {str(e)}"
+                                result = f"Error executing code: {str(e)}\nPlease check your code logic and syntax."
                             # with multiprocessing.Pool(processes=1) as pool:
                             #     result_obj = pool.apply_async(python_tool.forward, (code,))
                             #     try:
@@ -502,13 +610,50 @@ IMPORTANT: Separation of Concerns: Never use a final answer tool (e.g., final_an
 
                 # 如果没有代码执行或代理委托，继续下一步
                 if not code_blocks and not agent_delegation:
-                    # 添加一个提示让代理继续
-                    messages.append(
-                        {
-                            "role": "user",
-                            "content": "Please continue or provide your final answer.",
-                        }
+                    # 检查是否有潜在的工具调用意图但格式错误
+                    # 匹配常见的 ReAct 模式或其他明显的工具调用意图
+                    potential_tool_call = re.search(
+                        r"(?:Action|Call|Use|Using)\s*:?\s*[`'\"]?(\w+)[`'\"]?", 
+                        response_text, 
+                        re.IGNORECASE
                     )
+                    
+                    # 检查是否提到了具体的工具名称
+                    mentioned_tools = [tool.name for tool in self.tools if tool.name in response_text]
+                    
+                    tool_hint = ""
+                    should_provide_feedback = False
+
+                    if mentioned_tools:
+                        tool_hint = f" regarding '{mentioned_tools[0]}'"
+                        should_provide_feedback = True
+                    elif potential_tool_call:
+                        matched_word = potential_tool_call.group(1)
+                        # 过滤常用停用词
+                        if matched_word.lower() not in ["the", "a", "an", "this", "that", "it", "to", "python"]:
+                            tool_hint = f" regarding '{matched_word}'"
+                            should_provide_feedback = True
+                    
+                    if should_provide_feedback:
+                        feedback_msg = (
+                            f"I detected a potential intent to use a tool{tool_hint}, but I did not find any executable code block. "
+                            "You MUST write Python code inside a ```python``` block to use tools. "
+                            "Do not use 'Action:' or plain text descriptions. "
+                            "Example:\n```python\nprint(tool_name(arg='value'))\n```\n"
+                            "Please rewrite your response with the correct code block format."
+                        )
+                        if self.verbosity_level > 1:
+                            print(f"Providing format feedback: {feedback_msg}")
+                            
+                        messages.append({"role": "user", "content": feedback_msg})
+                    else:
+                        # 通用提示，但也强调代码格式
+                        messages.append(
+                            {
+                                "role": "user",
+                                "content": "I did not detect any executable code or tool calls. If you intended to use a tool, please use a ```python code block. Otherwise, please continue or provide your final answer.",
+                            }
+                        )
 
             except Exception as e:
                 error_msg = f"Error in code agent step {step_num + 1}: {str(e)}"

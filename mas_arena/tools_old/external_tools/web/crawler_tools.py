@@ -80,14 +80,19 @@ class SimpleCrawler:
             headers = {
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
             }
-            response = requests.get(url, headers=headers, timeout=10)
-            response.raise_for_status()
+            content = self._http_get_text(
+                url,
+                headers=headers,
+                connect_timeout=float(os.getenv("CRAWLER_CONNECT_TIMEOUT", "5")),
+                read_timeout=float(os.getenv("CRAWLER_READ_TIMEOUT", "10")),
+                total_timeout=float(os.getenv("CRAWLER_TOTAL_TIMEOUT", "20")),
+                max_bytes=int(os.getenv("CRAWLER_SIMPLE_MAX_BYTES", "400000")),
+            )
 
             # Simple text extraction
             from html import unescape
             import re
 
-            content = response.text
             # Remove script and style tags
             content = re.sub(
                 r"<script[^>]*>.*?</script>",
@@ -127,13 +132,55 @@ class SimpleCrawler:
                 "X-Token-Budget": "80000",
             }
             try:
-                response = requests.get(jina_url, headers=headers, timeout=15)
-                response.raise_for_status()
-                return response.text
+                text = self._http_get_text(
+                    jina_url,
+                    headers=headers,
+                    connect_timeout=float(os.getenv("CRAWLER_CONNECT_TIMEOUT", "5")),
+                    read_timeout=float(os.getenv("CRAWLER_READ_TIMEOUT", "10")),
+                    total_timeout=float(os.getenv("CRAWLER_JINA_TOTAL_TIMEOUT", os.getenv("CRAWLER_TOTAL_TIMEOUT", "25"))),
+                    max_bytes=int(os.getenv("CRAWLER_JINA_MAX_BYTES", "1200000")),
+                )
+                return text[:200000]
             except Exception:
                 return self._read_page_simple(url)
 
         return jina_read(url)
+
+    @staticmethod
+    def _http_get_text(
+        url: str,
+        headers: dict | None = None,
+        connect_timeout: float = 5.0,
+        read_timeout: float = 10.0,
+        total_timeout: float = 20.0,
+        max_bytes: int = 400_000,
+    ) -> str:
+        start = time.monotonic()
+        resp = requests.get(
+            url,
+            headers=headers or {},
+            timeout=(connect_timeout, read_timeout),
+            stream=True,
+        )
+        try:
+            resp.raise_for_status()
+            buf = bytearray()
+            for chunk in resp.iter_content(chunk_size=8192):
+                if not chunk:
+                    continue
+                buf.extend(chunk)
+                if len(buf) >= max_bytes:
+                    break
+                if (time.monotonic() - start) > total_timeout:
+                    raise TimeoutError(f"HTTP GET exceeded total timeout ({total_timeout}s)")
+
+            encoding = resp.encoding or "utf-8"
+            return bytes(buf).decode(encoding, errors="replace")
+        finally:
+            try:
+                resp.close()
+            except Exception:
+                pass
 
 
 class CrawlerArchiveSearchTool(Tool):

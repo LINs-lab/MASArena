@@ -142,7 +142,11 @@ For pure text files or already markdown files, use the text_inspector tool inste
             },
         ]
 
-        content = self.model(messages).content
-        if not isinstance(content, str):
-            content = str(content)
-        return content
+        # Note: In this codebase, OpenAIServerModel.__call__ returns a plain string.
+        # Some other model implementations may return an object with `.content`.
+        result = self.model(messages)
+        if hasattr(result, "content"):
+            result = result.content
+        if not isinstance(result, str):
+            result = str(result)
+        return result

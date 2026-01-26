@@ -1166,6 +1166,12 @@ http = [
 ]
 
 [[package]]
+name = "func-timeout"
+version = "4.3.5"
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
+sdist = { url = "https://mirrors.aliyun.com/pypi/packages/b3/0d/bf0567477f7281d9a3926c582bfef21bff7498fc0ffd3e9de21811896a0b/func_timeout-4.3.5.tar.gz", hash = "sha256:74cd3c428ec94f4edfba81f9b2f14904846d5ffccc27c92433b8b5939b5575dd" }
+
+[[package]]
 name = "future"
 version = "1.0.0"
 source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
@@ -3451,6 +3457,7 @@ dependencies = [
     { name = "fonttools" },
     { name = "frozenlist" },
     { name = "fsspec" },
+    { name = "func-timeout" },
     { name = "gensim" },
     { name = "google-api-core" },
     { name = "google-api-python-client" },
@@ -3706,6 +3713,7 @@ requires-dist = [
     { name = "fonttools", specifier = "==4.59.0" },
     { name = "frozenlist", specifier = "==1.7.0" },
     { name = "fsspec", specifier = "==2025.7.0" },
+    { name = "func-timeout", specifier = ">=4.3.5" },
     { name = "gensim", specifier = ">=4.3.2" },
     { name = "google-api-core", specifier = "==2.25.1" },
     { name = "google-api-python-client", specifier = "==2.179.0" },

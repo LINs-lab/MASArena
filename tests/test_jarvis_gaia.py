@@ -19,10 +19,10 @@ if __name__ == "__main__":
     # 配置 Jarvis 参数
     agent_config = {
         "model_name": "gpt-4.1",   # 模型
-        "manager_tools": ["python_interpreter"], # final_answer 现在会自动添加
-        "search_tools": ["ALL"],
+        "manager_tools": ["ALL"], 
+        "search_tools": ["ALL"], # 显式添加 crawler_read 以启用 Jina
         "memory": None,
-        "verbosity_level": 1,
+        "verbosity_level": 100, 
         "evaluator": evaluator,        
     }
     
@@ -37,10 +37,11 @@ if __name__ == "__main__":
         benchmark_name=evaluator,
         agent_system="jarvis",  # 指定 jarvis 系统
         agent_config=agent_config,
-        limit=10,                    
+        limit=0,  # 0 表示没有限制，运行 gaia level1 的所有题目                    
         pass_at_k=1,
         log_file=log_file,
-
+        data_path="data/gaia_validate_level1.jsonl", # 显式指定数据文件
+        concurrency=10, # 增加并发
     ))
     
     print("\n==== Jarvis GAIA 测试结果 ====")

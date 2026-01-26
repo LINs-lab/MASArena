@@ -11,7 +11,7 @@ Examples:
     ...     memory="melo_memory",
     ...     api_key="your-api-key"
     ... )
-    >>> result = await agent.evaluate("math", {"problem": "What is 2+2?", "solution": "4"})
+    >>> result = await agent.evaluate({"problem": "What is 2+2?", "solution": "4"}, evaluator_name="math")
     >>> print(result.final_answer)
 """
 
@@ -144,12 +144,26 @@ class BenchAgent(AgentSystem):
         frame = inspect.currentframe()
         args_info = inspect.getargvalues(frame)
         init_args = {key: args_info.locals[key] for key in args_info.args}
-        init_args.update(kwargs)  # 合并 **kwargs
+        
+        # 提取从注册表传递的配置
+        registry_config = kwargs.pop("config", {})
+        
+        # 合并 init_args 和 kwargs
+        init_args.update(kwargs)
         
         print("Initializing BenchAgent with parameters:")
-        self.benchmark_name = init_args.get("config", {}).get('evaluator')
+        self.benchmark_name = registry_config.get('evaluator')
         
-        config = {
+        # 处理优先级：如果是默认值且 registry_config 中有值，则使用 registry_config 的值
+        if model == "gpt-4o-mini" and registry_config.get("model_name"):
+             model = registry_config.get("model_name")
+        
+        # 构建最终配置字典
+        # 1. Start with registry_config (includes 'evaluator' etc.)
+        final_config = registry_config.copy()
+        
+        # 2. Update with explicit args and kwargs
+        final_config.update({
             "model_name": model,
             "api_key": api_key,
             "api_base": api_base,
@@ -158,13 +172,20 @@ class BenchAgent(AgentSystem):
             "verbosity_level": verbosity_level,
             "additional_instructions": additional_instructions,
             **kwargs
-        }
+        })
         
         # 调用父类构造函数
-        super().__init__(name, config)
+        super().__init__(name, final_config)
         
-        # 存储工具配置
-        # 默认不包含 final_answer，因为它会自动被添加
+        # 使用合并后的配置继续初始化
+        config_dict = final_config # Use the merged config
+        
+        if config_dict:
+            if manager_tools is None:
+                manager_tools = config_dict.get("manager_tools")
+            if search_tools is None:
+                search_tools = config_dict.get("search_tools")
+
         self.manager_tools_config = manager_tools or ["python_interpreter"]
         self.search_tools_config = search_tools or ["search", "browser", "wikipedia"]
         self.memory_type = memory
@@ -413,29 +434,6 @@ Handles complex multi-step problems, writes Python code, and processes data."""
         """关闭资源"""
         if hasattr(self.llm, "aclose"):
             await self.llm.aclose()
-
-    async def evaluate(self, problem: Dict[str, Any], metrics_registry=None) -> Dict[str, Any]:
-        """
-        评估单个问题
-        
-        Args:
-            benchmark_name: 基准测试名称，如"math", "gaia", "gsm8k"等
-            problem: 问题字典，包含"problem"和"solution"字段
-            
-        Returns:
-            评估结果字典
-        """
-        # 设置评估器
-        original_evaluator = self.evaluator_name
-        self.evaluator_name = self.benchmark_name
-        self.format_prompt = self.format_prompts()
-        
-        try:
-            result = await self.run_agent(problem)
-            return result
-        finally:
-            # 恢复原始评估器
-            self.evaluator_name = original_evaluator
 
     @override
     async def run_agent(self, problem: Dict[str, Any], **kwargs) -> Dict[str, Any]:
@@ -1002,3 +1000,4 @@ AgentSystemRegistry.register(
     verbosity_level=1,
     description="High-performance, easy-to-use benchmark agent with pluggable tools and memory support"
 )
+

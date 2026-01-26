@@ -24,7 +24,7 @@ if __name__ == "__main__":
         "manager_tools": ["python_interpreter"], # final_answer 现在会自动添加
         "search_tools": ["ALL"],
         "memory": None,
-        "verbosity_level": 10,
+        "verbosity_level": 100,
         "evaluator": evaluator,        
     }
     
@@ -33,15 +33,14 @@ if __name__ == "__main__":
     log_file = f"logs/jarvis_simple_{evaluator}_{timestamp}.log"
     
     # 使用 asyncio.run 运行异步方法
-    summary = asyncio.run(BenchmarkRunner().arun(
+    summary = BenchmarkRunner().run(
         benchmark_name=evaluator,
         agent_system="jarvis",  # 指定 jarvis 系统
         agent_config=agent_config,
-        limit=10,                    
+        limit=10,  
         pass_at_k=1,
         log_file=log_file,
-
-    ))
+    )
     
     print("\n==== Jarvis 简易测试结果 ====")
     print(summary)

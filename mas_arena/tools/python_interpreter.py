@@ -15,15 +15,17 @@ class PythonInterpreterTool(Tool):
     }
     output_type = "string"
 
-    def __init__(self, authorized_imports: Optional[List[str]] = None):
+    def __init__(self, authorized_imports: Optional[List[str]] = None, additional_globals: Optional[Dict[str, Any]] = None):
         """
         Initialize the Python interpreter tool.
         
         Args:
             authorized_imports: List of module names that are allowed to be imported.
+            additional_globals: Dictionary of additional global variables/functions to inject.
         """
         super().__init__()
         self.authorized_imports = authorized_imports or []
+        self.additional_globals = additional_globals or {}
         # Don't initialize globals_dict here with __builtins__ as it might trigger validation issues
         # We'll initialize execution state in forward
 
@@ -52,6 +54,10 @@ class PythonInterpreterTool(Tool):
             
             # Add authorized imports to globals
             globals_dict = {"__builtins__": safe_builtins}
+            
+            # Add additional globals
+            if self.additional_globals:
+                globals_dict.update(self.additional_globals)
             
             # Pre-import authorized modules
             for module_name in self.authorized_imports:
