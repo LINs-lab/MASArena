@@ -76,8 +76,9 @@ class Browser:
         if self.initialized:
             return
 
-        self.context_manager = await async_playwright()
-        self.playwright = await self.context_manager.start()
+        # async_playwright() is an async context manager; use __aenter__ to get the Playwright instance
+        self._pw_cm = async_playwright()
+        self.playwright = await self._pw_cm.__aenter__()
         self.browser = await self._create_browser()
         self.context = await self._create_browser_context()
 
@@ -177,8 +178,9 @@ class Browser:
         await self.page.close()
         await self.context.close()
         await self.browser.close()
-        if hasattr(self, 'context_manager') and self.context_manager:
-            await self.context_manager.stop()
+        if hasattr(self, "_pw_cm") and self._pw_cm is not None:
+            await self._pw_cm.__aexit__(None, None, None)
+            self._pw_cm = None
         self.initialized = False
 
     def save_trace(self, trace_path: str | Path) -> None:

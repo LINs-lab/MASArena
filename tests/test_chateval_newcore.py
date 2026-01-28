@@ -15,17 +15,17 @@ from mas_arena.benchmark_runner import BenchmarkRunner
 logging.basicConfig(level=logging.INFO)
 
 if __name__ == "__main__":
-    evaluator = "drop" # Using a simple evaluator
+    evaluator = "gsm8k" # Using a simple evaluator
     # Configure ChatEval NewCore
     agent_config = {
-        "num_rounds": 2,
-        "model_name": "gpt-4o-mini",   # Using a cheaper model for test
+        "num_rounds": 3,
+        "model_name": "gpt-4.1",   # Using a cheaper model for test
         "manager_tools": ["python_interpreter"], # Give them python
-        "search_tools": ["search", "wikipedia"], # No search needed for simple math
+        "search_tools": ["ALL"], # No search needed for simple math
         "memory": None,
-        "verbosity_level": 1,
+        "verbosity_level": 10,
         "evaluator": evaluator,
-        "max_steps": 5 # Limit steps for speed
+        "max_steps": 8 # Limit steps for speed
     }
     
     # Generate log file

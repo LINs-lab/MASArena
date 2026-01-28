@@ -329,8 +329,34 @@ class CodeAgent(MultiStepAgent):
 
         super().__init__(tools, model, max_steps, **kwargs)
 
-        # Prepare managed agent wrappers for Python interpreter
-        additional_globals = {}
+        # Prepare globals for Python interpreter:
+        # - tool wrappers (e.g. `inspect_file_as_image(...)`)
+        # - managed agent wrappers (e.g. `search_agent(...)`)
+        additional_globals: Dict[str, Any] = {}
+
+        def _is_valid_python_identifier(name: str) -> bool:
+            return bool(re.match(r"^[A-Za-z_]\w*$", name or ""))
+
+        def create_tool_wrapper(tool_name: str):
+            def tool_wrapper(*args, **kwargs):
+                return self.tool_manager.execute_tool(tool_name, *args, **kwargs)
+
+            return tool_wrapper
+
+        # Expose tools to the python interpreter environment.
+        # Note: avoid exposing `python_interpreter` itself (recursion) and `final_answer` (prompt rule).
+        for t in self.tools:
+            t_name = getattr(t, "name", None)
+            if not t_name or not isinstance(t_name, str):
+                continue
+            if t_name in ("python_interpreter", "final_answer"):
+                continue
+            if not _is_valid_python_identifier(t_name):
+                continue
+            if t_name in additional_globals:
+                continue
+            additional_globals[t_name] = create_tool_wrapper(t_name)
+
         if self.managed_agents:
             for agent in self.managed_agents:
                 # Create a wrapper function that calls agent.run
@@ -343,9 +369,11 @@ class CodeAgent(MultiStepAgent):
                             return asyncio.run(agent_instance.run(task, additional_args=kwargs))
                         except RuntimeError:
                             # Fallback if somehow there is a loop or other issue
-                             loop = asyncio.new_event_loop()
-                             asyncio.set_event_loop(loop)
-                             return loop.run_until_complete(agent_instance.run(task, additional_args=kwargs))
+                            loop = asyncio.new_event_loop()
+                            asyncio.set_event_loop(loop)
+                            return loop.run_until_complete(
+                                agent_instance.run(task, additional_args=kwargs)
+                            )
                     return agent_wrapper
                 
                 additional_globals[agent.name] = create_wrapper(agent)
@@ -363,7 +391,9 @@ class CodeAgent(MultiStepAgent):
                 # Ensure imports are set
                 if hasattr(tool, "authorized_imports"):
                     # Union of existing and new imports
-                     tool.authorized_imports = list(set(tool.authorized_imports + self.additional_authorized_imports))
+                    tool.authorized_imports = list(
+                        set(tool.authorized_imports + self.additional_authorized_imports)
+                    )
                 break
         
         if not python_tool_found:
