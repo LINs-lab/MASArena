@@ -12,14 +12,16 @@ from smolagents.models import MessageRole, Model
 class CSVExtractorTool(Tool):
     name = "inspect_file_as_csv"
     description = """
-Extract and analyze content from CSV, TSV, and delimited text files.
-This tool supports the following formats: [".csv", ".tsv", ".txt"]. 
-For other file types, use the appropriate inspection tool.
-Provides automatic encoding and delimiter detection, statistical analysis, and multiple output formats."""
+Extract and analyze content from CSV, TSV, and delimited text files ONLY.
+Supported extensions: .csv, .tsv, .txt only. Do NOT use this for:
+- Excel files (.xlsx, .xls) -> use extract_sheet_features or sheet_extractor
+- Images (.png, .jpg, etc.) -> use inspect_file_as_image / visual_inspector
+- PDF, PDB, ZIP, or other formats -> use the matching tool for that type.
+Provides encoding/delimiter detection, statistical analysis, and multiple output formats."""
 
     inputs = {
         "file_path": {
-            "description": "The path to the CSV file you want to analyze. Must be a CSV, TSV, or delimited text file (.csv, .tsv, .txt). If it is an image, use the visual_inspector tool instead! If it is audio, use the audio_inspector tool instead!",
+            "description": "Path to a CSV/TSV/text file only (.csv, .tsv, .txt). Reject .xlsx, .xls, .png, .pdf, .pdb, .zip etc.; use the correct tool for those (e.g. extract_sheet_features for Excel, inspect_file_as_image for images).",
             "type": "string",
         },
         "question": {

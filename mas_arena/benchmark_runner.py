@@ -35,6 +35,9 @@ from mas_arena.evaluators import BENCHMARKS
 from mas_arena.evaluators.utils.normalization import normalize_problem_keys
 
 
+logger = logging.getLogger(__name__)
+
+
 def custom_json_serializer(obj):
     """Custom JSON serializer for objects that are not serializable by default."""
     if isinstance(obj, (datetime, Path)):
@@ -234,6 +237,7 @@ class BenchmarkRunner:
 
         if verbose:
             print(f"Problem {i + 1}: {problem_id}")
+        logger.info("PROBLEM_START id=%s index=%d", problem_id, i + 1)
 
         self.metrics_collector.start_timer(f"mas_arena.problem.{problem_id}", {"problem_id": problem_id})
 
@@ -277,6 +281,13 @@ class BenchmarkRunner:
             if verbose:
                 status_char = "E" if results.get("status") == "error" else "✓" if is_correct else "✗"
                 print(f"Result: {status_char} ({duration_ms:.0f}ms)")
+            logger.info(
+                "PROBLEM_END id=%s correct=%s score=%s duration_ms=%s",
+                problem_id,
+                is_correct,
+                score,
+                duration_ms,
+            )
             return result_entry
         except Exception as e:
             self.metrics_collector.stop_timer(f"mas_arena.problem.{problem_id}")

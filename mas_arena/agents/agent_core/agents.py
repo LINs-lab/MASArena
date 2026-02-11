@@ -203,7 +203,17 @@ class ToolCallingAgent(MultiStepAgent):
 
                     for tool_call in assistant_message.tool_calls:
                         function_name = tool_call.function.name
-                        function_args = self._safe_parse_tool_arguments(getattr(tool_call.function, "arguments", None))
+                        function_args = self._safe_parse_tool_arguments(
+                            getattr(tool_call.function, "arguments", None)
+                        )
+
+                        logger.info(
+                            "AGENT_TOOL_CALL agent=%s step=%d name=%s args=%s",
+                            self.name,
+                            step_num + 1,
+                            function_name,
+                            function_args,
+                        )
 
                         if self.verbosity_level > 1:
                             print(
@@ -222,9 +232,17 @@ class ToolCallingAgent(MultiStepAgent):
                                 function_name, **function_args
                             )
                         
-                        if asyncio.iscoroutine(result): # 检查是否是异步函数
+                        if asyncio.iscoroutine(result):  # 检查是否是异步函数
                             result = await result
                         result_str = str(result)
+
+                        logger.info(
+                            "AGENT_TOOL_RESULT agent=%s step=%d name=%s len=%d",
+                            self.name,
+                            step_num + 1,
+                            function_name,
+                            len(result_str),
+                        )
                         
                         tool_calls.append(
                             {
@@ -734,6 +752,10 @@ print(result)
         
         if match:
             answer = match.group(1).strip()
+            # 若 agent 传入的是 final_answer("<answer>X</answer>")，只保留 X
+            tag_inner = re.search(r"<answer>\s*(.*?)\s*</answer>", answer, re.IGNORECASE | re.DOTALL)
+            if tag_inner:
+                answer = tag_inner.group(1).strip()
             if self.verbosity_level > 1:
                 print(f"DEBUG: Extracted final answer via tool call pattern: {answer}")
             return answer
@@ -768,22 +790,44 @@ print(result)
         if strict:
             return None
 
-        # 查找各种最终答案标记
-        patterns = [
-            r"Final answer[:\s]*(.+)",
-            r"The answer is[:\s]*(.+)",
-            r"Answer[:\s]*(.+)",
-            r"Result[:\s]*(.+)",
+        # 弱匹配模式：只取冒号后第一行或第一句，避免把整段推理当答案（如 "Answer: must be a single number. No loopholes..."）
+        # 使用 [^\n]+ 限制为单行，避免 DOTALL 下 (.+) 吃掉全文
+        patterns_single_line = [
+            r"Final answer[:\s]*([^\n]+)",
+            r"The answer is[:\s]*([^\n]+)",
+            r"\bAnswer\b[:\s]*([^\n]+)",
+            r"\bResult\b[:\s]*([^\n]+)",
         ]
+        # 明显是推理/下一步的短语，不应作为最终答案
+        reasoning_markers = (
+            "next step",
+            "i will",
+            "let me",
+            "therefore",
+            "analysis",
+            "did not return",
+            "no loopholes",
+            "depends entirely",
+            "i would",
+            "we need to",
+            "must be a",
+            "must be the",
+        )
 
-        for pattern in patterns:
-            match = re.search(pattern, text, re.IGNORECASE | re.DOTALL)
+        for pattern in patterns_single_line:
+            match = re.search(pattern, text, re.IGNORECASE)
             if match:
+                raw = match.group(1).strip()
+                if not raw or len(raw) > 500:
+                    continue
+                lower = raw.lower()
+                if any(m in lower for m in reasoning_markers):
+                    continue
                 if self.verbosity_level > 1:
                     print(
-                        f"DEBUG: Extracted final answer via pattern '{pattern}': {match.group(1).strip()}"
+                        f"DEBUG: Extracted final answer via pattern '{pattern}': {raw}"
                     )
-                return match.group(1).strip()
+                return raw
 
         return None
 

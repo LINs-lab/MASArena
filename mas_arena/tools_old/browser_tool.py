@@ -6,6 +6,7 @@ from typing import List
 import sys
 import importlib
 import asyncio
+import os
 from langchain.tools import StructuredTool
 from mas_arena.tools_old.base import ToolFactory
 
@@ -21,7 +22,9 @@ def import_and_install(package_name: str):
         else:
             raise ImportError(f"No module named '{package_name}'")
     except ImportError:
-        print(f"Package '{package_name}' not found. Attempting to install...")
+        # Installing packages at runtime inside benchmark runs is slow and brittle.
+        # Keep the helper for optional/manual use, but do not auto-install by default.
+        print(f"Package '{package_name}' not found.")
         try:
             # Use subprocess.run to capture both stdout and stderr
             process = subprocess.run(
@@ -55,16 +58,29 @@ class Browser:
     def __init__(self, **kwargs) -> None:
         self.initialized = False
         
-        # Ensure playwright is available
-        import_and_install("playwright")
-
-        # Ensure browser binaries are installed
-        print("Checking/installing Playwright browser binaries...")
+        # Ensure playwright is available (do not auto-install during runs).
         try:
-            # Using sys.executable to ensure we use the correct playwright
-            subprocess.check_call([sys.executable, "-m", "playwright", "install"], stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+            import playwright  # noqa: F401
         except Exception as e:
-            print(f"Warning: Failed to install playwright browsers, but continuing. Error: {e}")
+            raise ImportError(
+                "Playwright is required for the browser tool. "
+                "Please install it in your environment (e.g., `uv sync` / `pip install playwright`). "
+                f"Import error: {e}"
+            )
+
+        # Installing browser binaries during benchmark runs can easily exceed step timeouts.
+        # Make this opt-in.
+        auto_install = str(os.getenv("MAS_ARENA_AUTO_INSTALL_PLAYWRIGHT", "")).strip().lower() in {"1", "true", "yes"}
+        if auto_install:
+            print("Checking/installing Playwright browser binaries...")
+            try:
+                subprocess.check_call(
+                    [sys.executable, "-m", "playwright", "install"],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.PIPE,
+                )
+            except Exception as e:
+                print(f"Warning: Failed to install playwright browsers. Error: {e}")
 
         self._finish = False
         self.record_trace = kwargs.get("enable_recording", False)
@@ -121,10 +137,15 @@ class Browser:
         """Navigate to a URL."""
         if not self.initialized: await self.init()
         try:
-            await self.page.goto(url)
+            timeout_ms = int(os.getenv("MAS_ARENA_BROWSER_GOTO_TIMEOUT_MS", "20000"))
+            await self.page.goto(url, timeout=timeout_ms, wait_until="domcontentloaded")
             return f"Navigated to {url}"
         except Exception as e:
-            return f"Failed to navigate to {url}: {e}"
+            return (
+                f"Failed to navigate to {url}: {e}. "
+                "If this looks like a missing Playwright browser binary, run `playwright install` once "
+                "outside the benchmark (or set MAS_ARENA_AUTO_INSTALL_PLAYWRIGHT=1)."
+            )
 
     async def get_page_content(self, clean=True) -> str:
         """

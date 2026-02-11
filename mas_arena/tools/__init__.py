@@ -11,7 +11,7 @@ from .audio_inspector import AudioInspectorTool
 from .visual_inspector import VisualInspectorTool
 
 # 网络工具
-from .search_tool import SearchTool # 已修改为封装 tools_old.TavilySearch
+from .search_tool import SearchTool # web_search：优先 Jina(s.jina.ai)，无 key 时兜底 Tavily
 from .browser_tool import BrowserTool # 新增：封装 tools_old.BrowserTool
 from .wikipedia_search import WikipediaSearchTool  # tools_old 没有 Wiki，保留新实现
 from .crawler_tools import (

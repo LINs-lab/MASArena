@@ -8,16 +8,16 @@ set -e
 
 LOG_DIR=${1:-logs/chateval_newcore}
 timestamp=$(date +%Y%m%d%H%M%S)
-LOG_FILE="${LOG_DIR}/chateval_newcore_${timestamp}.log"
+LOG_FILE="${LOG_DIR}/jarvis_simple_${timestamp}.log"
 
 mkdir -p "$LOG_DIR"
 
 echo "====================================================="
-echo "Running: uv run tests/test_chateval_newcore.py"
+echo "Running: uv run tests/test_jarvis_simple.py"
 echo "Log File: $LOG_FILE"
 echo "====================================================="
 
-nohup uv run tests/test_chateval_newcore.py > "$LOG_FILE" 2>&1 &
+nohup uv run tests/test_jarvis_simple.py > "$LOG_FILE" 2>&1 &
 
 echo "Started in background. PID: $!"
 echo "Monitor with: tail -f $LOG_FILE"

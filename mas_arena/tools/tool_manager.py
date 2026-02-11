@@ -1,9 +1,28 @@
 from typing import Any, Dict, List, Optional
 import logging
 import inspect
+import json
+import time
 from smolagents import Tool
 
 logger = logging.getLogger(__name__)
+
+
+def _safe_json(data: Any, limit: int = 512) -> str:
+    """
+    Best-effort JSON serialization helper for logging.
+    Ensures logs won't explode due to huge payloads or non-serializable objects.
+    """
+    try:
+        s = json.dumps(data, ensure_ascii=False)
+    except Exception:
+        try:
+            s = str(data)
+        except Exception:
+            s = f"<unserializable type={type(data).__name__}>"
+    if len(s) > limit:
+        return s[:limit] + "...<truncated>"
+    return s
 
 
 class ToolManager:
@@ -133,15 +152,47 @@ class ToolManager:
 
         return normalized
 
-    def execute_tool(self, name: str, *args, **kwargs) -> str:
-        """执行工具"""
+    def execute_tool(self, name: str, *args, **kwargs) -> Any:
+        """
+        执行工具，并记录统一的调用日志。
+
+        日志格式（info 级别）：
+        - TOOL_CALL   name=... args=...
+        - TOOL_RESULT name=... duration_ms=... preview=...
+        - TOOL_NOT_FOUND / TOOL_ERROR 在异常场景
+        """
         tool = self.get_tool(name)
         if not tool:
-            return f"Tool '{name}' not found"
+            msg = f"Tool '{name}' not found"
+            logger.warning("TOOL_NOT_FOUND name=%s", name)
+            return msg
 
+        start = time.time()
         try:
             normalized_kwargs = self._normalize_tool_kwargs(tool, kwargs)
-            return tool.forward(*args, **normalized_kwargs)
+            logger.info(
+                "TOOL_CALL name=%s args=%s",
+                name,
+                _safe_json(normalized_kwargs),
+            )
+
+            result = tool.forward(*args, **normalized_kwargs)
+
+            # 如果是协程，调用方通常会负责 await，这里只记录同步部分的耗时
+            duration_ms = (time.time() - start) * 1000
+            logger.info(
+                "TOOL_RESULT name=%s duration_ms=%.1f preview=%s",
+                name,
+                duration_ms,
+                _safe_json(result, limit=256),
+            )
+            return result
         except Exception as e:
-            logger.error(f"Error executing tool {name}: {e}")
+            duration_ms = (time.time() - start) * 1000
+            logger.exception(
+                "TOOL_ERROR name=%s duration_ms=%.1f error=%s",
+                name,
+                duration_ms,
+                e,
+            )
             return f"Error executing tool {name}: {str(e)}"

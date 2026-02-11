@@ -60,7 +60,10 @@ def list_available_files(args):
 
 def visualize_benchmark(args):
     """Visualize a benchmark summary file"""
-    visualizer = BenchmarkVisualizer(args.output_dir)
+    visualizer = BenchmarkVisualizer(
+        args.output_dir,
+        open_browser=getattr(args, "open_browser", True),
+    )
     
     if args.summary:
         summary_file = Path(args.summary)
@@ -132,6 +135,9 @@ def main():
     viz_parser.add_argument("--results-dir", help="Directory containing results files", default="results")
     viz_parser.add_argument("--agent-system", help="Filter by agent system name")
     viz_parser.add_argument("--benchmark", help="Filter by benchmark name")
+    viz_parser.add_argument("--open-browser", dest="open_browser", action="store_true", help="Open the generated HTML in the default browser (default when not set by batch script)")
+    viz_parser.add_argument("--no-open-browser", dest="open_browser", action="store_false", help="Do not open browser; only print the HTML file path")
+    viz_parser.set_defaults(open_browser=True)
     
     args = parser.parse_args()
     

@@ -15,7 +15,7 @@ from mas_arena.benchmark_runner import BenchmarkRunner
 logging.basicConfig(level=logging.INFO)
 
 if __name__ == "__main__":
-    evaluator = "gsm8k" # Using a simple evaluator
+    evaluator = "mbpp" # Using a simple evaluator
     # Configure ChatEval NewCore
     agent_config = {
         "num_rounds": 3,

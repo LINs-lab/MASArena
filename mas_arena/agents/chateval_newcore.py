@@ -59,7 +59,19 @@ class ChatEvalNewCore(AgentSystem):
                 "role_prompt": (
                     "You are a Mathematics Expert. Analyze the problem mathematically.\n"
                     "Use Python to VERIFY calculations if needed, but be CONCISE.\n"
-                    "Do not repeat the problem statement."
+                    "Do not repeat the problem statement.\n\n"
+                    "FILE PROCESSING GUIDELINES:\n"
+                    "- For Excel files (.xlsx): Use 'extract_sheet_features' for color extraction or 'inspect_file_as_csv' for data\n"
+                    "- For images (.png, .jpg): Use 'inspect_file_as_image' with specific questions\n"
+                    "- For audio (.mp3, .wav): Use 'inspect_file_as_audio' to transcribe and analyze\n"
+                    "- For documents (.docx, .pptx): Use appropriate document extraction tools\n"
+                    "- For text files (.txt): Use 'extract_text_content' to read file contents\n"
+                    "- ALWAYS use tools to access files - never write Python code to read files directly\n\n"
+                    "DEEP SEARCH GUIDELINES:\n"
+                    "- If the problem requires current information or web research, use 'web_search' tool\n"
+                    "- For complex queries, break down into multiple focused searches\n"
+                    "- Verify information from multiple sources when possible\n"
+                    "- Use 'web_search' before concluding information is unavailable"
                 ),
                 "use_tools": True
             },
@@ -68,7 +80,12 @@ class ChatEvalNewCore(AgentSystem):
                 "role_prompt": (
                     "You are a Logic Expert. Analyze the logical structure.\n"
                     "Check for loopholes or implicit conditions.\n"
-                    "Be EXTREMELY CONCISE. Do not use tools."
+                    "Be EXTREMELY CONCISE. Do not use tools.\n\n"
+                    "ANALYSIS FOCUS:\n"
+                    "- Identify logical dependencies and reasoning chains\n"
+                    "- Check for missing steps or assumptions\n"
+                    "- Verify if file processing or deep search is needed\n"
+                    "- Point out if the problem requires external information"
                 ),
                 "use_tools": False
             },
@@ -77,7 +94,12 @@ class ChatEvalNewCore(AgentSystem):
                 "role_prompt": (
                     "You are a Critical Thinking Expert. Analyze from multiple angles.\n"
                     "Check for traps and misconceptions.\n"
-                    "Be EXTREMELY CONCISE. Do not use tools."
+                    "Be EXTREMELY CONCISE. Do not use tools.\n\n"
+                    "CRITICAL ANALYSIS:\n"
+                    "- Consider alternative interpretations of the problem\n"
+                    "- Identify potential pitfalls in reasoning\n"
+                    "- Verify if all necessary information has been gathered\n"
+                    "- Ensure file processing and search steps are complete"
                 ),
                 "use_tools": False
             }
@@ -185,11 +207,33 @@ class ChatEvalNewCore(AgentSystem):
         history_text = "\n\n".join(debate_history) if debate_history else "No previous discussion."
         format_prompt = self.format_prompt or ""
         
+        # Enhanced prompt structure with file processing and output guidance
+        file_guidance = ""
+        if any(ext in problem.lower() for ext in ['.xlsx', '.docx', '.png', '.jpg', '.mp3', '.wav', '.pptx', '.txt', '.py']):
+            file_guidance = (
+                "\n\n⚠️ FILE PROCESSING REQUIRED:\n"
+                "- This problem involves file(s). You MUST use appropriate file processing tools.\n"
+                "- Do NOT skip file processing or assume file contents.\n"
+                "- Use the correct tool for each file type (see guidelines above).\n"
+            )
+        
+        output_guidance = (
+            "\n\n📋 OUTPUT FORMAT REQUIREMENTS:\n"
+            "- Use the 'final_answer' tool with your answer when you have a complete solution.\n"
+            "- Final answers must be concise and match the requested format exactly.\n"
+            "- If the question asks for a number, provide ONLY the number.\n"
+            "- If the question asks for a list, provide a comma-separated list.\n"
+            "- If the question asks for text, provide ONLY the requested text without extra explanation.\n"
+            "- Wrap your final answer in <answer></answer> tags if format_prompt requires it.\n"
+        )
+        
         # Concise prompt structure
         return (
             f"Original Problem: {problem}\n\n"
             f"Discussion History:\n{history_text}\n\n"
             f"{format_prompt}\n"
+            f"{file_guidance}"
+            f"{output_guidance}"
             f"It is now Round {round_idx + 1}. You are {agent_name}.\n"
             "Provide your insights. Be CONCISE. "
             "If you are the Math Expert, verify with tools if needed. "
@@ -200,14 +244,41 @@ class ChatEvalNewCore(AgentSystem):
         """Extract the final answer using a synthesizer LLM call"""
         history_text = "\n".join(debate_history)
         
+        # Check if file processing or deep search was mentioned
+        file_processing_mentioned = any(
+            keyword in history_text.lower() 
+            for keyword in ['file', 'extract', 'image', 'audio', 'excel', 'document', 'transcribe']
+        )
+        search_mentioned = any(
+            keyword in history_text.lower()
+            for keyword in ['search', 'web', 'found', 'lookup', 'information']
+        )
+        
+        synthesis_guidance = ""
+        if file_processing_mentioned:
+            synthesis_guidance += (
+                "\n- Verify that file processing was completed successfully.\n"
+                "- Ensure file contents were properly extracted and analyzed.\n"
+            )
+        if search_mentioned:
+            synthesis_guidance += (
+                "\n- Verify that necessary information was retrieved from searches.\n"
+                "- Cross-check information from multiple sources if available.\n"
+            )
+        
         prompt = (
             f"Original problem: {problem}\n\n"
             f"Debate History:\n{history_text}\n\n"
             "Synthesize the debate and provide the final answer.\n"
             "Requirements:\n"
-            "- Choose the most reasonable solution.\n"
-            "- Provide ONLY the final answer text.\n"
-            f"{self.format_prompt or ''}"
+            "- Choose the most reasonable solution based on the debate.\n"
+            "- Ensure file processing and search steps were completed if needed.\n"
+            f"{synthesis_guidance}"
+            "- Provide ONLY the final answer text, no explanations.\n"
+            "- Match the exact format requested in the problem.\n"
+            f"{self.format_prompt or ''}\n\n"
+            "IMPORTANT: If the debate shows incomplete file processing or missing search steps, "
+            "indicate that the answer cannot be determined without completing those steps."
         )
         
         try:

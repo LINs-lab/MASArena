@@ -15,32 +15,36 @@ from mas_arena.benchmark_runner import BenchmarkRunner
 logging.basicConfig(level=logging.INFO)
 
 if __name__ == "__main__":
-    evaluator = "mbpp"
-    # 配置 LLM Debate 参数
+    evaluator = "gaia"
+    # 配置 ChatEval NewCore（GAIA level1）
     agent_config = {
-        "agents_num": 2,            # 2个辩手
-        "rounds_num": 2,            # 2轮辩论
-        "model_name": "gpt-4.1",   # 模型
-        "manager_tools": ["python_interpreter"], # final_answer 现在会自动添加
+        "num_rounds": 4,
+        "model_name": "gpt-4.1",
+        "manager_tools": ["ALL"],
         "search_tools": ["ALL"],
         "memory": None,
         "verbosity_level": 100,
-        "evaluator": evaluator,        
+        "evaluator": evaluator,
+        "max_steps": 15,
     }
-    
+
     # 生成带时间戳的日志文件名
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    log_file = f"logs/jarvis_simple_{evaluator}_{timestamp}.log"
-    
+    log_file = f"logs/chateval_newcore_gaia_{timestamp}.log"
+
+    print(f"Running ChatEval NewCore GAIA (level1) test... Log: {log_file}")
+
     # 使用 asyncio.run 运行异步方法
-    summary = BenchmarkRunner().run(
+    summary = asyncio.run(BenchmarkRunner().arun(
         benchmark_name=evaluator,
-        agent_system="jarvis",  # 指定 jarvis 系统
+        agent_system="chateval_newcore",
         agent_config=agent_config,
-        limit=400,  
+        limit=0,  # 0 表示没有限制，跑完 level1 全部题目
         pass_at_k=1,
         log_file=log_file,
-    )
-    
-    print("\n==== Jarvis 简易测试结果 ====")
+        data_path="data/gaia_validate_level2_noaudio.jsonl",  # GAIA level1
+        concurrency=10,
+    ))
+
+    print("\n==== ChatEval NewCore GAIA (level1) 测试结果 ====")
     print(summary)

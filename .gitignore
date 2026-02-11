@@ -177,3 +177,8 @@ cython_debug/
 .pypirc
 
 data.zip
+
+# data
+data/files/gaia/test/
+data/files/gaia/validate/
+extracted_files/

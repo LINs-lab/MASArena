@@ -26,6 +26,7 @@ Supports .xlsx and .xls files. For basic content extraction, use other text proc
         "feature_type": {
             "description": "Type of feature to extract: 'colors' (cell background colors), 'media' (embedded images/files), or 'formats' (list supported formats)",
             "type": "string",
+            "nullable": True,
         },
         "sheet_name": {
             "description": "[Optional]: Specific sheet name to process. If not provided, uses the active/first sheet.",
@@ -255,12 +256,14 @@ Supports .xlsx and .xls files. For basic content extraction, use other text proc
     def forward(
         self,
         file_path: str,
-        feature_type: str,
+        feature_type: Optional[str] = None,
         sheet_name: Optional[str] = None,
         question: Optional[str] = None,
     ) -> str:
         from smolagents.models import MessageRole # 内部导入
         try:
+            if feature_type is None:
+                feature_type = "formats"
             # Validate file type for most operations
             if feature_type != "formats":
                 self._validate_file_type(file_path)
