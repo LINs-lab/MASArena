@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-单测 whisper-1 是否可用。
+单测 trans 是否可用。
 用法:
   python scripts/test_whisper.py [可选: 音频文件路径]
 不传路径时会在临时目录生成一段极短的静音 wav 用于测试接口。
@@ -39,7 +39,7 @@ def main() -> None:
         sys.exit(1)
 
     print(f"API Base: {base_url}")
-    print("调用 whisper-1 ...")
+    print("调用 trans ...")
 
     if len(sys.argv) >= 2:
         audio_path = sys.argv[1]
@@ -83,13 +83,13 @@ def main() -> None:
         audio_file.name = os.path.basename(audio_path)  # 设置文件名
         
         transcription = client.audio.transcriptions.create(
-            model="whisper-1",
+            model="gpt-4o-transcribe",
             file=audio_file,
             timeout=30.0,  # 额外设置超时
         )
         
         text = transcription.text if hasattr(transcription, "text") else getattr(transcription, "text", str(transcription))
-        print("whisper-1 调用成功")
+        print("trans 调用成功")
         print("转录结果:", repr(text))
     except openai.APITimeoutError as e:
         print(f"❌ API 超时错误: {e}")

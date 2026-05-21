@@ -14,6 +14,7 @@ Logic:
 """
 
 import os
+import re
 import asyncio
 from typing import Dict, Any, List, Optional
 from dotenv import load_dotenv
@@ -225,6 +226,8 @@ class ChatEvalNewCore(AgentSystem):
             "- If the question asks for a list, provide a comma-separated list.\n"
             "- If the question asks for text, provide ONLY the requested text without extra explanation.\n"
             "- Wrap your final answer in <answer></answer> tags if format_prompt requires it.\n"
+            "- Avoid 'cannot be determined' style outputs unless there is truly no usable evidence.\n"
+            "- If evidence is partial, still provide the most likely answer and keep it strictly formatted.\n"
         )
         
         # Concise prompt structure
@@ -277,8 +280,11 @@ class ChatEvalNewCore(AgentSystem):
             "- Provide ONLY the final answer text, no explanations.\n"
             "- Match the exact format requested in the problem.\n"
             f"{self.format_prompt or ''}\n\n"
-            "IMPORTANT: If the debate shows incomplete file processing or missing search steps, "
-            "indicate that the answer cannot be determined without completing those steps."
+            "IMPORTANT:\n"
+            "- Do NOT output refusal style text such as 'cannot be determined', 'data unavailable', "
+            "or procedural caveats.\n"
+            "- If evidence is imperfect, pick the best-supported candidate from the debate and return it.\n"
+            "- Only if there is absolutely zero candidate in the debate, return exactly: Unable to determine"
         )
         
         try:
@@ -287,9 +293,84 @@ class ChatEvalNewCore(AgentSystem):
                 prompt,
                 self.model_name
             )
-            return response
+            answer_text = self._normalize_final_answer_text(response)
+
+            # Recovery pass: avoid low-value refusal outputs when debate already has candidates.
+            if self._is_refusal_like(answer_text):
+                candidates = self._collect_candidate_answers(debate_history)
+                if candidates:
+                    rescue_prompt = (
+                        f"Problem: {problem}\n\n"
+                        "You must choose the best final answer from candidate answers below.\n"
+                        "Rules:\n"
+                        "- Return ONLY one final answer string.\n"
+                        "- No explanations.\n"
+                        "- Do not return refusal text.\n"
+                        "- Match required format in the problem statement.\n\n"
+                        "Candidate answers:\n"
+                        + "\n".join(f"- {c}" for c in candidates[:12])
+                    )
+                    rescue_response = await asyncio.to_thread(
+                        call_model,
+                        rescue_prompt,
+                        self.model_name
+                    )
+                    rescued = self._normalize_final_answer_text(rescue_response)
+                    if not self._is_refusal_like(rescued):
+                        return rescued
+
+            return answer_text
         except Exception as e:
             return f"Error extracting final answer: {str(e)}"
+
+    def _normalize_final_answer_text(self, text: Any) -> str:
+        """Normalize synthesizer output to a compact answer string."""
+        s = str(text or "").strip()
+        # Prefer explicit <answer>...</answer> content if present.
+        m = re.search(r"<answer>\s*([\s\S]*?)\s*</answer>", s, flags=re.IGNORECASE)
+        if m:
+            s = m.group(1).strip()
+        # If model returns multi-line content, keep the first non-empty line.
+        if "\n" in s:
+            lines = [ln.strip() for ln in s.splitlines() if ln.strip()]
+            if lines:
+                s = lines[0]
+        return s.strip()
+
+    def _is_refusal_like(self, answer: str) -> bool:
+        """Detect low-value refusal/procedural outputs."""
+        s = (answer or "").strip().lower()
+        refusal_markers = [
+            "cannot be determined",
+            "can't be determined",
+            "unable to determine",
+            "data unavailable",
+            "insufficient information",
+            "external verification",
+            "not enough information",
+        ]
+        return any(marker in s for marker in refusal_markers)
+
+    def _collect_candidate_answers(self, debate_history: List[str]) -> List[str]:
+        """Collect compact candidate answers from debate messages."""
+        candidates: List[str] = []
+        seen = set()
+        for item in debate_history:
+            # Format: "Agent (Round x): <content>"
+            content = item.split(":", 1)[1].strip() if ":" in item else item.strip()
+            content = self._normalize_final_answer_text(content)
+            if not content:
+                continue
+            if self._is_refusal_like(content):
+                continue
+            # Keep short-ish candidates; long paragraphs are usually non-final reasoning.
+            if len(content) > 180:
+                continue
+            key = content.lower()
+            if key not in seen:
+                seen.add(key)
+                candidates.append(content)
+        return candidates
 
 # Register
 AgentSystemRegistry.register("chateval_newcore", ChatEvalNewCore)

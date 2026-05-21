@@ -20,6 +20,11 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def _parse_tool_list(value: str) -> list:
+    """Parse comma-separated tool names (e.g. ALL or python_interpreter,search)."""
+    return [t.strip() for t in value.split(",") if t.strip()]
+
+
 def main():
     # Parse command line arguments
     load_dotenv()
@@ -92,6 +97,19 @@ def main():
         "--memory-type", type=str, default=None,
         choices=memory_registry.get_available_memory_names(),
         help=f"Memory type to use. Available: {', '.join(memory_registry.get_available_memory_names())}"
+    )
+
+    parser.add_argument(
+        "--manager-tools",
+        type=str,
+        default=None,
+        help="Manager tools for bench_agent (comma-separated, e.g. ALL or python_interpreter,final_answer)",
+    )
+    parser.add_argument(
+        "--search-tools",
+        type=str,
+        default=None,
+        help="Search tools for bench_agent (comma-separated, e.g. ALL or search,browser)",
     )
 
     # Optimizer arguments
@@ -183,6 +201,11 @@ def main():
 
     if args.use_tools:
         agent_config["use_tools"] = True
+
+    if args.manager_tools:
+        agent_config["manager_tools"] = _parse_tool_list(args.manager_tools)
+    if args.search_tools:
+        agent_config["search_tools"] = _parse_tool_list(args.search_tools)
 
     # Create directories if needed
     Path(args.results_dir).mkdir(exist_ok=True)

@@ -18,7 +18,7 @@ if __name__ == "__main__":
     evaluator = "gaia"
     # 配置 ChatEval NewCore（GAIA level1）
     agent_config = {
-        "num_rounds": 4,
+        "num_rounds": 3,
         "model_name": "gpt-4.1",
         "manager_tools": ["ALL"],
         "search_tools": ["ALL"],
@@ -26,6 +26,7 @@ if __name__ == "__main__":
         "verbosity_level": 100,
         "evaluator": evaluator,
         "max_steps": 15,
+        "search_max_steps": 12,
     }
 
     # 生成带时间戳的日志文件名
@@ -42,7 +43,7 @@ if __name__ == "__main__":
         limit=0,  # 0 表示没有限制，跑完 level1 全部题目
         pass_at_k=1,
         log_file=log_file,
-        data_path="data/gaia_validate_level2_noaudio.jsonl",  # GAIA level1
+        data_path="data/gaia_validate_level3.jsonl",  # GAIA level1
         concurrency=10,
     ))
 
