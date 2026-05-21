@@ -45,6 +45,8 @@ fi
 
 export MODEL_NAME
 export OPENAI_API_TIMEOUT="${OPENAI_API_TIMEOUT:-600}"
+export PYTHONUNBUFFERED="${PYTHONUNBUFFERED:-1}"
+export PYTHONIOENCODING="${PYTHONIOENCODING:-utf-8}"
 
 echo "====================================================="
 echo "Running BenchAgent GAIA validation (nohup)"
@@ -58,7 +60,9 @@ echo "Log file: $LOG_FILE"
 echo "====================================================="
 echo "Monitor with: tail -f $LOG_FILE"
 
-nohup "${RUNNER[@]}" main.py \
+touch "$LOG_FILE"
+
+nohup env PYTHONUNBUFFERED="$PYTHONUNBUFFERED" PYTHONIOENCODING="$PYTHONIOENCODING" "${RUNNER[@]}" main.py \
   --benchmark gaia \
   --agent-system bench_agent \
   --data "$DATA_PATH" \
@@ -66,6 +70,7 @@ nohup "${RUNNER[@]}" main.py \
   --results-dir "$RESULTS_DIR" \
   --manager-tools "$MANAGER_TOOLS" \
   --search-tools "$SEARCH_TOOLS" \
+  --log-file "$LOG_FILE" \
   --async-run \
   --concurrency "$CONCURRENCY" \
   > "$LOG_FILE" 2>&1 &

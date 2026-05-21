@@ -131,6 +131,12 @@ def main():
         default=None,
         help="Comma-separated search tool list. Use 'none' for an explicit empty tool list.",
     )
+    parser.add_argument(
+        "--log-file",
+        type=str,
+        default=None,
+        help="Optional log file path. When set, runner output is redirected with line buffering.",
+    )
 
     # Optimizer arguments
     optimizer_group = parser.add_argument_group("Optimizer Settings")
@@ -270,7 +276,8 @@ def main():
                 data_id=args.data_id,
                 concurrency=args.concurrency,
                 memory_type=args.memory_type,
-                pass_at_k=args.pass_at_k
+                pass_at_k=args.pass_at_k,
+                log_file=args.log_file,
             ))
         else:
             summary = runner.run(
@@ -282,7 +289,8 @@ def main():
                 verbose=args.verbose,
                 data_id=args.data_id,
                 memory_type=args.memory_type,
-                pass_at_k=args.pass_at_k
+                pass_at_k=args.pass_at_k,
+                log_file=args.log_file,
             )
         logger.info(f"Benchmark summary: {summary}")
         return 0

@@ -299,6 +299,7 @@ class BenchmarkRunner:
             if verbose:
                 print(f"Error processing problem {problem_id}: {e}")
                 traceback.print_exc()
+            logger.exception("PROBLEM_ERROR id=%s index=%d", problem_id, i + 1)
             return {
                 "problem_id": problem_id,
                 "problem": normalized_problem.get("problem"),
@@ -324,6 +325,7 @@ class BenchmarkRunner:
 
         if verbose:
             print(f"Problem {i + 1}: {problem_id} (pass@{k})")
+        logger.info("PROBLEM_START id=%s index=%d pass_at_k=%d", problem_id, i + 1, k)
 
         self.metrics_collector.start_timer(f"mas_arena.problem.{problem_id}", {"problem_id": problem_id})
 
@@ -404,6 +406,14 @@ class BenchmarkRunner:
             if verbose:
                 status_char = "✓" if is_correct else "✗"
                 print(f"Result: {status_char} (total {total_duration:.0f}ms for {k} runs)")
+            logger.info(
+                "PROBLEM_END id=%s correct=%s score=%s duration_ms=%s pass_at_k=%d",
+                problem_id,
+                is_correct,
+                1 if is_correct else 0,
+                total_duration,
+                k,
+            )
 
             return result_entry
         except Exception as e:
@@ -416,6 +426,7 @@ class BenchmarkRunner:
             if verbose:
                 print(f"Error processing problem {problem_id}: {e}")
                 traceback.print_exc()
+            logger.exception("PROBLEM_ERROR id=%s index=%d pass_at_k=%d", problem_id, i + 1, k)
             return {
                 "problem_id": problem_id,
                 "problem": normalized_problem.get("problem"),
