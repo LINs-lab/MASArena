@@ -1,9 +1,15 @@
 #!/usr/bin/env python3
 # This is a patch to force ChromaDB to use the updated sqlite3 library
 # as the system default is too old.
-__import__('pysqlite3')
 import sys
-sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
+
+try:
+    __import__("pysqlite3")
+except ImportError:
+    # Some environments rely on the stdlib sqlite3 instead.
+    pass
+else:
+    sys.modules["sqlite3"] = sys.modules.pop("pysqlite3")
 
 import argparse
 import datetime
@@ -11,6 +17,7 @@ import os
 import time
 from pathlib import Path
 import asyncio
+from typing import List, Optional
 
 from dotenv import load_dotenv
 
@@ -20,9 +27,18 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def _parse_tool_list(value: str) -> list:
-    """Parse comma-separated tool names (e.g. ALL or python_interpreter,search)."""
-    return [t.strip() for t in value.split(",") if t.strip()]
+def parse_tool_list_arg(raw: Optional[str]) -> Optional[List[str]]:
+    if raw is None:
+        return None
+
+    normalized = raw.strip()
+    if not normalized:
+        return []
+
+    if normalized.lower() in {"none", "null", "[]"}:
+        return []
+
+    return [item.strip() for item in normalized.split(",") if item.strip()]
 
 
 def main():
@@ -33,7 +49,12 @@ def main():
     # Import available agent systems and benchmarks
     from mas_arena.agents import AVAILABLE_AGENT_SYSTEMS
     from mas_arena.evaluators import BENCHMARKS
-    from mas_arena.memory.memory_registry import memory_registry
+    try:
+        from mas_arena.memory.memory_registry import memory_registry
+        available_memory_names = memory_registry.get_available_memory_names()
+    except Exception:
+        memory_registry = None
+        available_memory_names = []
     parser.add_argument(
         "--benchmark",
         type=str,
@@ -78,7 +99,6 @@ def main():
         "--use-tools", action="store_true", default=None,
         help="Enable integration of tools (default: False)"
     )
-
     parser.add_argument(
         "--async-run", action="store_true", help="Run the benchmark asynchronously."
     )
@@ -95,21 +115,21 @@ def main():
 
     parser.add_argument(
         "--memory-type", type=str, default=None,
-        choices=memory_registry.get_available_memory_names(),
-        help=f"Memory type to use. Available: {', '.join(memory_registry.get_available_memory_names())}"
+        choices=available_memory_names,
+        help=f"Memory type to use. Available: {', '.join(available_memory_names)}"
     )
 
     parser.add_argument(
         "--manager-tools",
         type=str,
         default=None,
-        help="Manager tools for bench_agent (comma-separated, e.g. ALL or python_interpreter,final_answer)",
+        help="Comma-separated manager tool list. Use 'none' for an explicit empty tool list.",
     )
     parser.add_argument(
         "--search-tools",
         type=str,
         default=None,
-        help="Search tools for bench_agent (comma-separated, e.g. ALL or search,browser)",
+        help="Comma-separated search tool list. Use 'none' for an explicit empty tool list.",
     )
 
     # Optimizer arguments
@@ -202,10 +222,13 @@ def main():
     if args.use_tools:
         agent_config["use_tools"] = True
 
-    if args.manager_tools:
-        agent_config["manager_tools"] = _parse_tool_list(args.manager_tools)
-    if args.search_tools:
-        agent_config["search_tools"] = _parse_tool_list(args.search_tools)
+    manager_tools = parse_tool_list_arg(args.manager_tools)
+    if manager_tools is not None:
+        agent_config["manager_tools"] = manager_tools
+
+    search_tools = parse_tool_list_arg(args.search_tools)
+    if search_tools is not None:
+        agent_config["search_tools"] = search_tools
 
     # Create directories if needed
     Path(args.results_dir).mkdir(exist_ok=True)

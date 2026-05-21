@@ -31,6 +31,7 @@ import inspect
 from mas_arena.utils.llm_utils import call_model
 from mas_arena.agents.base import AgentSystem, AgentSystemRegistry
 from mas_arena.agents.reformulator import prepare_response, truncate_observation
+from mas_arena.utils.openai_compat import normalize_openai_api_base
 from mas_arena.utils.score import question_scorer
 from mas_arena.utils.llm_utils import RetryWrapper
 
@@ -144,25 +145,17 @@ class BenchAgent(AgentSystem):
         frame = inspect.currentframe()
         args_info = inspect.getargvalues(frame)
         init_args = {key: args_info.locals[key] for key in args_info.args}
-        
-        # 提取从注册表传递的配置
+
         registry_config = kwargs.pop("config", {})
-        
-        # 合并 init_args 和 kwargs
         init_args.update(kwargs)
-        
+
         print("Initializing BenchAgent with parameters:")
-        self.benchmark_name = registry_config.get('evaluator')
-        
-        # 处理优先级：如果是默认值且 registry_config 中有值，则使用 registry_config 的值
+        self.benchmark_name = registry_config.get("evaluator")
+
         if model == "gpt-4o-mini" and registry_config.get("model_name"):
-             model = registry_config.get("model_name")
-        
-        # 构建最终配置字典
-        # 1. Start with registry_config (includes 'evaluator' etc.)
+            model = registry_config.get("model_name")
+
         final_config = registry_config.copy()
-        
-        # 2. Update with explicit args and kwargs
         final_config.update({
             "model_name": model,
             "api_key": api_key,
@@ -171,20 +164,16 @@ class BenchAgent(AgentSystem):
             "search_max_steps": search_max_steps,
             "verbosity_level": verbosity_level,
             "additional_instructions": additional_instructions,
-            **kwargs
+            **kwargs,
         })
         
         # 调用父类构造函数
         super().__init__(name, final_config)
-        
-        # 使用合并后的配置继续初始化
-        config_dict = final_config # Use the merged config
-        
-        if config_dict:
-            if manager_tools is None:
-                manager_tools = config_dict.get("manager_tools")
-            if search_tools is None:
-                search_tools = config_dict.get("search_tools")
+
+        if manager_tools is None:
+            manager_tools = final_config.get("manager_tools")
+        if search_tools is None:
+            search_tools = final_config.get("search_tools")
 
         self.manager_tools_config = manager_tools or ["python_interpreter"]
         self.search_tools_config = search_tools or ["search", "browser", "wikipedia"]
@@ -220,7 +209,10 @@ class BenchAgent(AgentSystem):
     def _initialize_model(self):
         """初始化语言模型"""
         api_key = self.config.get("api_key") or os.getenv("OPENAI_API_KEY")
-        api_base = self.config.get("api_base") or os.getenv("OPENAI_API_BASE", "https://api.openai.com/v1")
+        api_base = normalize_openai_api_base(
+            self.config.get("api_base") or os.getenv("OPENAI_API_BASE"),
+            "https://api.openai.com/v1",
+        )
         model_name = os.getenv("MODEL_NAME") or  self.config.get("model_name", "gpt-4o-mini")
         
         if not api_key:
@@ -1000,4 +992,3 @@ AgentSystemRegistry.register(
     verbosity_level=1,
     description="High-performance, easy-to-use benchmark agent with pluggable tools and memory support"
 )
-
