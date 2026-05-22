@@ -10,6 +10,9 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
+# shellcheck disable=SC1091
+[ -f scripts/load_project_env.sh ] && . scripts/load_project_env.sh
+
 LIMIT="${LIMIT:-${1:-10}}"
 CONCURRENCY="${CONCURRENCY:-${2:-2}}"
 DATA_PATH="${DATA_PATH:-data/gaia_validate_level1.jsonl}"

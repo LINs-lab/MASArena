@@ -3,10 +3,31 @@ from openai import OpenAI
 import pandas as pd
 from dataclasses import dataclass
 import os
+import random
 from mas_arena.agents import AgentSystem
 import httpx
-from tenacity import retry, stop_after_attempt, wait_exponential,retry_if_exception
+from tenacity import retry, stop_after_attempt, retry_if_exception
 from typing import Any
+
+from mas_arena.utils.chatgpt_keys import get_next_chatgpt_api_key
+
+RATE_LIMIT_RETRY_WAIT_SECONDS = 60
+TRANSIENT_RETRY_WAIT_MIN_SECONDS = 5
+TRANSIENT_RETRY_WAIT_MAX_SECONDS = 10
+
+
+def _get_status_code(exception: BaseException) -> int | None:
+    code = getattr(exception, "status_code", None)
+    if isinstance(exception, httpx.HTTPStatusError):
+        code = exception.response.status_code
+    return code if isinstance(code, int) else None
+
+
+def _retry_wait_seconds(retry_state: Any) -> float:
+    exception = retry_state.outcome.exception() if retry_state.outcome else None
+    if exception is not None and _get_status_code(exception) == 429:
+        return RATE_LIMIT_RETRY_WAIT_SECONDS
+    return random.uniform(TRANSIENT_RETRY_WAIT_MIN_SECONDS, TRANSIENT_RETRY_WAIT_MAX_SECONDS)
 
 
 @dataclass
@@ -53,11 +74,11 @@ def call_model(query, model_name, key=None, url=None):
     if len(query) > 300000:
         query = query[:300000]
 
-    api_key = key if key else os.environ.get("CHATGPT_API_KEY")
+    api_key = key if key else get_next_chatgpt_api_key()
     base_url = url if url else os.environ.get("OPENAI_API_BASE")
     
     if not api_key:
-        raise ValueError("OpenAI API key is not provided. Please set the OPENAI_API_KEY environment variable or pass it as an argument.")
+        raise ValueError("OpenAI API key is not provided. Please set CHATGPT_API_KEY or pass it as an argument.")
     if not base_url:
         raise ValueError("OpenAI API base URL is not provided. Please set the OPENAI_API_BASE environment variable or pass it as an argument.")
 
@@ -96,10 +117,10 @@ class RetryWrapper:
     @staticmethod
     def _should_retry(exception: BaseException) -> bool:
         """Return True if we should retry on this exception."""
-        if isinstance(exception, httpx.HTTPStatusError):
-            # Retry on transient server/network style errors.
-            # Do NOT retry on quota/auth errors like 401/403.
-            code = exception.response.status_code
+        # OpenAI SDK exceptions expose status_code directly, while httpx stores it
+        # on the response. Treat 408/429/5xx as transient in both cases.
+        code = _get_status_code(exception)
+        if isinstance(code, int):
             return 500 <= code < 600 or code in (408, 429)
         if isinstance(exception, httpx.TimeoutException):
             return True
@@ -115,7 +136,7 @@ class RetryWrapper:
 
     @retry(
         stop=stop_after_attempt(3),
-        wait=wait_exponential(multiplier=1, min=2, max=60),
+        wait=_retry_wait_seconds,
         retry=retry_if_exception(_should_retry) 
     )
     def __call__(self, *args, **kwargs) -> Any:

@@ -16,17 +16,15 @@ import datetime
 class BenchmarkVisualizer:
     """Utility for visualizing benchmark results and agent interactions across multiple problems"""
     
-    def __init__(self, output_dir=None, open_browser=True):
+    def __init__(self, output_dir=None):
         """
         Initialize the benchmark visualizer.
         
         Args:
             output_dir: Directory to save visualization HTML files
-            open_browser: Whether to open the generated HTML in the default browser (default True)
         """
         self.output_dir = Path(output_dir or "results/visualizations/html")
         self.output_dir.mkdir(parents=True, exist_ok=True)
-        self.open_browser = open_browser
         self.mas_visualizer = MASVisualizer(output_dir)
         
     def generate_summary_html(self, summary_data, results_data, problem_visualizations=None, title=None):
@@ -767,19 +765,10 @@ class BenchmarkVisualizer:
         # Save HTML file
         with open(output_file, 'w', encoding='utf-8') as f:
             f.write(html)
-
-        abs_path = os.path.abspath(output_file)
-        file_url = f"file://{abs_path}"
-        print(f"可视化已保存: {output_file}")
-        print(f"在浏览器中打开: {file_url}")
-        if self.open_browser:
-            try:
-                webbrowser.open(file_url)
-            except Exception as e:
-                print(f"未能自动打开浏览器: {e}，请手动打开上述文件。")
-        else:
-            print("未自动打开浏览器（使用了 --no-open-browser 或由脚本调用）。请手动打开上述文件。")
-
+            
+        # Open in browser
+        webbrowser.open(f"file://{os.path.abspath(output_file)}")
+        
         return output_file
 
 

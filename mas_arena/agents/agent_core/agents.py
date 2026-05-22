@@ -14,6 +14,7 @@ from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional, Union, Callable
 import logging
 import multiprocessing
+import threading
 
 from .steps import ActionStep, PlanningStep, TaskStep, StepMemory
 from .models import OpenAIServerModel
@@ -23,6 +24,30 @@ from mas_arena.tools.python_interpreter import PythonInterpreterTool
 from func_timeout import func_timeout, FunctionTimedOut
 
 logger = logging.getLogger(__name__)
+
+
+def _run_coroutine_sync(coro):
+    """Run an async tool/agent from synchronous CodeAgent execution."""
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        return asyncio.run(coro)
+
+    result_box: Dict[str, Any] = {}
+    error_box: Dict[str, BaseException] = {}
+
+    def runner():
+        try:
+            result_box["result"] = asyncio.run(coro)
+        except BaseException as exc:
+            error_box["error"] = exc
+
+    thread = threading.Thread(target=runner, daemon=True)
+    thread.start()
+    thread.join()
+    if "error" in error_box:
+        raise error_box["error"]
+    return result_box.get("result")
 
 
 class MultiStepAgent(ABC):
@@ -357,7 +382,10 @@ class CodeAgent(MultiStepAgent):
 
         def create_tool_wrapper(tool_name: str):
             def tool_wrapper(*args, **kwargs):
-                return self.tool_manager.execute_tool(tool_name, *args, **kwargs)
+                result = self.tool_manager.execute_tool(tool_name, *args, **kwargs)
+                if asyncio.iscoroutine(result):
+                    return _run_coroutine_sync(result)
+                return result
 
             return tool_wrapper
 
@@ -580,11 +608,13 @@ print(result)
 
                     # 将执行结果添加到消息历史
                     if execution_results:
-                        results_text = "\n\n".join(execution_results)
+                        results_text = "\n\n".join(str(result) for result in execution_results)
+                        error_feedback = self._build_error_feedback(execution_results)
+                        feedback_suffix = f"\n\n{error_feedback}" if error_feedback else ""
                         messages.append(
                             {
                                 "role": "user",
-                                "content": f"Code execution results:\n{results_text}",
+                                "content": f"Code execution results:\n{results_text}{feedback_suffix}",
                             }
                         )
 
@@ -628,6 +658,8 @@ print(result)
                             ]
 
                         result = sub_agent.run(delegated_task, delegation_args)
+                        if asyncio.iscoroutine(result):
+                            result = _run_coroutine_sync(result)
 
                         # 将结果添加到消息历史
                         messages.append(
@@ -714,11 +746,87 @@ print(result)
 
                 return f"Code agent encountered an error: {error_msg}"
 
-        # 如果达到最大步数，尝试获取最后的响应作为答案
-        if messages and messages[-1]["role"] == "assistant":
-            return messages[-1]["content"]
+        return self._force_final_answer(messages)
 
-        return f"Code agent reached maximum steps ({self.max_steps}) without completing the task"
+    def _force_final_answer(self, messages: List[Dict[str, Any]]) -> str:
+        """
+        If the normal loop exhausts max_steps, do one final no-tool model call.
+        This mirrors the intended benchmark behavior: return the best answer
+        available instead of a generic step-limit failure.
+        """
+        fallback = ""
+        for message in reversed(messages):
+            if message.get("role") == "assistant" and message.get("content"):
+                fallback = str(message["content"])
+                break
+
+        final_prompt = (
+            f"You have reached the maximum step budget ({self.max_steps}). "
+            "Do not call any tools and do not write more Python code. "
+            "Use only the evidence already present in the conversation, make the best possible guess, "
+            "and return exactly one concise final answer wrapped as <answer>...</answer>."
+        )
+
+        try:
+            response_text = self.model(messages + [{"role": "user", "content": final_prompt}])
+            forced_answer = (
+                self._extract_final_answer_tool_call(response_text)
+                or self._extract_final_answer(response_text, strict=True)
+                or self._extract_final_answer(response_text)
+                or response_text.strip()
+            )
+            action_step = ActionStep(
+                tool_calls=[],
+                observations=[f"Forced final answer after max steps: {forced_answer}"],
+                model_output=response_text,
+                agent_name=self.name,
+            )
+            self.memory.add_step(action_step)
+            self._call_step_callbacks(action_step)
+            logger.info("MAX_STEPS_FORCED_FINAL agent=%s answer=%s", self.name, forced_answer)
+            return forced_answer
+        except Exception as e:
+            error_msg = f"Error forcing final answer after max steps: {str(e)}"
+            logger.error(error_msg)
+            error_step = ActionStep(error=error_msg, agent_name=self.name)
+            self.memory.add_step(error_step)
+            self._call_step_callbacks(error_step)
+            return fallback or f"Code agent reached maximum steps ({self.max_steps}) without completing the task"
+
+    def _build_error_feedback(self, execution_results: List[str]) -> str:
+        """Tell the model when it is repeating a failing action."""
+        current_errors = [
+            str(result).strip()
+            for result in execution_results
+            if result is not None
+            and (
+                str(result).strip().lower().startswith("error")
+                or "timed out" in str(result).lower()
+                or "coroutine object" in str(result).lower()
+            )
+        ]
+        if not current_errors:
+            return ""
+
+        prior_observations = []
+        for step in self.memory.get_steps(ActionStep):
+            prior_observations.extend(str(obs).strip() for obs in getattr(step, "observations", []) or [])
+
+        repeated = False
+        for error in current_errors:
+            error_key = error[:240]
+            if any(obs[:240] == error_key for obs in prior_observations):
+                repeated = True
+                break
+
+        if not repeated:
+            return ""
+
+        return (
+            "The same error has already occurred before. Do NOT retry the same code, tool, URL, or query. "
+            "Use a different strategy, reduce the scope of the request, rely on evidence already gathered, "
+            "or provide your best final answer if external tools keep failing."
+        )
 
     def _extract_code_blocks(self, text: str) -> List[str]:
         """提取代码块"""

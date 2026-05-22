@@ -129,7 +129,7 @@ This tool supports the following image formats: [".jpg", ".jpeg", ".png", ".gif"
             }
 
             response = requests.post(
-                f"{self.gpt_url}/chat/completions", headers=headers, json=payload
+                f"{self.gpt_url}chat/completions", headers=headers, json=payload
             )
             response.raise_for_status()
             description = response.json()["choices"][0]["message"]["content"]

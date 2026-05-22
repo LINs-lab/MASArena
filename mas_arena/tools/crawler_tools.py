@@ -11,6 +11,7 @@ import requests
 from smolagents import Tool
 
 from dotenv import load_dotenv
+from mas_arena.tools.jina_keys import get_jina_api_keys, is_jina_quota_error
 
 load_dotenv()
 
@@ -121,31 +122,38 @@ class SimpleCrawler:
         """Read page using Jina AI or fallback."""
 
         def jina_read(url: str) -> str:
-            jina_api_key = os.getenv("JINA_API_KEY")
-            if not jina_api_key:
+            jina_api_keys = get_jina_api_keys()
+            if not jina_api_keys:
                 return self._read_page_simple(url)
 
             jina_url = f"https://r.jina.ai/{url}"
-            headers = {
-                "Authorization": f"Bearer {jina_api_key}",
-                "X-Engine": "browser",
-                "X-Return-Format": "text",
-                "X-Timeout": "10",
-                "X-Token-Budget": "80000",
-            }
             try:
-                text = self._http_get_text(
-                    jina_url,
-                    headers=headers,
-                    connect_timeout=float(os.getenv("CRAWLER_CONNECT_TIMEOUT", "5")),
-                    read_timeout=float(os.getenv("CRAWLER_READ_TIMEOUT", "10")),
-                    total_timeout=float(os.getenv("CRAWLER_JINA_TOTAL_TIMEOUT", os.getenv("CRAWLER_TOTAL_TIMEOUT", "25"))),
-                    max_bytes=int(os.getenv("CRAWLER_JINA_MAX_BYTES", "1200000")),
-                )
-                # Keep a sane upper bound for downstream prompting.
-                return text[:200000]
+                for jina_api_key in jina_api_keys:
+                    headers = {
+                        "Authorization": f"Bearer {jina_api_key}",
+                        "X-Engine": "browser",
+                        "X-Return-Format": "text",
+                        "X-Timeout": "10",
+                        "X-Token-Budget": "80000",
+                    }
+                    try:
+                        text = self._http_get_text(
+                            jina_url,
+                            headers=headers,
+                            connect_timeout=float(os.getenv("CRAWLER_CONNECT_TIMEOUT", "5")),
+                            read_timeout=float(os.getenv("CRAWLER_READ_TIMEOUT", "10")),
+                            total_timeout=float(os.getenv("CRAWLER_JINA_TOTAL_TIMEOUT", os.getenv("CRAWLER_TOTAL_TIMEOUT", "25"))),
+                            max_bytes=int(os.getenv("CRAWLER_JINA_MAX_BYTES", "1200000")),
+                        )
+                        # Keep a sane upper bound for downstream prompting.
+                        return text[:200000]
+                    except Exception as exc:
+                        if not is_jina_quota_error(exc):
+                            raise
             except Exception:
                 return self._read_page_simple(url)
+
+            return self._read_page_simple(url)
 
         return jina_read(url)
 

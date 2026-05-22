@@ -137,6 +137,12 @@ def main():
         default=None,
         help="Optional log file path. When set, runner output is redirected with line buffering.",
     )
+    parser.add_argument(
+        "--model-name",
+        type=str,
+        default=None,
+        help="Model name to pass into the selected agent system.",
+    )
 
     # Optimizer arguments
     optimizer_group = parser.add_argument_group("Optimizer Settings")
@@ -227,6 +233,9 @@ def main():
 
     if args.use_tools:
         agent_config["use_tools"] = True
+
+    if args.model_name:
+        agent_config["model_name"] = args.model_name
 
     manager_tools = parse_tool_list_arg(args.manager_tools)
     if manager_tools is not None:

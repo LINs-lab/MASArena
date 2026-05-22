@@ -1,10 +1,9 @@
 #!/bin/bash
-# Run BenchAgent on a small GAIA validation slice in the background.
+# Run LLM Debate on GAIA validation level-1 samples with Qwen3.5 35B.
 #
 # Usage:
-#   ./scripts/run_benchagent_gaia_nohup.sh
-#   ./scripts/run_benchagent_gaia_nohup.sh 10 2
-#   LIMIT=12 CONCURRENCY=3 MODEL_NAME=gpt-4.1 ./scripts/run_benchagent_gaia_nohup.sh
+#   ./scripts/run_llm_debate_gaia_level1_qwen35b.sh
+#   LIMIT=20 CONCURRENCY=6 ./scripts/run_llm_debate_gaia_level1_qwen35b.sh
 
 set -euo pipefail
 
@@ -13,16 +12,18 @@ cd "$(dirname "$0")/.."
 # shellcheck disable=SC1091
 [ -f scripts/load_project_env.sh ] && . scripts/load_project_env.sh
 
-LIMIT="${LIMIT:-${1:-10}}"
-CONCURRENCY="${CONCURRENCY:-${2:-2}}"
+BENCHMARK="${BENCHMARK:-gaia}"
+AGENT_SYSTEM="${AGENT_SYSTEM:-llm_debate}"
 DATA_PATH="${DATA_PATH:-data/gaia_validate_level1.jsonl}"
-MODEL_NAME="${MODEL_NAME:-gpt-4.1}"
+LIMIT="${LIMIT:-2}"
+CONCURRENCY="${CONCURRENCY:-1}"
+MODEL_NAME="${MODEL_NAME:-Qwen/Qwen3.5-35B-A3B}"
 RESULTS_DIR="${RESULTS_DIR:-results}"
-LOG_DIR="${LOG_DIR:-logs/bench_agent_gaia}"
+LOG_DIR="${LOG_DIR:-logs/llm_debate_gaia}"
 MANAGER_TOOLS="${MANAGER_TOOLS:-ALL}"
 SEARCH_TOOLS="${SEARCH_TOOLS:-ALL}"
 TIMESTAMP="$(date +%Y%m%d_%H%M%S)"
-LOG_FILE="${LOG_FILE:-$LOG_DIR/bench_agent_gaia_${TIMESTAMP}.log}"
+LOG_FILE="${LOG_FILE:-$LOG_DIR/llm_debate_gaia_level1_qwen35b_${TIMESTAMP}.log}"
 
 if [ ! -f "$DATA_PATH" ]; then
   echo "Error: data file not found: $DATA_PATH"
@@ -47,9 +48,14 @@ if [ -z "${OPENAI_API_KEY:-}" ] && [ ! -f ".env" ]; then
 fi
 
 export MODEL_NAME
+export OPENAI_API_TIMEOUT="${OPENAI_API_TIMEOUT:-600}"
+export PYTHONUNBUFFERED="${PYTHONUNBUFFERED:-1}"
+export PYTHONIOENCODING="${PYTHONIOENCODING:-utf-8}"
 
 echo "====================================================="
-echo "Running BenchAgent GAIA validation (nohup)"
+echo "Running LLM Debate GAIA validation level 1"
+echo "Benchmark: $BENCHMARK"
+echo "Agent system: $AGENT_SYSTEM"
 echo "Data: $DATA_PATH"
 echo "Limit: $LIMIT"
 echo "Concurrency: $CONCURRENCY"
@@ -60,14 +66,18 @@ echo "Log file: $LOG_FILE"
 echo "====================================================="
 echo "Monitor with: tail -f $LOG_FILE"
 
-nohup "${RUNNER[@]}" main.py \
-  --benchmark gaia \
-  --agent-system bench_agent \
+touch "$LOG_FILE"
+
+nohup env PYTHONUNBUFFERED="$PYTHONUNBUFFERED" PYTHONIOENCODING="$PYTHONIOENCODING" "${RUNNER[@]}" main.py \
+  --benchmark "$BENCHMARK" \
+  --agent-system "$AGENT_SYSTEM" \
   --data "$DATA_PATH" \
   --limit "$LIMIT" \
   --results-dir "$RESULTS_DIR" \
+  --model-name "$MODEL_NAME" \
   --manager-tools "$MANAGER_TOOLS" \
   --search-tools "$SEARCH_TOOLS" \
+  --log-file "$LOG_FILE" \
   --async-run \
   --concurrency "$CONCURRENCY" \
   > "$LOG_FILE" 2>&1 &
@@ -75,3 +85,4 @@ nohup "${RUNNER[@]}" main.py \
 PID=$!
 echo "Started in background. PID: $PID"
 echo "Done. Log: $LOG_FILE | Results: $RESULTS_DIR"
+
