@@ -45,3 +45,16 @@ def test_jina_keys_accept_legacy_ina_api_key_name(monkeypatch):
     monkeypatch.setenv("JINA_API_KEY_2", "second-key")
 
     assert get_jina_api_keys() == ["legacy-primary", "second-key"]
+
+
+def test_jina_keys_include_extended_env_names(monkeypatch):
+    from mas_arena.tools.jina_keys import JINA_API_KEY_ENV_NAMES, get_jina_api_keys
+
+    assert "JINA_API_KEY_12" in JINA_API_KEY_ENV_NAMES
+    assert "JINA_API_KEY_13" not in JINA_API_KEY_ENV_NAMES
+
+    for name in JINA_API_KEY_ENV_NAMES:
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setenv("JINA_API_KEY_10", "tenth-key")
+
+    assert get_jina_api_keys() == ["tenth-key"]

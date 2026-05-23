@@ -108,7 +108,7 @@ class SearchTool(Tool):
             if not self.searcher:
                 return (
                     "Search tool not available. Default provider is Jina. "
-                    "Set JINA_API_KEY (or JINA_API_KEY_2/3/4/5) to enable Jina search. "
+                    "Set JINA_API_KEY (or JINA_API_KEY_2 ... JINA_API_KEY_12) to enable Jina search. "
                     "If you must use Tavily, set WEB_SEARCH_PROVIDER=tavily "
                     "(or allow fallback via WEB_SEARCH_ALLOW_TAVILY_FALLBACK=1)."
                 )

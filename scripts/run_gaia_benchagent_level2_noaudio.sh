@@ -15,7 +15,7 @@ cd "$(dirname "$0")/.."
 
 LIMIT="${LIMIT:-${1:-10}}"
 CONCURRENCY="${CONCURRENCY:-${2:-2}}"
-DATA_PATH="${DATA_PATH:-data/gaia_validate_level1.jsonl}"
+DATA_PATH="${DATA_PATH:-data/gaia_validate_level2_noaudio.jsonl}"
 MODEL_NAME="${MODEL_NAME:-gpt-4.1}"
 RESULTS_DIR="${RESULTS_DIR:-results}"
 LOG_DIR="${LOG_DIR:-logs/bench_agent_gaia}"

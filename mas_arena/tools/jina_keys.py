@@ -7,10 +7,7 @@ import requests
 JINA_API_KEY_ENV_NAMES = (
     "JINA_API_KEY",
     "INA_API_KEY",
-    "JINA_API_KEY_2",
-    "JINA_API_KEY_3",
-    "JINA_API_KEY_4",
-    "JINA_API_KEY_5",
+    *(f"JINA_API_KEY_{i}" for i in range(2, 13)),
 )
 JINA_QUOTA_STATUS_CODES = {402, 429}
 JINA_QUOTA_ERROR_TOKENS = (
