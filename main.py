@@ -137,6 +137,18 @@ def main():
         default=None,
         help="Optional log file path. When set, runner output is redirected with line buffering.",
     )
+    parser.add_argument(
+        "--problem-timeout-seconds",
+        type=float,
+        default=None,
+        help="Hard timeout per problem in seconds. Defaults to MAS_ARENA_PROBLEM_TIMEOUT_SECONDS or 3600.",
+    )
+    parser.add_argument(
+        "--evo-agent-timeout-seconds",
+        type=float,
+        default=None,
+        help="EvoAgent per-worker timeout in seconds. Defaults to MAS_ARENA_EVO_AGENT_TIMEOUT_SECONDS or 300.",
+    )
 
     # Optimizer arguments
     optimizer_group = parser.add_argument_group("Optimizer Settings")
@@ -236,6 +248,9 @@ def main():
     if search_tools is not None:
         agent_config["search_tools"] = search_tools
 
+    if args.evo_agent_timeout_seconds is not None:
+        agent_config["agent_task_timeout_seconds"] = args.evo_agent_timeout_seconds
+
     # Create directories if needed
     Path(args.results_dir).mkdir(exist_ok=True)
 
@@ -278,6 +293,7 @@ def main():
                 memory_type=args.memory_type,
                 pass_at_k=args.pass_at_k,
                 log_file=args.log_file,
+                problem_timeout_seconds=args.problem_timeout_seconds,
             ))
         else:
             summary = runner.run(
@@ -291,6 +307,7 @@ def main():
                 memory_type=args.memory_type,
                 pass_at_k=args.pass_at_k,
                 log_file=args.log_file,
+                problem_timeout_seconds=args.problem_timeout_seconds,
             )
         logger.info(f"Benchmark summary: {summary}")
         return 0

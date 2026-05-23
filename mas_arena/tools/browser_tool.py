@@ -1,8 +1,29 @@
 import os
+import asyncio
 from smolagents import Tool
 from dotenv import load_dotenv
 
 load_dotenv()
+
+
+def _get_browser_timeout_seconds():
+    raw_value = os.getenv("MAS_ARENA_BROWSER_TIMEOUT_SECONDS", "120")
+    try:
+        timeout_seconds = float(raw_value)
+    except (TypeError, ValueError):
+        timeout_seconds = 120.0
+    return timeout_seconds if timeout_seconds > 0 else None
+
+
+async def _run_browser_action(coro, action: str):
+    timeout_seconds = _get_browser_timeout_seconds()
+    try:
+        if timeout_seconds is None:
+            return await coro
+        return await asyncio.wait_for(coro, timeout=timeout_seconds)
+    except asyncio.TimeoutError:
+        return f"Browser action '{action}' timed out after {timeout_seconds:g} seconds."
+
 
 class BrowserTool(Tool):
     """
@@ -74,15 +95,17 @@ class BrowserTool(Tool):
             if action == "navigate":
                 if not url:
                     return "Error: URL is required for navigation."
-                return await self.browser_instance.navigate(url)
+                return await _run_browser_action(self.browser_instance.navigate(url), action)
             elif action == "get_content":
-                return await self.browser_instance.get_page_content()
+                return await _run_browser_action(self.browser_instance.get_page_content(), action)
             elif action == "get_url":
-                return await self.browser_instance.get_current_url()
+                return await _run_browser_action(self.browser_instance.get_current_url(), action)
             elif action == "screenshot":
-                return await self.browser_instance.screenshot()
+                return await _run_browser_action(self.browser_instance.screenshot(), action)
             elif action == "close":
-                await self.browser_instance.close()
+                result = await _run_browser_action(self.browser_instance.close(), action)
+                if isinstance(result, str) and "timed out" in result:
+                    return result
                 return "Browser closed."
             else:
                 return f"Unknown browser action: {action}"

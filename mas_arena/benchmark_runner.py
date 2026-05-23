@@ -66,7 +66,7 @@ class BenchmarkRunner:
         >>> results = benchmark.run("math", limit=5)
     """
 
-    def __init__(self, results_dir="results"):
+    def __init__(self, results_dir="results", problem_timeout_seconds=None):
         """
         Initialize the benchmark runner.
 
@@ -81,6 +81,11 @@ class BenchmarkRunner:
         self.metrics_registry = None
         self.metrics_collector = None
         self._logging_setup = False
+        self.problem_timeout_seconds = self._resolve_timeout_seconds(
+            problem_timeout_seconds,
+            "MAS_ARENA_PROBLEM_TIMEOUT_SECONDS",
+            3600,
+        )
 
         # Create directories
         os.makedirs(results_dir, exist_ok=True)
@@ -91,6 +96,47 @@ class BenchmarkRunner:
 
         # Create centralized metrics collector
         self.metrics_collector = MetricsCollector(self.metrics_registry)
+
+    @staticmethod
+    def _resolve_timeout_seconds(value, env_name, default):
+        if value is None:
+            value = os.getenv(env_name, default)
+
+        try:
+            timeout_seconds = float(value)
+        except (TypeError, ValueError):
+            logger.warning("Invalid %s=%r; using default timeout %s seconds", env_name, value, default)
+            timeout_seconds = float(default)
+
+        return timeout_seconds if timeout_seconds > 0 else None
+
+    def _problem_timeout_result(self, normalized_problem, problem_id, agent_name, duration_ms):
+        timeout_seconds = self.problem_timeout_seconds
+        message = f"Problem timed out after {timeout_seconds:g} seconds."
+        self.metrics_collector.record_error(
+            "problem_timeout",
+            message,
+            {"problem_id": problem_id, "error_type": "TimeoutError"},
+        )
+        return {
+            "problem_id": problem_id,
+            "problem": normalized_problem.get("problem"),
+            "expected": normalized_problem.get("solution"),
+            "prediction": "",
+            "score": 0,
+            "is_correct": False,
+            "status": "timeout",
+            "error": message,
+            "reasoning": "",
+            "duration_ms": duration_ms,
+            "agent_system": agent_name,
+            "llm_usage": {},
+            "summary": {
+                "correct": False,
+                "score": 0,
+                "duration_ms": duration_ms,
+            },
+        }
 
     def _setup_logging(self, log_file: str):
         """Set up logging to a file only (no console), and redirect stdout/stderr to the file."""
@@ -242,7 +288,11 @@ class BenchmarkRunner:
         self.metrics_collector.start_timer(f"mas_arena.problem.{problem_id}", {"problem_id": problem_id})
 
         try:
-            results = await agent.evaluate(normalized_problem, metrics_registry=self.metrics_registry)
+            evaluation = agent.evaluate(normalized_problem, metrics_registry=self.metrics_registry)
+            if self.problem_timeout_seconds is None:
+                results = await evaluation
+            else:
+                results = await asyncio.wait_for(evaluation, timeout=self.problem_timeout_seconds)
             results = results.raw_responses
             problem_duration_ms = self.metrics_collector.stop_timer(f"mas_arena.problem.{problem_id}")
 
@@ -289,6 +339,22 @@ class BenchmarkRunner:
                 duration_ms,
             )
             return result_entry
+        except asyncio.TimeoutError:
+            problem_duration_ms = self.metrics_collector.stop_timer(f"mas_arena.problem.{problem_id}")
+            if verbose:
+                print(f"Problem {problem_id} timed out after {self.problem_timeout_seconds:g} seconds")
+            logger.warning(
+                "PROBLEM_TIMEOUT id=%s index=%d timeout_seconds=%s",
+                problem_id,
+                i + 1,
+                self.problem_timeout_seconds,
+            )
+            return self._problem_timeout_result(
+                normalized_problem,
+                problem_id,
+                agent.name,
+                problem_duration_ms,
+            )
         except Exception as e:
             self.metrics_collector.stop_timer(f"mas_arena.problem.{problem_id}")
             self.metrics_collector.record_error(
@@ -337,7 +403,11 @@ class BenchmarkRunner:
                 return await agent.evaluate(normalized_problem, metrics_registry=self.metrics_registry)
 
             evaluation_tasks = [run_one_sample() for _ in range(k)]
-            results_list = await asyncio.gather(*evaluation_tasks, return_exceptions=True)
+            gather_results = asyncio.gather(*evaluation_tasks, return_exceptions=True)
+            if self.problem_timeout_seconds is None:
+                results_list = await gather_results
+            else:
+                results_list = await asyncio.wait_for(gather_results, timeout=self.problem_timeout_seconds)
             problem_duration_ms = self.metrics_collector.stop_timer(f"mas_arena.problem.{problem_id}")
 
             valid_results = [res for res in results_list if not isinstance(res, Exception)]
@@ -416,6 +486,25 @@ class BenchmarkRunner:
             )
 
             return result_entry
+        except asyncio.TimeoutError:
+            problem_duration_ms = self.metrics_collector.stop_timer(f"mas_arena.problem.{problem_id}")
+            if verbose:
+                print(f"Problem {problem_id} timed out after {self.problem_timeout_seconds:g} seconds")
+            logger.warning(
+                "PROBLEM_TIMEOUT id=%s index=%d pass_at_k=%d timeout_seconds=%s",
+                problem_id,
+                i + 1,
+                k,
+                self.problem_timeout_seconds,
+            )
+            result = self._problem_timeout_result(
+                normalized_problem,
+                problem_id,
+                agent_system,
+                problem_duration_ms,
+            )
+            result["pass_at_k_results"] = []
+            return result
         except Exception as e:
             self.metrics_collector.stop_timer(f"mas_arena.problem.{problem_id}")
             self.metrics_collector.record_error(
@@ -680,6 +769,7 @@ class BenchmarkRunner:
         memory_type=None,
         pass_at_k=1,
         log_file=None,
+        problem_timeout_seconds=None,
     ):
         """
         Run a benchmark sequentially. This is a wrapper around arun.
@@ -697,6 +787,7 @@ class BenchmarkRunner:
                 memory_type=memory_type,
                 pass_at_k=pass_at_k,
                 log_file=log_file,
+                problem_timeout_seconds=problem_timeout_seconds,
             )
         )
 
@@ -713,7 +804,14 @@ class BenchmarkRunner:
         memory_type=None,
         pass_at_k=1,
         log_file=None,
+        problem_timeout_seconds=None,
     ):
+        if problem_timeout_seconds is not None:
+            self.problem_timeout_seconds = self._resolve_timeout_seconds(
+                problem_timeout_seconds,
+                "MAS_ARENA_PROBLEM_TIMEOUT_SECONDS",
+                3600,
+            )
         self._setup_logging(log_file)
         # Prepare benchmark; we only need problems and config here
         problems, benchmark_config, output_file = self._prepare_benchmark(

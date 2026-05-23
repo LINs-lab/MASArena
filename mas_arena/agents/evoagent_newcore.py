@@ -43,6 +43,24 @@ def print_agent_info(agent: 'BenchEnhancedAgent', score: float = None):
     print(f"{Colors.CYAN}Agent: {agent.name}{score_str}{Colors.ENDC}")
     print(f"  System Prompt (Base): {agent.system_prompt[:100]}...")
 
+
+def _resolve_timeout_seconds(value, env_name: str, default: float):
+    if value is None:
+        value = os.getenv(env_name, default)
+
+    try:
+        timeout_seconds = float(value)
+    except (TypeError, ValueError):
+        timeout_seconds = float(default)
+
+    return timeout_seconds if timeout_seconds > 0 else None
+
+
+async def _await_with_optional_timeout(awaitable, timeout_seconds):
+    if timeout_seconds is None:
+        return await awaitable
+    return await asyncio.wait_for(awaitable, timeout=timeout_seconds)
+
 @dataclass
 class BenchEnhancedAgent:
     """Represents an LLM agent using BenchAgent for enhanced problem solving"""
@@ -142,6 +160,21 @@ class EvoAgent(AgentSystem):
         self.final_agents_count = self.config.get("final_agents_count", 5)
         self.crossover_rate = self.config.get("crossover_rate", 0.7)
         self.mutation_rate = self.config.get("mutation_rate", 0.3)
+        self.agent_task_timeout_seconds = _resolve_timeout_seconds(
+            self.config.get("agent_task_timeout_seconds"),
+            "MAS_ARENA_EVO_AGENT_TIMEOUT_SECONDS",
+            300,
+        )
+        self.evolution_step_timeout_seconds = _resolve_timeout_seconds(
+            self.config.get("evolution_step_timeout_seconds"),
+            "MAS_ARENA_EVO_STEP_TIMEOUT_SECONDS",
+            60,
+        )
+        self.summary_timeout_seconds = _resolve_timeout_seconds(
+            self.config.get("summary_timeout_seconds"),
+            "MAS_ARENA_EVO_SUMMARY_TIMEOUT_SECONDS",
+            300,
+        )
         
         self.bench_agent_executor = BenchAgent(
             model=self.config.get("model_name", "gpt-4o-mini"),
@@ -200,7 +233,7 @@ class EvoAgent(AgentSystem):
 
         try:
             # Add timeout handling
-            async with asyncio.timeout(30):  # Set 30 second timeout
+            async with asyncio.timeout(self.evolution_step_timeout_seconds):  # Set operation timeout
                 # Use LLM for crossover, add callback to collect token usage
                 callback_handler = OpenAICallbackHandler()
                 
@@ -322,7 +355,7 @@ class EvoAgent(AgentSystem):
 
         try:
             # Add timeout handling
-            async with asyncio.timeout(30):  # Set 30 second timeout
+            async with asyncio.timeout(self.evolution_step_timeout_seconds):  # Set operation timeout
                 # Use LLM for mutation, add callback to collect token usage
                 callback_handler = OpenAICallbackHandler()
                 
@@ -461,7 +494,7 @@ class EvoAgent(AgentSystem):
         """
         try:
             # Add timeout handling
-            async with asyncio.timeout(60):  # Set 60 second timeout
+            async with asyncio.timeout(self.summary_timeout_seconds):  # Set summary timeout
                 # Add callback to collect token usage
                 callback_handler = OpenAICallbackHandler()
                 
@@ -685,7 +718,21 @@ class EvoAgent(AgentSystem):
         
         # Summarize final agents' results
         print_step("Summarize Final Results")
-        final_results = [agent.result for agent in final_agents]
+        final_results = [agent.result for agent in final_agents if agent.result.get("status") != "timeout"]
+        if not final_results:
+            return {
+                "messages": [],
+                "final_answer": "Execution timeout, unable to get answer",
+                "execution_time_ms": (time.time() - start_time) * 1000,
+                "error": "All EvoAgent workers timed out before producing an answer.",
+                "evolution_metrics": {
+                    "initial_agents": len(base_agents),
+                    "crossover_agents": len(crossover_agents),
+                    "mutation_agents": len(mutation_agents),
+                    "final_agents": len(final_agents),
+                    "best_score": 0.0,
+                },
+            }
         summary, summary_usage = await self._summarize_results(problem_text, final_results)
         
         # Record end time
@@ -765,19 +812,23 @@ class EvoAgent(AgentSystem):
             problem: Problem dictionary
         """
         try:
-            # Add timeout handling
-            async with asyncio.timeout(60):  # Set 60 second timeout
-                result = await agent.solve(problem_text)
-                score = self._calculate_score(result, problem)
-                agent.score = score
-                agent.result = result
+            start_time = time.time()
+            result = await _await_with_optional_timeout(
+                agent.solve(problem_text),
+                self.agent_task_timeout_seconds,
+            )
+            score = self._calculate_score(result, problem)
+            result.setdefault("status", "success")
+            agent.score = score
+            agent.result = result
         except asyncio.TimeoutError:
             print(f"{Colors.RED}Warning: Agent {agent.name} execution timeout{Colors.ENDC}")
             agent.score = 0.0
             agent.result = {
                 "agent_id": agent.agent_id,
                 "name": agent.name,
-                "execution_time_ms": 60000,  # Timeout duration
+                "status": "timeout",
+                "execution_time_ms": self.agent_task_timeout_seconds * 1000 if self.agent_task_timeout_seconds else 0,
                 "extracted_answer": "Execution timeout, unable to get answer",
                 "usage_metadata": {
                     "input_tokens": 0,
@@ -793,6 +844,7 @@ class EvoAgent(AgentSystem):
             agent.result = {
                 "agent_id": agent.agent_id,
                 "name": agent.name,
+                "status": "error",
                 "execution_time_ms": 0,
                 "extracted_answer": f"Execution error: {str(e)}",
                 "usage_metadata": {
