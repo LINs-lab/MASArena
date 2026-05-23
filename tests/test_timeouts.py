@@ -1,4 +1,5 @@
 import asyncio
+import time
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock
 
@@ -77,3 +78,18 @@ async def test_evoagent_worker_timeout_is_configurable():
     assert worker.score == 0.0
     assert worker.result["status"] == "timeout"
     assert worker.result["extracted_answer"] == "Execution timeout, unable to get answer"
+
+
+@pytest.mark.asyncio
+async def test_evoagent_staggers_worker_start_times():
+    evo_agent = EvoAgent.__new__(EvoAgent)
+    evo_agent.worker_delay_seconds = 0.01
+
+    async def marker(value):
+        return value
+
+    start = time.perf_counter()
+    results = await asyncio.gather(*EvoAgent._stagger(evo_agent, [marker(1), marker(2)]))
+
+    assert results == [1, 2]
+    assert time.perf_counter() - start >= 0.009

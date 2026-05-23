@@ -175,6 +175,11 @@ class EvoAgent(AgentSystem):
             "MAS_ARENA_EVO_SUMMARY_TIMEOUT_SECONDS",
             300,
         )
+        self.worker_delay_seconds = _resolve_timeout_seconds(
+            self.config.get("worker_delay_seconds"),
+            "MAS_ARENA_EVO_WORKER_DELAY_SECONDS",
+            0,
+        ) or 0
         
         self.bench_agent_executor = BenchAgent(
             model=self.config.get("model_name", "gpt-4o-mini"),
@@ -189,6 +194,14 @@ class EvoAgent(AgentSystem):
         )
         
    
+    async def _run_after_delay(self, index: int, awaitable):
+        if self.worker_delay_seconds > 0 and index > 0:
+            await asyncio.sleep(index * self.worker_delay_seconds)
+        return await awaitable
+
+    def _stagger(self, awaitables):
+        return [self._run_after_delay(i, awaitable) for i, awaitable in enumerate(awaitables)]
+
         
     def _initialize_base_agents(self) -> List[BenchEnhancedAgent]: 
         """Initialize base agents"""
@@ -580,6 +593,7 @@ class EvoAgent(AgentSystem):
         tasks = []
         for agent in base_agents:
             tasks.append(self._run_agent_task(agent, problem_text, problem))
+        tasks = self._stagger(tasks)
         
         # Use simple progress display
         print(f"{Colors.CYAN}Base agents progress: 0/{len(tasks)}{Colors.ENDC}")
@@ -619,7 +633,7 @@ class EvoAgent(AgentSystem):
             crossover_tasks.append(self._crossover(parent1, parent2))
         
         # Wait for all crossover tasks to complete
-        crossover_results = await asyncio.gather(*crossover_tasks, return_exceptions=True)
+        crossover_results = await asyncio.gather(*self._stagger(crossover_tasks), return_exceptions=True)
         
         # Process results
         for i, result in enumerate(crossover_results):
@@ -636,6 +650,7 @@ class EvoAgent(AgentSystem):
         tasks = []
         for agent in crossover_agents[1:]:  # Skip already evaluated best base agent
             tasks.append(self._run_agent_task(agent, problem_text, problem))
+        tasks = self._stagger(tasks)
         
         # Use simple progress display
         print(f"{Colors.CYAN}Crossover agents progress: 0/{len(tasks)}{Colors.ENDC}")
@@ -674,7 +689,7 @@ class EvoAgent(AgentSystem):
             mutation_tasks.append(self._mutation(parent))
         
         # Wait for all mutation tasks to complete
-        mutation_results = await asyncio.gather(*mutation_tasks, return_exceptions=True)
+        mutation_results = await asyncio.gather(*self._stagger(mutation_tasks), return_exceptions=True)
         
         # Process results
         for i, result in enumerate(mutation_results):
@@ -691,6 +706,7 @@ class EvoAgent(AgentSystem):
         tasks = []
         for agent in mutation_agents[1:]:  # Skip already evaluated best crossover agent
             tasks.append(self._run_agent_task(agent, problem_text, problem))
+        tasks = self._stagger(tasks)
         
         # Use simple progress display
         print(f"{Colors.CYAN}Mutation agents progress: 0/{len(tasks)}{Colors.ENDC}")

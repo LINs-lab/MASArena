@@ -150,6 +150,12 @@ def main():
         help="EvoAgent per-worker timeout in seconds. Defaults to MAS_ARENA_EVO_AGENT_TIMEOUT_SECONDS or 300.",
     )
     parser.add_argument(
+        "--evo-worker-delay-seconds",
+        type=float,
+        default=None,
+        help="Delay between starting EvoAgent workers in the same batch. Useful for reducing 429s.",
+    )
+    parser.add_argument(
         "--model-name",
         type=str,
         default=None,
@@ -259,6 +265,9 @@ def main():
 
     if args.evo_agent_timeout_seconds is not None:
         agent_config["agent_task_timeout_seconds"] = args.evo_agent_timeout_seconds
+
+    if args.evo_worker_delay_seconds is not None:
+        agent_config["worker_delay_seconds"] = args.evo_worker_delay_seconds
 
     # Create directories if needed
     Path(args.results_dir).mkdir(exist_ok=True)
