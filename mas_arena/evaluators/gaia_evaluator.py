@@ -19,6 +19,14 @@ from mas_arena.evaluators.registry import register_benchmark
 # Load environment variables
 load_dotenv(override = True)
 
+DEFAULT_EVAL_MODEL_NAME = "gpt-4o-mini"
+EVAL_MODEL_ENV_NAME = "EVAL_MODEL_NAME"
+
+
+def _get_eval_model_name() -> str:
+    """Return the LLM used for GAIA answer judging (separate from agent MODEL_NAME)."""
+    return (os.getenv(EVAL_MODEL_ENV_NAME) or DEFAULT_EVAL_MODEL_NAME).strip()
+
 
 def _get_string_value(data: Any) -> str:
     """Best-effort extraction of a human-readable string from heterogeneous objects."""
@@ -86,7 +94,7 @@ class GaiaEvaluator(BaseEvaluator):
         self.config = config
 
     async def _evaluate_with_openai(
-        self, problem: str, solution: str, answer: str, model_name: str = "gpt-4o-mini"
+        self, problem: str, solution: str, answer: str, model_name: Optional[str] = None
     ) -> OpenAIResult:
         """
         Evaluate whether an answer is correct for a given problem using OpenAI API.
@@ -156,7 +164,7 @@ If the answer is strictly required to be a specific word, then it must match tha
 
         try:
             response = await client.chat.completions.create(
-                model=model_name,
+                model=model_name or _get_eval_model_name(),
                 messages=[
                     {
                         "role": "system",
@@ -206,7 +214,7 @@ If the answer is strictly required to be a specific word, then it must match tha
             )
 
     async def _evaluate_with_openai_sync(
-        self, problem: str, solution: str, answer: str, model_name: str = "gpt-4o-mini"
+        self, problem: str, solution: str, answer: str, model_name: Optional[str] = None
     ) -> OpenAIResult:
         """Sync wrapper; reuses existing loop if running outside async context."""
         try:
@@ -250,7 +258,7 @@ If the answer is strictly required to be a specific word, then it must match tha
                 "evaluation_method": "openai_failed",
             }
 
-        model_name = self.config.get("model_name", "gpt-4o-mini")
+        model_name = _get_eval_model_name()
 
         attempts = 0
         last_result: OpenAIResult | None = None

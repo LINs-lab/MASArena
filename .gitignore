@@ -135,6 +135,7 @@ celerybeat.pid
 
 # Environments
 .env
+scripts/proxy.env.sh
 .venv
 env/
 venv/

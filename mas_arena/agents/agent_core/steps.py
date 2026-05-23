@@ -8,11 +8,6 @@ import time
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Union
 from datetime import datetime
-import logging
-import json
-
-
-logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -98,24 +93,10 @@ class StepMemory:
         self._step_counter = 0
     
     def add_step(self, step: BaseStep) -> None:
-        """添加新步骤，并把完整步骤信息记录到日志"""
+        """添加新步骤"""
         self._step_counter += 1
         step.step_number = self._step_counter
         self.steps.append(step)
-
-        # 记录结构化 step 日志，方便离线分析
-        try:
-            payload = json.dumps(step.dict(), ensure_ascii=False)
-        except Exception:
-            try:
-                payload = str(step.dict())
-            except Exception:
-                payload = f"<unserializable step type={type(step).__name__}>"
-
-        if len(payload) > 4000:
-            payload = payload[:4000] + "...<truncated>"
-
-        logger.info("STEP_LOG %s", payload)
     
     def get_steps(self, step_type: Optional[type] = None) -> List[BaseStep]:
         """获取指定类型的步骤"""

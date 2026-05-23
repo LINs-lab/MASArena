@@ -2,9 +2,9 @@
 # Run BenchAgent on a small GAIA validation slice in the background.
 #
 # Usage:
-#   ./scripts/run_benchagent_gaia_nohup.sh
-#   ./scripts/run_benchagent_gaia_nohup.sh 10 2
-#   LIMIT=12 CONCURRENCY=3 MODEL_NAME=qwen3-32b ./scripts/run_benchagent_gaia_nohup.sh
+#   ./scripts/run_gaia_benchagent_qwen.sh
+#   ./scripts/run_gaia_benchagent_qwen.sh 10 2
+#   LIMIT=12 CONCURRENCY=3 MODEL_NAME=gpt-4.1 ./scripts/run_gaia_benchagent_qwen.sh
 
 set -euo pipefail
 
@@ -15,8 +15,8 @@ cd "$(dirname "$0")/.."
 
 LIMIT="${LIMIT:-${1:-10}}"
 CONCURRENCY="${CONCURRENCY:-${2:-2}}"
-DATA_PATH="${DATA_PATH:-data/gaia_validate_level1.jsonl}"
-MODEL_NAME="${MODEL_NAME:-qwen3-32b}"
+DATA_PATH="${DATA_PATH:-data/gaia_validate_level2_noaudio.jsonl}"
+MODEL_NAME="${MODEL_NAME:-gpt-4.1}"
 RESULTS_DIR="${RESULTS_DIR:-results}"
 LOG_DIR="${LOG_DIR:-logs/bench_agent_gaia}"
 MANAGER_TOOLS="${MANAGER_TOOLS:-ALL}"
@@ -71,6 +71,7 @@ nohup env PYTHONUNBUFFERED="$PYTHONUNBUFFERED" PYTHONIOENCODING="$PYTHONIOENCODI
   --data "$DATA_PATH" \
   --limit "$LIMIT" \
   --results-dir "$RESULTS_DIR" \
+  --model-name "$MODEL_NAME" \
   --manager-tools "$MANAGER_TOOLS" \
   --search-tools "$SEARCH_TOOLS" \
   --log-file "$LOG_FILE" \

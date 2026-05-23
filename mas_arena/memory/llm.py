@@ -10,13 +10,21 @@ from openai import OpenAI
 from dataclasses import dataclass
 from abc import ABC, abstractmethod
 
+from mas_arena.utils.chatgpt_keys import (
+    get_chatgpt_api_keys,
+    get_next_chatgpt_api_key,
+    is_chatgpt_key_rotation_enabled,
+    is_chatgpt_rate_limit_error,
+    mask_api_key,
+)
+
 from dotenv import load_dotenv
 load_dotenv()
 
 URL = os.environ["OPENAI_API_BASE"]
-KEY = os.environ["CHATGPT_API_KEY"]
 print('# api url: ', URL)
-print('# api key: ', KEY)
+print('# active api keys: ', len(get_chatgpt_api_keys()))
+print('# api key rotation enabled: ', is_chatgpt_key_rotation_enabled())
 
 
 def _get_env_int(var_name: str, default_value: int) -> int:
@@ -85,14 +93,19 @@ class GPTChat(LLM):
 
     def __init__(self, model_name: str):
         super().__init__(model_name=model_name)
-        self.client = OpenAI(
-            base_url=URL,
-            api_key=KEY
-        )
+        self._clients: dict[str, OpenAI] = {}
         # Persist typed defaults to avoid re-reading env and to ensure numeric types
         self.default_temperature: float = DEFAULT_TEMPERATURE
         self.default_max_tokens: int = DEFAULT_MAX_TOKENS
         self.default_num_comps: int = DEFAULT_NUM_COMPS
+
+    def _get_client(self, api_key: str) -> OpenAI:
+        if api_key not in self._clients:
+            self._clients[api_key] = OpenAI(
+                base_url=URL,
+                api_key=api_key
+            )
+        return self._clients[api_key]
 
     def __call__(
         self,
@@ -107,8 +120,8 @@ class GPTChat(LLM):
         
         messages = [{"role": msg.role, "content": msg.content} for msg in messages]
 
-        max_retries = 5  
-        wait_time = 1 
+        max_retries = 5
+        wait_time = 60
 
         # Resolve effective numeric parameters with proper typing
         temp: float = float(temperature) if temperature is not None else self.default_temperature
@@ -117,7 +130,11 @@ class GPTChat(LLM):
 
         for attempt in range(max_retries):
             try:
-                response = self.client.chat.completions.create(
+                api_key = get_next_chatgpt_api_key()
+                if not api_key:
+                    raise ValueError("OpenAI API key is not provided. Please set CHATGPT_API_KEY.")
+
+                response = self._get_client(api_key).chat.completions.create(
                     model=self.model_name,  
                     messages=messages,
                     max_tokens=mx,
@@ -137,7 +154,8 @@ class GPTChat(LLM):
 
             except Exception as e:
                 error_message = str(e)
-                if "rate limit" in error_message.lower() or "429" in error_message:
+                if is_chatgpt_rate_limit_error(e):
+                    print(f"Rate limited with key {mask_api_key(api_key)}; retrying with next key.")
                     time.sleep(wait_time)
                 else:
                     print(f"Error during API call: {error_message}")

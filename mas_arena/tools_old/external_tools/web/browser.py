@@ -10,6 +10,8 @@ from smolagents.models import Model
 from browser_use import Agent, Browser, ChatOpenAI, Controller, Tools
 from dotenv import load_dotenv
 
+from mas_arena.utils.anchor_keys import get_anchor_api_keys, is_anchor_quota_error
+
 load_dotenv()
 
 
@@ -57,25 +59,33 @@ It uses an AI agent to control a remote browser and perform complex web interact
         )
 
     def _create_remote_browser_session(self) -> str:
-        anchor_api_key = os.getenv("ANCHOR_API_KEY")
-        if not anchor_api_key:
+        anchor_api_keys = get_anchor_api_keys()
+        if not anchor_api_keys:
             raise ValueError(
                 "ANCHOR_API_KEY environment variable is required for remote browser access"
             )
 
         url = "https://api.anchorbrowser.io/v1/sessions"
-        headers = {
-            "anchor-api-key": anchor_api_key,
-            "Content-Type": "application/json",
-        }
+        last_error: Exception | None = None
 
-        try:
-            response = requests.post(url, headers=headers)
-            response.raise_for_status()
-            cdp_url = response.json()["data"]["cdp_url"]
-            return cdp_url
-        except requests.RequestException as e:
-            raise Exception(f"Failed to create remote browser session: {str(e)}")
+        for anchor_api_key in anchor_api_keys:
+            headers = {
+                "anchor-api-key": anchor_api_key,
+                "Content-Type": "application/json",
+            }
+            try:
+                response = requests.post(url, headers=headers)
+                response.raise_for_status()
+                cdp_url = response.json()["data"]["cdp_url"]
+                return cdp_url
+            except requests.RequestException as e:
+                last_error = e
+                if not is_anchor_quota_error(e):
+                    raise Exception(f"Failed to create remote browser session: {str(e)}")
+
+        if last_error:
+            raise Exception(f"Failed to create remote browser session: {str(last_error)}")
+        raise ValueError("Missing Anchor API key (ANCHOR_API_KEY).")
 
     def _format_history_summary(self, history) -> str:
         summary = []
@@ -167,7 +177,7 @@ It uses an AI agent to control a remote browser and perform complex web interact
             return self._format_history_summary(result)
 
         except Exception as e:
-            return f"Browser automation failed: {str(e)}\n\nPlease check your ANCHOR_API_KEY and OPENAI_API_KEY environment variables."
+            return f"Browser automation failed: {str(e)}\n\nPlease check your ANCHOR_API_KEY/ANCHOR_API_KEY_2 and OPENAI_API_KEY environment variables."
 
     def forward(
         self,

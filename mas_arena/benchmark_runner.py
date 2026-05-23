@@ -86,6 +86,10 @@ class BenchmarkRunner:
             "MAS_ARENA_PROBLEM_TIMEOUT_SECONDS",
             3600,
         )
+        self._live_result_lock = None
+        self._live_total = 0
+        self._live_completed = 0
+        self._live_correct = 0
 
         # Create directories
         os.makedirs(results_dir, exist_ok=True)
@@ -137,6 +141,43 @@ class BenchmarkRunner:
                 "duration_ms": duration_ms,
             },
         }
+
+    @staticmethod
+    def _truncate_for_log(value, limit=180):
+        text = "" if value is None else str(value)
+        text = " ".join(text.split())
+        if len(text) <= limit:
+            return text
+        return text[: limit - 3] + "..."
+
+    async def _log_live_result(self, result_entry):
+        if self._live_result_lock is None:
+            self._live_result_lock = asyncio.Lock()
+
+        async with self._live_result_lock:
+            self._live_completed += 1
+            if result_entry.get("is_correct") or result_entry.get("score", 0) == 1:
+                self._live_correct += 1
+
+            completed = self._live_completed
+            total = self._live_total or completed
+            correct = self._live_correct
+            accuracy = correct / completed * 100 if completed else 0.0
+            status = "correct" if result_entry.get("is_correct") or result_entry.get("score", 0) == 1 else "wrong"
+
+        logger.info(
+            "LIVE_RESULT progress=%d/%d correct=%d accuracy=%.2f%% id=%s result=%s score=%s duration_ms=%s expected=%s prediction=%s",
+            completed,
+            total,
+            correct,
+            accuracy,
+            result_entry.get("problem_id"),
+            status,
+            result_entry.get("score", 0),
+            result_entry.get("duration_ms"),
+            self._truncate_for_log(result_entry.get("expected")),
+            self._truncate_for_log(result_entry.get("prediction") or result_entry.get("error")),
+        )
 
     def _setup_logging(self, log_file: str):
         """Set up logging to a file only (no console), and redirect stdout/stderr to the file."""
@@ -338,6 +379,7 @@ class BenchmarkRunner:
                 score,
                 duration_ms,
             )
+            await self._log_live_result(result_entry)
             return result_entry
         except asyncio.TimeoutError:
             problem_duration_ms = self.metrics_collector.stop_timer(f"mas_arena.problem.{problem_id}")
@@ -349,14 +391,16 @@ class BenchmarkRunner:
                 i + 1,
                 self.problem_timeout_seconds,
             )
-            return self._problem_timeout_result(
+            result_entry = self._problem_timeout_result(
                 normalized_problem,
                 problem_id,
                 agent.name,
                 problem_duration_ms,
             )
+            await self._log_live_result(result_entry)
+            return result_entry
         except Exception as e:
-            self.metrics_collector.stop_timer(f"mas_arena.problem.{problem_id}")
+            duration_ms = self.metrics_collector.stop_timer(f"mas_arena.problem.{problem_id}")
             self.metrics_collector.record_error(
                 "problem_processing",
                 str(e),
@@ -366,13 +410,19 @@ class BenchmarkRunner:
                 print(f"Error processing problem {problem_id}: {e}")
                 traceback.print_exc()
             logger.exception("PROBLEM_ERROR id=%s index=%d", problem_id, i + 1)
-            return {
+            result_entry = {
                 "problem_id": problem_id,
                 "problem": normalized_problem.get("problem"),
+                "expected": normalized_problem.get("solution"),
+                "prediction": "",
                 "status": "error",
                 "error": str(e),
                 "score": 0,
+                "is_correct": False,
+                "duration_ms": duration_ms,
             }
+            await self._log_live_result(result_entry)
+            return result_entry
 
     async def _process_one_problem_pass_at_k(
         self,
@@ -485,6 +535,7 @@ class BenchmarkRunner:
                 k,
             )
 
+            await self._log_live_result(result_entry)
             return result_entry
         except asyncio.TimeoutError:
             problem_duration_ms = self.metrics_collector.stop_timer(f"mas_arena.problem.{problem_id}")
@@ -504,9 +555,10 @@ class BenchmarkRunner:
                 problem_duration_ms,
             )
             result["pass_at_k_results"] = []
+            await self._log_live_result(result)
             return result
         except Exception as e:
-            self.metrics_collector.stop_timer(f"mas_arena.problem.{problem_id}")
+            duration_ms = self.metrics_collector.stop_timer(f"mas_arena.problem.{problem_id}")
             self.metrics_collector.record_error(
                 "problem_processing",
                 str(e),
@@ -516,13 +568,19 @@ class BenchmarkRunner:
                 print(f"Error processing problem {problem_id}: {e}")
                 traceback.print_exc()
             logger.exception("PROBLEM_ERROR id=%s index=%d pass_at_k=%d", problem_id, i + 1, k)
-            return {
+            result_entry = {
                 "problem_id": problem_id,
                 "problem": normalized_problem.get("problem"),
+                "expected": normalized_problem.get("solution"),
+                "prediction": "",
                 "status": "error",
                 "error": str(e),
                 "score": 0,
+                "is_correct": False,
+                "duration_ms": duration_ms,
             }
+            await self._log_live_result(result_entry)
+            return result_entry
 
     def _finalize_benchmark(
         self,
@@ -832,6 +890,10 @@ class BenchmarkRunner:
         self.metrics_registry.start_all_collectors()
         self.metrics_collector.start_timer("mas_arena.execution")
         run_start_time = time.perf_counter()
+        self._live_total = len(problems)
+        self._live_completed = 0
+        self._live_correct = 0
+        self._live_result_lock = asyncio.Lock()
 
         semaphore = asyncio.Semaphore(concurrency)
 

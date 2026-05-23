@@ -7,19 +7,26 @@ import requests
 from smolagents import Tool
 from dotenv import load_dotenv
 
+from mas_arena.tools.jina_keys import (
+    get_jina_api_keys,
+    is_jina_quota_error,
+    raise_for_jina_status,
+)
+
 load_dotenv()
 
 class JinaSearcher:
     """Minimal Jina Search wrapper (s.jina.ai)."""
 
     def __init__(self, api_key: Optional[str] = None, max_results: int = 10):
-        self.jina_api_key = api_key or os.getenv("JINA_API_KEY")
+        self.jina_api_keys = get_jina_api_keys(api_key)
+        self.jina_api_key = self.jina_api_keys[0] if self.jina_api_keys else None
         self.max_results = max_results
         self.history = []
 
     def search(self, query: str, filter_year: Optional[int] = None) -> str:
-        if not self.jina_api_key:
-            raise ValueError("Missing Jina API key (JINA_API_KEY).")
+        if not self.jina_api_keys:
+            raise ValueError("Missing Jina API key (JINA_API_KEY, JINA_API_KEY_2, ...).")
 
         # Keep parity with other searchers: store history
         self.history.append((query, time.time()))
@@ -27,15 +34,28 @@ class JinaSearcher:
         # Jina's endpoint takes only q; filter_year is best-effort (ignored here).
         encoded_query = urllib.parse.quote(query)
         url = f"https://s.jina.ai/?q={encoded_query}"
-        headers = {
-            "Authorization": f"Bearer {self.jina_api_key}",
-            # Avoid fetching full page bodies in search results
-            "X-Respond-With": "no-content",
-        }
         timeout_s = float(os.getenv("SEARCH_JINA_TIMEOUT", "30"))
-        resp = requests.get(url, headers=headers, timeout=timeout_s)
-        resp.raise_for_status()
-        return resp.text
+        last_error: Exception | None = None
+
+        for api_key in self.jina_api_keys:
+            self.jina_api_key = api_key
+            headers = {
+                "Authorization": f"Bearer {api_key}",
+                # Avoid fetching full page bodies in search results
+                "X-Respond-With": "no-content",
+            }
+            try:
+                resp = requests.get(url, headers=headers, timeout=timeout_s)
+                raise_for_jina_status(resp)
+                return resp.text
+            except Exception as exc:
+                last_error = exc
+                if not is_jina_quota_error(exc):
+                    raise
+
+        if last_error:
+            raise last_error
+        raise ValueError("Missing Jina API key (JINA_API_KEY).")
 
 class SearchTool(Tool):
     name = "web_search"
@@ -73,7 +93,7 @@ class SearchTool(Tool):
             except Exception:
                 self.searcher = None
 
-            if not os.getenv("JINA_API_KEY") and allow_tavily_fallback:
+            if not get_jina_api_keys() and allow_tavily_fallback:
                 provider = "tavily"
 
         if provider == "tavily":
@@ -88,7 +108,7 @@ class SearchTool(Tool):
             if not self.searcher:
                 return (
                     "Search tool not available. Default provider is Jina. "
-                    "Set JINA_API_KEY to enable Jina search. "
+                    "Set JINA_API_KEY (or JINA_API_KEY_2 ... JINA_API_KEY_12) to enable Jina search. "
                     "If you must use Tavily, set WEB_SEARCH_PROVIDER=tavily "
                     "(or allow fallback via WEB_SEARCH_ALLOW_TAVILY_FALLBACK=1)."
                 )

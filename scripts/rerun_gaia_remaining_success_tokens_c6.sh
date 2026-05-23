@@ -1,10 +1,10 @@
 #!/bin/bash
-# Run BenchAgent on a small GAIA validation slice in the background.
+# Rerun GAIA remaining problems plus success-token补跑集 with BenchAgent.
 #
 # Usage:
-#   ./scripts/run_benchagent_gaia_nohup.sh
-#   ./scripts/run_benchagent_gaia_nohup.sh 10 2
-#   LIMIT=12 CONCURRENCY=3 MODEL_NAME=qwen3-32b ./scripts/run_benchagent_gaia_nohup.sh
+#   ./scripts/rerun_gaia_remaining_success_tokens_c6.sh
+#   CONCURRENCY=3 ./scripts/rerun_gaia_remaining_success_tokens_c6.sh
+#   DATA_PATH=data/custom.jsonl LOG_FILE=logs/bench_agent_gaia/custom.log ./scripts/rerun_gaia_remaining_success_tokens_c6.sh
 
 set -euo pipefail
 
@@ -13,16 +13,15 @@ cd "$(dirname "$0")/.."
 # shellcheck disable=SC1091
 [ -f scripts/load_project_env.sh ] && . scripts/load_project_env.sh
 
-LIMIT="${LIMIT:-${1:-10}}"
-CONCURRENCY="${CONCURRENCY:-${2:-2}}"
-DATA_PATH="${DATA_PATH:-data/gaia_validate_level1.jsonl}"
-MODEL_NAME="${MODEL_NAME:-qwen3-32b}"
+DATA_PATH="${DATA_PATH:-data/gaia_validate_level2_rerun_remaining_plus_success_tokens_20260522.jsonl}"
+LIMIT="${LIMIT:-0}"
+CONCURRENCY="${CONCURRENCY:-6}"
 RESULTS_DIR="${RESULTS_DIR:-results}"
 LOG_DIR="${LOG_DIR:-logs/bench_agent_gaia}"
 MANAGER_TOOLS="${MANAGER_TOOLS:-ALL}"
 SEARCH_TOOLS="${SEARCH_TOOLS:-ALL}"
 TIMESTAMP="$(date +%Y%m%d_%H%M%S)"
-LOG_FILE="${LOG_FILE:-$LOG_DIR/bench_agent_gaia_${TIMESTAMP}.log}"
+LOG_FILE="${LOG_FILE:-$LOG_DIR/bench_agent_gaia_level2_rerun_remaining_success_tokens_c${CONCURRENCY}_${TIMESTAMP}.log}"
 
 if [ ! -f "$DATA_PATH" ]; then
   echo "Error: data file not found: $DATA_PATH"
@@ -42,21 +41,17 @@ else
   exit 1
 fi
 
-if [ -z "${OPENAI_API_KEY:-}" ] && [ ! -f ".env" ]; then
-  echo "Warning: OPENAI_API_KEY is not set and .env is missing; the run may fail."
-fi
-
-export MODEL_NAME
 export OPENAI_API_TIMEOUT="${OPENAI_API_TIMEOUT:-600}"
+export CHATGPT_KEY_ROTATION_ENABLED="${CHATGPT_KEY_ROTATION_ENABLED:-1}"
 export PYTHONUNBUFFERED="${PYTHONUNBUFFERED:-1}"
 export PYTHONIOENCODING="${PYTHONIOENCODING:-utf-8}"
 
 echo "====================================================="
-echo "Running BenchAgent GAIA validation (nohup)"
+echo "Rerunning GAIA remaining + success-token补跑 (nohup)"
 echo "Data: $DATA_PATH"
 echo "Limit: $LIMIT"
 echo "Concurrency: $CONCURRENCY"
-echo "Model: $MODEL_NAME"
+echo "ChatGPT key rotation: $CHATGPT_KEY_ROTATION_ENABLED"
 echo "Manager tools: $MANAGER_TOOLS"
 echo "Search tools: $SEARCH_TOOLS"
 echo "Log file: $LOG_FILE"
@@ -65,7 +60,7 @@ echo "Monitor with: tail -f $LOG_FILE"
 
 touch "$LOG_FILE"
 
-nohup env PYTHONUNBUFFERED="$PYTHONUNBUFFERED" PYTHONIOENCODING="$PYTHONIOENCODING" "${RUNNER[@]}" main.py \
+nohup env CHATGPT_KEY_ROTATION_ENABLED="$CHATGPT_KEY_ROTATION_ENABLED" PYTHONUNBUFFERED="$PYTHONUNBUFFERED" PYTHONIOENCODING="$PYTHONIOENCODING" "${RUNNER[@]}" main.py \
   --benchmark gaia \
   --agent-system bench_agent \
   --data "$DATA_PATH" \
