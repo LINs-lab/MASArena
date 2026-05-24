@@ -120,8 +120,10 @@ class GPTChat(LLM):
         
         messages = [{"role": msg.role, "content": msg.content} for msg in messages]
 
-        max_retries = 5
-        wait_time = 60
+        from mas_arena.utils.llm_utils import DEFAULT_LLM_MAX_RETRIES, RATE_LIMIT_RETRY_WAIT_SECONDS
+
+        max_retries = DEFAULT_LLM_MAX_RETRIES
+        wait_time = RATE_LIMIT_RETRY_WAIT_SECONDS
 
         # Resolve effective numeric parameters with proper typing
         temp: float = float(temperature) if temperature is not None else self.default_temperature

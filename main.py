@@ -161,6 +161,18 @@ def main():
         default=None,
         help="Model name to pass into the selected agent system.",
     )
+    parser.add_argument(
+        "--debate-rounds",
+        type=int,
+        default=None,
+        help="Number of debate rounds for llm_debate agent (default: 3).",
+    )
+    parser.add_argument(
+        "--debate-agents",
+        type=int,
+        default=None,
+        help="Number of debate agents for llm_debate agent (default: 2).",
+    )
 
     # Optimizer arguments
     optimizer_group = parser.add_argument_group("Optimizer Settings")
@@ -266,8 +278,11 @@ def main():
     if args.evo_agent_timeout_seconds is not None:
         agent_config["agent_task_timeout_seconds"] = args.evo_agent_timeout_seconds
 
-    if args.evo_worker_delay_seconds is not None:
-        agent_config["worker_delay_seconds"] = args.evo_worker_delay_seconds
+    if args.debate_rounds is not None:
+        agent_config["rounds_num"] = args.debate_rounds
+
+    if args.debate_agents is not None:
+        agent_config["agents_num"] = args.debate_agents
 
     # Create directories if needed
     Path(args.results_dir).mkdir(exist_ok=True)

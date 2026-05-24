@@ -2,8 +2,9 @@
 # Run EvoAgent on the first 10 GAIA validation level-1 samples with Qwen3.5 35B.
 #
 # Usage:
-#   ./scripts/run_evoagent_gaia_level1_qwen35b.sh
-#   LIMIT=20 EVO_WORKER_DELAY_SECONDS=10 ./scripts/run_evoagent_gaia_level1_qwen35b.sh
+#   ./scripts/run_evoagent_gaia_level1.sh
+#   ./scripts/run_evoagent_gaia_level1.sh 10 2
+#   LIMIT=20 CONCURRENCY=6 ./scripts/run_evoagent_gaia_level1.sh
 
 set -euo pipefail
 
@@ -14,21 +15,16 @@ cd "$(dirname "$0")/.."
 
 BENCHMARK="${BENCHMARK:-gaia}"
 AGENT_SYSTEM="${AGENT_SYSTEM:-evoagent}"
-DATA_PATH="${DATA_PATH:-data/gaia_validate_level1.jsonl}"
-LIMIT="${LIMIT:-2}"
-CONCURRENCY="${CONCURRENCY:-1}"
-MODEL_NAME="${MODEL_NAME:-Qwen/Qwen3.5-35B-A3B}"
+DATA_PATH="${DATA_PATH:-data/gaia_validate_level3.jsonl}"
+LIMIT="${LIMIT:-${1:-0}}"
+CONCURRENCY="${CONCURRENCY:-${2:-2}}"
+MODEL_NAME="${MODEL_NAME:-qwen3-32b}"
 RESULTS_DIR="${RESULTS_DIR:-results}"
 LOG_DIR="${LOG_DIR:-logs/evoagent_gaia}"
 MANAGER_TOOLS="${MANAGER_TOOLS:-ALL}"
 SEARCH_TOOLS="${SEARCH_TOOLS:-ALL}"
-PROBLEM_TIMEOUT_SECONDS="${PROBLEM_TIMEOUT_SECONDS:-3600}"
-EVO_AGENT_TIMEOUT_SECONDS="${EVO_AGENT_TIMEOUT_SECONDS:-600}"
-EVO_WORKER_DELAY_SECONDS="${EVO_WORKER_DELAY_SECONDS:-5}"
-BROWSER_TIMEOUT_SECONDS="${BROWSER_TIMEOUT_SECONDS:-120}"
-SEARCH_JINA_TIMEOUT="${SEARCH_JINA_TIMEOUT:-45}"
 TIMESTAMP="$(date +%Y%m%d_%H%M%S)"
-LOG_FILE="${LOG_FILE:-$LOG_DIR/evoagent_gaia_level1_qwen35b_${TIMESTAMP}.log}"
+LOG_FILE="${LOG_FILE:-$LOG_DIR/evoagent_gaia_level3_${MODEL_NAME}_${TIMESTAMP}.log}"
 
 if [ ! -f "$DATA_PATH" ]; then
   echo "Error: data file not found: $DATA_PATH"
@@ -53,13 +49,7 @@ if [ -z "${OPENAI_API_KEY:-}" ] && [ ! -f ".env" ]; then
 fi
 
 export MODEL_NAME
-export OPENAI_API_TIMEOUT="${OPENAI_API_TIMEOUT:-900}"
-export MAS_ARENA_BROWSER_TIMEOUT_SECONDS="$BROWSER_TIMEOUT_SECONDS"
-export MAS_ARENA_EVO_AGENT_TIMEOUT_SECONDS="$EVO_AGENT_TIMEOUT_SECONDS"
-export MAS_ARENA_EVO_WORKER_DELAY_SECONDS="$EVO_WORKER_DELAY_SECONDS"
-export MAS_ARENA_EVO_STEP_TIMEOUT_SECONDS="${MAS_ARENA_EVO_STEP_TIMEOUT_SECONDS:-120}"
-export MAS_ARENA_EVO_SUMMARY_TIMEOUT_SECONDS="${MAS_ARENA_EVO_SUMMARY_TIMEOUT_SECONDS:-600}"
-export SEARCH_JINA_TIMEOUT
+export OPENAI_API_TIMEOUT="${OPENAI_API_TIMEOUT:-300}"
 export PYTHONUNBUFFERED="${PYTHONUNBUFFERED:-1}"
 export PYTHONIOENCODING="${PYTHONIOENCODING:-utf-8}"
 
@@ -73,12 +63,6 @@ echo "Concurrency: $CONCURRENCY"
 echo "Model: $MODEL_NAME"
 echo "Manager tools: $MANAGER_TOOLS"
 echo "Search tools: $SEARCH_TOOLS"
-echo "Problem timeout seconds: $PROBLEM_TIMEOUT_SECONDS"
-echo "Evo worker timeout seconds: $EVO_AGENT_TIMEOUT_SECONDS"
-echo "Evo worker delay seconds: $EVO_WORKER_DELAY_SECONDS"
-echo "Browser timeout seconds: $BROWSER_TIMEOUT_SECONDS"
-echo "Jina timeout seconds: $SEARCH_JINA_TIMEOUT"
-echo "OpenAI API timeout seconds: $OPENAI_API_TIMEOUT"
 echo "Log file: $LOG_FILE"
 echo "====================================================="
 echo "Monitor with: tail -f $LOG_FILE"
@@ -95,9 +79,6 @@ nohup env PYTHONUNBUFFERED="$PYTHONUNBUFFERED" PYTHONIOENCODING="$PYTHONIOENCODI
   --manager-tools "$MANAGER_TOOLS" \
   --search-tools "$SEARCH_TOOLS" \
   --log-file "$LOG_FILE" \
-  --problem-timeout-seconds "$PROBLEM_TIMEOUT_SECONDS" \
-  --evo-agent-timeout-seconds "$EVO_AGENT_TIMEOUT_SECONDS" \
-  --evo-worker-delay-seconds "$EVO_WORKER_DELAY_SECONDS" \
   --async-run \
   --concurrency "$CONCURRENCY" \
   > "$LOG_FILE" 2>&1 &

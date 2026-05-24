@@ -15,14 +15,14 @@ cd "$(dirname "$0")/.."
 
 LIMIT="${LIMIT:-${1:-10}}"
 CONCURRENCY="${CONCURRENCY:-${2:-2}}"
-DATA_PATH="${DATA_PATH:-data/gaia_validate_level1.jsonl}"
+DATA_PATH="${DATA_PATH:-data/gaia_validate_level2.jsonl}"
 MODEL_NAME="${MODEL_NAME:-gpt-4.1}"
 RESULTS_DIR="${RESULTS_DIR:-results}"
 LOG_DIR="${LOG_DIR:-logs/bench_agent_gaia}"
 MANAGER_TOOLS="${MANAGER_TOOLS:-ALL}"
 SEARCH_TOOLS="${SEARCH_TOOLS:-ALL}"
 TIMESTAMP="$(date +%Y%m%d_%H%M%S)"
-LOG_FILE="${LOG_FILE:-$LOG_DIR/bench_agent_gaia_${TIMESTAMP}.log}"
+LOG_FILE="${LOG_FILE:-$LOG_DIR/bench_agent_gaia_${MODEL_NAME}_${TIMESTAMP}.log}"
 
 if [ ! -f "$DATA_PATH" ]; then
   echo "Error: data file not found: $DATA_PATH"
@@ -47,7 +47,7 @@ if [ -z "${OPENAI_API_KEY:-}" ] && [ ! -f ".env" ]; then
 fi
 
 export MODEL_NAME
-export OPENAI_API_TIMEOUT="${OPENAI_API_TIMEOUT:-600}"
+export OPENAI_API_TIMEOUT="${OPENAI_API_TIMEOUT:-300}"
 export PYTHONUNBUFFERED="${PYTHONUNBUFFERED:-1}"
 export PYTHONIOENCODING="${PYTHONIOENCODING:-utf-8}"
 

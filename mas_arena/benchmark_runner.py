@@ -180,47 +180,48 @@ class BenchmarkRunner:
         )
 
     def _setup_logging(self, log_file: str):
-        """Set up logging to a file only (no console), and redirect stdout/stderr to the file."""
+        """Set up logging via QueueHandler so worker threads never block on file I/O."""
         if not log_file or self._logging_setup:
             return
 
+        import queue as _queue
+        from logging.handlers import QueueHandler, QueueListener
+
         Path(log_file).parent.mkdir(parents=True, exist_ok=True)
 
-        # Configure root logger to write only to file
-        logger = logging.getLogger()
-        logger.setLevel(logging.INFO)
+        root_logger = logging.getLogger()
+        root_logger.setLevel(logging.INFO)
 
-        # Reduce noisy HTTP client logs under high concurrency.
-        # These INFO logs can create heavy contention on the global logging lock and make runs appear "hung".
-        # Allow override via env if needed for debugging.
         silence_http_logs = os.getenv("MAS_ARENA_SILENCE_HTTP_LOGS", "1").strip() not in ("0", "false", "False")
         if silence_http_logs:
             for name in ("httpx", "httpcore", "openai"):
                 logging.getLogger(name).setLevel(logging.WARNING)
 
-        # Remove existing console StreamHandlers to avoid duplicate console output.
-        # NOTE: FileHandler is a subclass of StreamHandler, so don't remove it here.
-        for h in list(logger.handlers):
-            if isinstance(h, logging.StreamHandler) and not isinstance(h, logging.FileHandler):
-                logger.removeHandler(h)
+        # Remove ALL existing handlers — including any stray FileHandlers that would
+        # bypass the queue and block worker threads on NFS writes.
+        for h in list(root_logger.handlers):
+            root_logger.removeHandler(h)
+            try:
+                h.close()
+            except Exception:
+                pass
 
-        # Add file handler if not already present for this file
-        file_path_str = str(Path(log_file))
-        if not any(isinstance(h, logging.FileHandler) and getattr(h, 'baseFilename', None) == file_path_str for h in logger.handlers):
-            file_handler = logging.FileHandler(log_file, mode='a', encoding='utf-8')
-            file_formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-            file_handler.setFormatter(file_formatter)
-            logger.addHandler(file_handler)
+        file_handler = logging.FileHandler(log_file, mode='a', encoding='utf-8')
+        file_handler.setFormatter(logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s"))
 
-        # Redirect stdout and stderr to the log file (only file)
+        log_queue = _queue.Queue(-1)
+        queue_handler = QueueHandler(log_queue)
+        root_logger.addHandler(queue_handler)
+
+        self._queue_listener = QueueListener(log_queue, file_handler, respect_handler_level=True)
+        self._queue_listener.start()
+
         try:
             import sys as _sys
-            # Use line buffering so final summary prints are flushed promptly
             file_stream = open(log_file, 'a', encoding='utf-8', buffering=1)
             _sys.stdout = file_stream
             _sys.stderr = file_stream
         except Exception:
-            # If redirecting fails, ignore (logging to file still works)
             pass
 
         self._logging_setup = True
@@ -450,7 +451,14 @@ class BenchmarkRunner:
                 # Create a fresh agent instance per problem to isolate state
                 agent = create_agent_system(agent_system, agent_config, memory_type=memory_type)
                 agent.set_metrics_registry(self.metrics_registry)
-                return await agent.evaluate(normalized_problem, metrics_registry=self.metrics_registry)
+                try:
+                    return await agent.evaluate(normalized_problem, metrics_registry=self.metrics_registry)
+                finally:
+                    if hasattr(agent, "aclose"):
+                        try:
+                            await agent.aclose()
+                        except Exception:
+                            pass
 
             evaluation_tasks = [run_one_sample() for _ in range(k)]
             gather_results = asyncio.gather(*evaluation_tasks, return_exceptions=True)
@@ -920,7 +928,14 @@ class BenchmarkRunner:
                     # Create a fresh agent instance per problem to isolate state
                     agent = create_agent_system(agent_system, self.agent_config, memory_type=memory_type)
                     agent.set_metrics_registry(self.metrics_registry)
-                    return await self._process_one_problem(i, p, agent, benchmark_config, verbose)
+                    try:
+                        return await self._process_one_problem(i, p, agent, benchmark_config, verbose)
+                    finally:
+                        if hasattr(agent, "aclose"):
+                            try:
+                                await agent.aclose()
+                            except Exception:
+                                pass
 
             tasks = [process_with_semaphore(i, p) for i, p in enumerate(problems)]
 

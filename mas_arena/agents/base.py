@@ -205,7 +205,7 @@ class AgentSystem(abc.ABC):
                     # Extract metrics from usage_metadata
                     input_tokens = usage_metadata.get('input_tokens', 0)
                     output_tokens = usage_metadata.get('output_tokens', 0)
-                    reasoning_tokens = usage_metadata["output_token_details"].get("reasoning", 0)
+                    reasoning_tokens = usage_metadata.get("output_token_details", {}).get("reasoning", 0)
                     total_tokens_msg = usage_metadata.get('total_tokens', input_tokens + output_tokens)
                     
                     

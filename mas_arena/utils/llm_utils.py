@@ -3,7 +3,6 @@ from openai import OpenAI
 import pandas as pd
 from dataclasses import dataclass
 import os
-import random
 from mas_arena.agents import AgentSystem
 import httpx
 from tenacity import retry, stop_after_attempt, retry_if_exception
@@ -11,9 +10,9 @@ from typing import Any
 
 from mas_arena.utils.chatgpt_keys import get_next_chatgpt_api_key
 
-RATE_LIMIT_RETRY_WAIT_SECONDS = 60
-TRANSIENT_RETRY_WAIT_MIN_SECONDS = 5
-TRANSIENT_RETRY_WAIT_MAX_SECONDS = 10
+DEFAULT_LLM_MAX_RETRIES = int(os.environ.get("LLM_MAX_RETRIES", "20"))
+RATE_LIMIT_RETRY_WAIT_SECONDS = int(os.environ.get("LLM_RETRY_WAIT_SECONDS", "60"))
+TRANSIENT_RETRY_WAIT_SECONDS = RATE_LIMIT_RETRY_WAIT_SECONDS
 
 
 def _get_status_code(exception: BaseException) -> int | None:
@@ -24,10 +23,7 @@ def _get_status_code(exception: BaseException) -> int | None:
 
 
 def _retry_wait_seconds(retry_state: Any) -> float:
-    exception = retry_state.outcome.exception() if retry_state.outcome else None
-    if exception is not None and _get_status_code(exception) == 429:
-        return RATE_LIMIT_RETRY_WAIT_SECONDS
-    return random.uniform(TRANSIENT_RETRY_WAIT_MIN_SECONDS, TRANSIENT_RETRY_WAIT_MAX_SECONDS)
+    return RATE_LIMIT_RETRY_WAIT_SECONDS
 
 
 @dataclass
@@ -106,9 +102,9 @@ def call_model(query, model_name, key=None, url=None):
 
 class RetryWrapper:
     """A wrapper to add retry logic to an LLM model's API calls."""
-    def __init__(self, model, max_retries=3):
+    def __init__(self, model, max_retries=None):
         self._model = model
-        self.max_retries = max_retries
+        self.max_retries = max_retries if max_retries is not None else DEFAULT_LLM_MAX_RETRIES
         # 保存原始模型ID以防被修改
         if hasattr(self._model, 'model_id'):
             self._original_model_id = self._model.model_id
@@ -134,32 +130,66 @@ class RetryWrapper:
                 print(f"修复模型ID: 从 {self._model.model_id} 恢复为 {self._original_model_id}")
                 self._model.model_id = self._original_model_id
 
-    @retry(
-        stop=stop_after_attempt(3),
-        wait=_retry_wait_seconds,
-        retry=retry_if_exception(_should_retry) 
-    )
     def __call__(self, *args, **kwargs) -> Any:
         """Delegate the call to the wrapped model with retry logic."""
-        # 在调用模型前确保模型ID正确
-        self._preserve_model_id()
-        
-        # 如果在kwargs中有model参数，确保它也是正确的
-        if 'model' in kwargs and hasattr(self, '_original_model_id'):
-            if kwargs['model'] != self._original_model_id and self._original_model_id in str(kwargs['model']):
-                print(f"修复kwargs中的模型ID: 从 {kwargs['model']} 恢复为 {self._original_model_id}")
-                kwargs['model'] = self._original_model_id
-                
-        return self._model(*args, **kwargs)
+
+        @retry(
+            stop=stop_after_attempt(self.max_retries),
+            wait=_retry_wait_seconds,
+            retry=retry_if_exception(self._should_retry),
+        )
+        def _invoke() -> Any:
+            # 在调用模型前确保模型ID正确
+            self._preserve_model_id()
+
+            # 如果在kwargs中有model参数，确保它也是正确的
+            call_kwargs = kwargs
+            if 'model' in call_kwargs and hasattr(self, '_original_model_id'):
+                if (
+                    call_kwargs['model'] != self._original_model_id
+                    and self._original_model_id in str(call_kwargs['model'])
+                ):
+                    print(
+                        f"修复kwargs中的模型ID: 从 {call_kwargs['model']} "
+                        f"恢复为 {self._original_model_id}"
+                    )
+                    call_kwargs = {**call_kwargs, 'model': self._original_model_id}
+
+            return self._model(*args, **call_kwargs)
+
+        return _invoke()
 
     def __getattr__(self, name: str) -> Any:
         """Delegate attribute access to the wrapped model."""
         attr = getattr(self._model, name)
-        
-        # 如果返回的是一个方法，确保在调用前恢复模型ID
+
         if callable(attr):
-            def wrapper(*args, **kwargs):
-                self._preserve_model_id()
-                return attr(*args, **kwargs)
-            return wrapper
+            import asyncio as _asyncio
+            from tenacity import retry as _retry, stop_after_attempt as _stop, retry_if_exception as _rif
+
+            if _asyncio.iscoroutinefunction(attr):
+                async def async_wrapper(*args, **kwargs):
+                    @_retry(
+                        stop=_stop(self.max_retries),
+                        wait=_retry_wait_seconds,
+                        retry=_rif(self._should_retry),
+                    )
+                    async def _invoke():
+                        self._preserve_model_id()
+                        return await attr(*args, **kwargs)
+                    return await _invoke()
+                return async_wrapper
+            else:
+                def sync_wrapper(*args, **kwargs):
+                    @_retry(
+                        stop=_stop(self.max_retries),
+                        wait=_retry_wait_seconds,
+                        retry=_rif(self._should_retry),
+                    )
+                    def _invoke():
+                        self._preserve_model_id()
+                        return attr(*args, **kwargs)
+                    return _invoke()
+                return sync_wrapper
+
         return attr

@@ -6,6 +6,7 @@ import uuid
 from dotenv import load_dotenv
 from dataclasses import dataclass, field
 from typing import Dict, Any, List, Tuple
+from openai.types.completion_usage import CompletionUsage
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 from langchain_community.callbacks.openai_info import OpenAICallbackHandler
@@ -105,15 +106,26 @@ class BenchEnhancedAgent:
         extracted_answer = bench_result.get("final_answer", "No answer extracted.")
         
 
-        usage_metadata = {}
+        # Collect token usage from the last message that carries it (bench_agent puts
+        # monitor totals on the final_answer message).  Messages may be dicts or AIMessages.
+        input_tokens = output_tokens = total_tokens = 0
         for message in bench_result.get("messages", []):
-            if isinstance(message, AIMessage) and hasattr(message, 'usage_metadata'):
-                usage_metadata = message.usage_metadata
-                break 
-        
-        input_tokens = usage_metadata.get("input_tokens", 0)
-        output_tokens = usage_metadata.get("output_tokens", 0)
-        total_tokens = usage_metadata.get("total_tokens", 0)
+            um = None
+            if isinstance(message, AIMessage):
+                um = getattr(message, "usage_metadata", None)
+            elif isinstance(message, dict):
+                um = message.get("usage_metadata")
+            if um is None:
+                continue
+            if isinstance(um, CompletionUsage):
+                if um.total_tokens > 0:
+                    input_tokens  = um.prompt_tokens
+                    output_tokens = um.completion_tokens
+                    total_tokens  = um.total_tokens
+            elif isinstance(um, dict) and um.get("total_tokens", 0) > 0:
+                input_tokens  = um.get("input_tokens",  um.get("prompt_tokens", 0))
+                output_tokens = um.get("output_tokens", um.get("completion_tokens", 0))
+                total_tokens  = um.get("total_tokens", input_tokens + output_tokens)
 
 
         result = {
@@ -767,6 +779,22 @@ class EvoAgent(AgentSystem):
         user_message = HumanMessage(content=problem_text)
         messages.append(user_message)
         
+        # Aggregate token usage for agents NOT in final_agents (base + crossover + mutation
+        # non-final). final_agents already carry their own usage in individual AIMessages below,
+        # so excluding them here avoids double-counting.
+        _final_ids = {a.agent_id for a in final_agents}
+        _all_ran = list(base_agents) + list(crossover_agents) + list(mutation_agents)
+        _seen_ids = set()
+        _total_in = _total_out = _total_tok = 0
+        for _ag in _all_ran:
+            if _ag.agent_id in _seen_ids or _ag.agent_id in _final_ids:
+                continue
+            _seen_ids.add(_ag.agent_id)
+            _um = (_ag.result or {}).get("usage_metadata", {}) or {}
+            _total_in  += _um.get("input_tokens",  0)
+            _total_out += _um.get("output_tokens", 0)
+            _total_tok += _um.get("total_tokens",  0)
+
         # Add all agents' answers as AIMessage, including usage_metadata
         for agent in final_agents:
             ai_message = AIMessage(
@@ -798,9 +826,13 @@ class EvoAgent(AgentSystem):
             name="EVO-SUMMARY"
         )
         
-        # Add summary token usage metadata
-        if summary_usage:
-            summary_message.usage_metadata = summary_usage
+        # Add summary token usage metadata — merge with aggregated agent totals
+        _merged_usage = {
+            "input_tokens":  _total_in  + (summary_usage or {}).get("input_tokens",  0),
+            "output_tokens": _total_out + (summary_usage or {}).get("output_tokens", 0),
+            "total_tokens":  _total_tok + (summary_usage or {}).get("total_tokens",  0),
+        }
+        summary_message.usage_metadata = _merged_usage
             
         messages.append(summary_message)
         print("summary_message:",summary_message)

@@ -2,7 +2,7 @@
 import base64
 import subprocess
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 import sys
 import importlib
 import asyncio
@@ -11,6 +11,115 @@ from langchain.tools import StructuredTool
 from mas_arena.tools_old.base import ToolFactory
 
 BROWSER = "browser"
+
+
+class _BrowserPool:
+    """Process-level singleton: one Chromium process, bounded context pool.
+
+    All concurrent workers share the same browser process.  The pool size caps
+    simultaneous page sessions so a large benchmark concurrency (e.g. 13) does
+    not spawn 13 independent Chromium processes.
+
+    Pool size is controlled by MAS_ARENA_BROWSER_POOL_SIZE (default 4).
+    """
+
+    def __init__(self) -> None:
+        self._lock = asyncio.Lock()
+        self._init_lock = asyncio.Lock()
+        self._playwright = None
+        self._browser = None
+        self._pw_cm = None
+        self._initialized = False
+        pool_size = int(os.getenv("MAS_ARENA_BROWSER_POOL_SIZE", "4"))
+        self._semaphore = asyncio.Semaphore(pool_size)
+
+    async def _ensure_browser(self) -> None:
+        if self._initialized:
+            return
+        async with self._init_lock:
+            if self._initialized:
+                return
+            from playwright.async_api import async_playwright
+            self._pw_cm = async_playwright()
+            self._playwright = await self._pw_cm.__aenter__()
+            disable_security_args = [
+                '--disable-web-security',
+                '--disable-site-isolation-trials',
+                '--disable-features=IsolateOrigins,site-per-process',
+            ]
+            args = [
+                '--no-sandbox', '--disable-crash-reporter',
+                '--disable-blink-features=AutomationControlled',
+                '--disable-infobars', '--disable-background-timer-throttling',
+                '--disable-popup-blocking', '--disable-backgrounding-occluded-windows',
+                '--disable-renderer-backgrounding', '--disable-window-activation',
+                '--disable-focus-on-load', '--no-first-run', '--no-default-browser-check',
+                '--no-startup-window', '--window-position=0,0', '--window-size=1280,720',
+            ] + disable_security_args
+            self._browser = await self._playwright.chromium.launch(headless=True, slow_mo=0, args=args)
+            self._initialized = True
+
+    async def acquire_context(self):
+        """Wait for a slot (up to MAS_ARENA_BROWSER_ACQUIRE_TIMEOUT_SECONDS), then return a fresh context+page."""
+        await self._ensure_browser()
+        acquire_timeout = float(os.getenv("MAS_ARENA_BROWSER_ACQUIRE_TIMEOUT_SECONDS", "300"))
+        try:
+            await asyncio.wait_for(self._semaphore.acquire(), timeout=acquire_timeout)
+        except asyncio.TimeoutError:
+            raise RuntimeError(
+                f"Timed out waiting for a browser context slot after {acquire_timeout:.0f}s. "
+                f"Consider increasing MAS_ARENA_BROWSER_POOL_SIZE (current: "
+                f"{int(os.getenv('MAS_ARENA_BROWSER_POOL_SIZE', '4'))}) or "
+                f"MAS_ARENA_BROWSER_ACQUIRE_TIMEOUT_SECONDS."
+            )
+        from playwright.async_api import ViewportSize
+        context = await self._browser.new_context(
+            viewport=ViewportSize(width=1280, height=720),
+            java_script_enabled=True,
+            bypass_csp=True,
+            ignore_https_errors=True,
+            device_scale_factor=1,
+        )
+        page = await context.new_page()
+        return context, page
+
+    async def release_context(self, context) -> None:
+        """Close the context and release the semaphore slot."""
+        try:
+            await context.close()
+        except Exception:
+            pass
+        finally:
+            self._semaphore.release()
+
+    async def shutdown(self) -> None:
+        if not self._initialized:
+            return
+        try:
+            await self._browser.close()
+        except Exception:
+            pass
+        try:
+            await self._pw_cm.__aexit__(None, None, None)
+        except Exception:
+            pass
+        self._initialized = False
+
+
+# Module-level singleton — created lazily on first use.
+_pool: Optional[_BrowserPool] = None
+_pool_create_lock = asyncio.Lock()
+
+
+async def _get_pool() -> _BrowserPool:
+    global _pool
+    if _pool is not None:
+        return _pool
+    async with _pool_create_lock:
+        if _pool is None:
+            _pool = _BrowserPool()
+        return _pool
+
 
 def import_and_install(package_name: str):
     """Tries to import a package, and if it fails, attempts to install it and then import it again."""
@@ -55,10 +164,19 @@ def import_and_install(package_name: str):
             raise ImportError(f"Could not import or install {package_name}") from e
 
 class Browser:
+    """Thin session wrapper backed by the shared _BrowserPool.
+
+    Each instance borrows one context+page slot from the pool on first use and
+    returns it on close().  The pool caps the total number of live Chromium
+    contexts across all concurrent workers.
+    """
+
     def __init__(self, **kwargs) -> None:
         self.initialized = False
-        
-        # Ensure playwright is available (do not auto-install during runs).
+        self._context = None
+        self.page = None
+        self.record_trace = kwargs.get("enable_recording", False)
+
         try:
             import playwright  # noqa: F401
         except Exception as e:
@@ -68,8 +186,6 @@ class Browser:
                 f"Import error: {e}"
             )
 
-        # Installing browser binaries during benchmark runs can easily exceed step timeouts.
-        # Make this opt-in.
         auto_install = str(os.getenv("MAS_ARENA_AUTO_INSTALL_PLAYWRIGHT", "")).strip().lower() in {"1", "true", "yes"}
         if auto_install:
             print("Checking/installing Playwright browser binaries...")
@@ -82,56 +198,14 @@ class Browser:
             except Exception as e:
                 print(f"Warning: Failed to install playwright browsers. Error: {e}")
 
-        self._finish = False
-        self.record_trace = kwargs.get("enable_recording", False)
-        self.sleep_after_init = kwargs.get("sleep_after_init", False)
-
     async def init(self) -> None:
-        from playwright.async_api import async_playwright
-
         if self.initialized:
             return
-
-        # async_playwright() is an async context manager; use __aenter__ to get the Playwright instance
-        self._pw_cm = async_playwright()
-        self.playwright = await self._pw_cm.__aenter__()
-        self.browser = await self._create_browser()
-        self.context = await self._create_browser_context()
-
+        pool = await _get_pool()
+        self._context, self.page = await pool.acquire_context()
         if self.record_trace:
-            await self.context.tracing.start(screenshots=True, snapshots=True)
-
-        self.page = await self.context.new_page()
+            await self._context.tracing.start(screenshots=True, snapshots=True)
         self.initialized = True
-
-    async def _create_browser(self):
-        browse_name = "chromium"
-        browse = getattr(self.playwright, browse_name)
-        headless = True
-        slow_mo = 0
-        disable_security_args = ['--disable-web-security', '--disable-site-isolation-trials', '--disable-features=IsolateOrigins,site-per-process']
-        args = ['--no-sandbox', '--disable-crash-reporter', '--disable-blink-features=AutomationControlled', '--disable-infobars', '--disable-background-timer-throttling', '--disable-popup-blocking', '--disable-backgrounding-occluded-windows', '--disable-renderer-backgrounding', '--disable-window-activation', '--disable-focus-on-load', '--no-first-run', '--no-default-browser-check', '--no-startup-window', '--window-position=0,0', '--window-size=1280,720'] + disable_security_args
-        browser = await browse.launch(
-            headless=headless,
-            slow_mo=slow_mo,
-            args=args,
-        )
-        return browser
-
-    async def _create_browser_context(self):
-        from playwright.async_api import ViewportSize
-
-        browser = self.browser
-        viewport_size = ViewportSize(width=1280, height=720)
-        disable_security = True
-
-        context = await browser.new_context(viewport=viewport_size,
-                                      no_viewport=False,
-                                      java_script_enabled=True,
-                                      bypass_csp=disable_security,
-                                      ignore_https_errors=disable_security,
-                                      device_scale_factor=1)
-        return context
 
     async def navigate(self, url: str) -> str:
         """Navigate to a URL."""
@@ -154,6 +228,7 @@ class Browser:
             clean: Whether to run a cleaning script to remove irrelevant content.
         """
         if not self.initialized: await self.init()
+        evaluate_timeout_ms = int(os.getenv("MAS_ARENA_BROWSER_EVALUATE_TIMEOUT_MS", "15000"))
         try:
             if clean:
                 # A simple script to remove common clutter like nav, footer, scripts, styles
@@ -162,9 +237,9 @@ class Browser:
                     doc.querySelectorAll('nav, footer, script, style, aside, [role="navigation"], [role="banner"], [role="contentinfo"]').forEach(el => el.remove());
                     return doc.body.innerText;
                 }"""
-                return await self.page.evaluate(js_script)
+                return await self.page.evaluate(js_script, timeout=evaluate_timeout_ms)
             else:
-                return await self.page.inner_text('body')
+                return await self.page.inner_text('body', timeout=evaluate_timeout_ms)
         except Exception as e:
             return f"Failed to get page content: {e}"
 
@@ -182,10 +257,11 @@ class Browser:
         except:
             pass
 
+        screenshot_timeout_ms = int(os.getenv("MAS_ARENA_BROWSER_SCREENSHOT_TIMEOUT_MS", "30000"))
         screenshot = await self.page.screenshot(
             full_page=full_page,
             animations='disabled',
-            timeout=600000
+            timeout=screenshot_timeout_ms
         )
         screenshot_base64 = base64.b64encode(screenshot).decode('utf-8')
         return screenshot_base64
@@ -195,17 +271,14 @@ class Browser:
             return
         if self.record_trace:
             self.save_trace("trace.zip")
-
-        await self.page.close()
-        await self.context.close()
-        await self.browser.close()
-        if hasattr(self, "_pw_cm") and self._pw_cm is not None:
-            await self._pw_cm.__aexit__(None, None, None)
-            self._pw_cm = None
+        pool = await _get_pool()
+        await pool.release_context(self._context)
+        self._context = None
+        self.page = None
         self.initialized = False
 
     def save_trace(self, trace_path: str | Path) -> None:
-        self.context.tracing.stop(path=trace_path)
+        self._context.tracing.stop(path=trace_path)
 
 
 @ToolFactory.register(name=BROWSER, desc="A tool for browsing the web.")
@@ -251,5 +324,7 @@ class BrowserTool:
         ]
 
     def __del__(self):
-        if self.browser:
-            self.browser.close() 
+        # Browser.close() is async; calling it from __del__ (sync) would silently no-op.
+        # Cleanup is handled by the pool's release_context when Browser.close() is awaited
+        # normally, or by pool.shutdown() at process exit.
+        pass

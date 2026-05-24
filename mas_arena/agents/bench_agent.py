@@ -237,7 +237,7 @@ class BenchAgent(AgentSystem):
         )
         
         # 包装重试逻辑
-        self.llm = RetryWrapper(base_llm, max_retries=3)
+        self.llm = RetryWrapper(base_llm)
 
     def _initialize_tools(self):
         """根据配置初始化工具"""
@@ -426,6 +426,14 @@ Handles complex multi-step problems, writes Python code, and processes data."""
         """关闭资源"""
         if hasattr(self.llm, "aclose"):
             await self.llm.aclose()
+        for tools_list in (getattr(self, "search_tools", []), getattr(self, "manager_tools", [])):
+            for tool in tools_list:
+                bi = getattr(tool, "browser_instance", None)
+                if bi and hasattr(bi, "close"):
+                    try:
+                        await asyncio.wait_for(bi.close(), timeout=5)
+                    except Exception:
+                        pass
 
     @override
     async def run_agent(self, problem: Dict[str, Any], **kwargs) -> Dict[str, Any]:
@@ -525,9 +533,9 @@ Task:
                 )
             
             # 构建对话历史
-            conversation_messages = self._extract_conversation_history(augmented_question, final_answer)
+            conversation_messages = self._extract_conversation_history(augmented_question, final_answer, problem_id=problem.get("id", ""))
             self.conversation_history.extend(conversation_messages)
-            
+
             # 提取步骤信息
             manager_agent_steps, search_agent_steps = self._extract_agent_steps()
             
@@ -617,7 +625,7 @@ Task:
             final_answer = self.extract_final_answer(result)
 
             # 构建对话与步骤摘要
-            conversation_messages = self._extract_conversation_history(augmented_question, final_answer)
+            conversation_messages = self._extract_conversation_history(augmented_question, final_answer, problem_id=additional_args.get("id", ""))
             self.conversation_history.extend(conversation_messages)
             manager_agent_steps, search_agent_steps = self._extract_agent_steps()
 
@@ -904,7 +912,7 @@ Do not add any information that is not present in the file."""
         except Exception as e:
             return f"\n[File: {file_path}]\n Error processing file: {str(e)}\n"
 
-    def _extract_token_usage_from_agent(self) -> Optional[CompletionUsage]:
+    def _extract_token_usage_from_agent(self, problem_id: str = "") -> Optional[CompletionUsage]:
         """估算token使用情况"""
         try:
             prompt_tokens = 0
@@ -913,9 +921,10 @@ Do not add any information that is not present in the file."""
                 monitor = worker.agent.monitor
                 prompt_tokens += monitor.total_input_token_count
                 completion_tokens += monitor.total_output_token_count
-            
+
+            id_tag = f" id={problem_id}" if problem_id else ""
             logger.info(
-                f"Token usage - Input: {prompt_tokens}, Output: {completion_tokens}, Total: {prompt_tokens + completion_tokens}"
+                f"Token usage{id_tag} - Input: {prompt_tokens}, Output: {completion_tokens}, Total: {prompt_tokens + completion_tokens}"
             )
             return CompletionUsage(
                 prompt_tokens=prompt_tokens,
@@ -925,7 +934,7 @@ Do not add any information that is not present in the file."""
         except Exception:
             return None
 
-    def _extract_conversation_history(self, query: str, final_answer: Any) -> List[Dict[str, Any]]:
+    def _extract_conversation_history(self, query: str, final_answer: Any, problem_id: str = "") -> List[Dict[str, Any]]:
         """构建对话历史"""
         conversation = [
             {
@@ -951,7 +960,7 @@ Do not add any information that is not present in the file."""
             )
         
         final_answer_str = str(final_answer) if final_answer is not None else "No answer generated"
-        usage_metadata = self._extract_token_usage_from_agent()
+        usage_metadata = self._extract_token_usage_from_agent(problem_id=problem_id)
         
         conversation.append(
             {
