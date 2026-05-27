@@ -1,3 +1,0 @@
-These are the recent/updated opinions from other agents: {opinions}
-
- Use these opinions carefully as additional advice, can you provide an updated answer? Make sure to state your answer at the end of the response.

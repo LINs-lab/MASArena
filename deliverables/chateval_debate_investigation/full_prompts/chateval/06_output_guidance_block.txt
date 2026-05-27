@@ -1,9 +1,0 @@
-📋 OUTPUT FORMAT REQUIREMENTS:
-- Use the 'final_answer' tool with your answer when you have a complete solution.
-- Final answers must be concise and match the requested format exactly.
-- If the question asks for a number, provide ONLY the number.
-- If the question asks for a list, provide a comma-separated list.
-- If the question asks for text, provide ONLY the requested text without extra explanation.
-- Wrap your final answer in <answer></answer> tags if format_prompt requires it.
-- Avoid 'cannot be determined' style outputs unless there is truly no usable evidence.
-- If evidence is partial, still provide the most likely answer and keep it strictly formatted.

@@ -1,9 +1,0 @@
-
-Your response MUST be a JSON object with the following structure, and nothing else:
-{
-  "tool": "<name_of_the_tool>",
-  "arguments": {
-    "<parameter_name>": "<parameter_value>",
-    ...
-  }
-}

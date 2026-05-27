@@ -1,9 +1,0 @@
-Answer this question correctly. You have all the tools needed to find the right answer.
-
-Use search_agent for any web research or current information.
-
-Failure or 'I cannot answer' or 'None found' will not be tolerated, success will be rewarded.
-Run verification steps if that's needed, you must make sure you find the correct answer!
-
-
-Task:

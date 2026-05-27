@@ -1,6 +1,0 @@
-# Manager CodeAgent 最终 system prompt 组装顺序:
-# 1. codeagent_default_system_template (name=manager_agent, description=..., instructions=manager_instructions)
-# 2. + prompts.yaml → base_manager_prompt
-# 3. + additional_instructions (各 MAS 注入)
-
-见 shared/prompts.yaml 的 base_manager_prompt + 各 MAS 的 additional_instructions

@@ -1,4 +1,0 @@
-Math/Logic/Critical 各 BenchAgent additional_instructions = role_prompt + config.additional_instructions
-每轮 user prompt = 04_debate_context_template 填充
-run_agent_step 末尾还会追加 format_prompt
-Manager system = codeagent_default + base_manager_prompt + role_prompt

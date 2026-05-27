@@ -3795,7 +3795,7 @@ requires-dist = [
     { name = "networkx", specifier = "==3.5" },
     { name = "nltk", specifier = "==3.9.1" },
     { name = "numba", specifier = ">=0.59.1" },
-    { name = "numpy", specifier = "<2.0" },
+    { name = "numpy", specifier = ">=1.26" },
     { name = "oauthlib", specifier = "==3.3.1" },
     { name = "olefile", specifier = "==0.47" },
     { name = "ollama", specifier = "==0.5.3" },

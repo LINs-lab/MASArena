@@ -1,2 +1,0 @@
-BenchEnhancedAgent additional_instructions = system_prompt
-BenchEnhancedAgent 内 format_prompt = 'You must provide a final, direct answer, after your reasoning.'

@@ -1,9 +1,0 @@
-
-Please solve the following problem:
-
-{problem}
-
-Think carefully about the problem step by step. Show your work and reasoning.
-For mathematical problems, make sure to provide your final answer in a clear format.
-
-Agent ID: {agent_id}

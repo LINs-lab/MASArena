@@ -1,8 +1,0 @@
-System Role: {engineer.system_prompt}
-
-Task Context:
-- Product Requirements: {product_manager_result}
-- Architecture: {architect_result}
-- Assignment: {project_manager_result}
-
-Please implement the code. Ensure the final code is wrapped in <answer> tags.
