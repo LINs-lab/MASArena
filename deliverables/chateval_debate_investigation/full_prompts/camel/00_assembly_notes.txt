@@ -1,0 +1,2 @@
+self.system_prompt = config.system_prompt + format_prompt
+User/Assistant 走 OpenAI API；总结走 BenchAgent.run_agent_step

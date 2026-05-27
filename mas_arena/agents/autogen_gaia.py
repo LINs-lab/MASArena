@@ -86,4 +86,4 @@ class AutoGen(AgentSystem):
         }
         
         # 注册 Agent
-AgentSystemRegistry.register("autogen", AutoGen)
+AgentSystemRegistry.register("autogen_gaia", AutoGen)

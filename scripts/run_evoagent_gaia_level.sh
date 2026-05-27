@@ -15,7 +15,7 @@ cd "$(dirname "$0")/.."
 
 BENCHMARK="${BENCHMARK:-gaia}"
 AGENT_SYSTEM="${AGENT_SYSTEM:-evoagent}"
-DATA_PATH="${DATA_PATH:-data/gaia_validate_level3.jsonl}"
+DATA_PATH="${DATA_PATH:-data/gaia_evoagent_20260523_201901_insufficient_info_rerun.jsonl}"
 LIMIT="${LIMIT:-${1:-0}}"
 CONCURRENCY="${CONCURRENCY:-${2:-2}}"
 MODEL_NAME="${MODEL_NAME:-qwen3-32b}"

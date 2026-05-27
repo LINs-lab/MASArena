@@ -1,0 +1,2 @@
+Problem: {problem}
+Please provide the initial instructions to the assistant.

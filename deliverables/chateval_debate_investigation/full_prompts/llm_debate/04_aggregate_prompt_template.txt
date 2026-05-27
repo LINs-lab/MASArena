@@ -1,0 +1,5 @@
+Task:
+{query}
+
+{solution_blocks}Given all the above solutions, reason over them carefully and provide a final answer to the task. Make sure to follow these requirements:
+{format_prompt}

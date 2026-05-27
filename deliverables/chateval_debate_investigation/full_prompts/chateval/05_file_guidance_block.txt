@@ -1,0 +1,4 @@
+⚠️ FILE PROCESSING REQUIRED:
+- This problem involves file(s). You MUST use appropriate file processing tools.
+- Do NOT skip file processing or assume file contents.
+- Use the correct tool for each file type (see guidelines above).

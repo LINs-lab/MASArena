@@ -1,0 +1,7 @@
+Original Problem: {problem}
+
+Discussion History:
+{history_text}
+
+{format_prompt}{file_guidance}{output_guidance}It is now Round {round_num}. You are {agent_name}.
+Provide your insights. Be CONCISE. If you are the Math Expert, verify with tools if needed. Others: pure reasoning only.

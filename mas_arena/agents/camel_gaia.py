@@ -91,4 +91,4 @@ class CamelAgent(AgentSystem):
         }
         
         
-AgentSystemRegistry.register("camel", CamelAgent)
+AgentSystemRegistry.register("camel_gaia", CamelAgent)

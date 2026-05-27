@@ -25,7 +25,8 @@ if __name__ == "__main__":
         "memory": None,
         "verbosity_level": 10,
         "evaluator": evaluator,
-        "max_steps": 8 # Limit steps for speed
+        "max_steps": 15,
+        "search_max_steps": 10,
     }
     
     # Generate log file

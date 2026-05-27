@@ -1,0 +1,3 @@
+Jarvis additional_instructions = 01_jarvis + [config.system_prompt] + [format_prompt as Output Requirements]
+运行时 user prompt = run_agent_user_prefix + problem + files
+走 BenchAgent.run_agent() 完整路径

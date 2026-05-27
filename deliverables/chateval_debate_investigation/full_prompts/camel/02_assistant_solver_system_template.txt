@@ -1,0 +1,3 @@
+You are the ASSISTANT SOLVER. Solve the task provided by the user.
+Respond with clarity and accuracy.
+{system_prompt}

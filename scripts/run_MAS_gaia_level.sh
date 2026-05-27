@@ -6,6 +6,7 @@
 #   ./scripts/run_MAS_gaia_level.sh <limit> <concurrency> <mas> <data_path>
 #   ./scripts/run_MAS_gaia_level.sh 10 2 Jarvis data/gaia_validate_level1.jsonl
 #   LIMIT=20 CONCURRENCY=6 AGENT_SYSTEM=evoagent ./scripts/run_MAS_gaia_level.sh
+#   AGENT_SYSTEM=chateval_newcore MAX_STEPS=15 SEARCH_MAX_STEPS=10 ./scripts/run_MAS_gaia_level.sh
 
 set -euo pipefail
 

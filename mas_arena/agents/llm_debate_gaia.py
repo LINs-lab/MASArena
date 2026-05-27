@@ -81,7 +81,7 @@ class LLMDebateAgent(AgentSystem):
             "api_base": self.config.get("api_base") or os.getenv("OPENAI_API_BASE"),
             
             # Execution Parameters
-            "max_steps": self.config.get("max_steps", 25),  # Higher steps for multi-round simulation
+            "max_steps": self.config.get("max_steps", 15),
             "search_max_steps": self.config.get("search_max_steps", 10),
             "verbosity_level": self.config.get("verbosity_level", 1),
             
@@ -149,6 +149,6 @@ class LLMDebateAgent(AgentSystem):
 AgentSystemRegistry.register(
     "llm_debate", 
     LLMDebateAgent,
-    agents_num=2, 
+    agents_num=2,
     rounds_num=3
 )

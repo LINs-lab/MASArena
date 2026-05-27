@@ -1,0 +1,2 @@
+BenchAgent additional_instructions = config.additional_instructions OR format_prompt
+debate 输入 = round1 + --- Debate Input --- + 02 填充

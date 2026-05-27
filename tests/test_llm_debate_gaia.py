@@ -25,7 +25,9 @@ if __name__ == "__main__":
         "search_tools": ["ALL"],    # 使用全部工具
         "memory": None,
         "verbosity_level": 1,
-        "evaluator": evaluator,        
+        "evaluator": evaluator,
+        "max_steps": 15,
+        "search_max_steps": 10,
     }
     
     # 生成带时间戳的日志文件名

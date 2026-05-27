@@ -1,0 +1,3 @@
+
+
+Now, as the PRIMARY agent, generate or revise content. Respond directly.If the input is a multiple-choice question, output the letter of the correct answer ONLY. Do not provide any explanations, context, or additional characters.

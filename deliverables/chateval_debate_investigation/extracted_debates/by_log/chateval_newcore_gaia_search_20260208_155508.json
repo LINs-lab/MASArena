@@ -1,0 +1,312 @@
+{
+  "log_file": "logs/chateval_newcore_gaia_search_20260208_155508.log",
+  "log_name": "chateval_newcore_gaia_search_20260208_155508",
+  "problem_count": 5,
+  "problems": [
+    {
+      "problem": "Under DDC 633 on Bielefeld University Library's BASE, as of 2020, from what country was the unknown language article with a flag unique from the others?",
+      "debate_round_count": 11,
+      "debate_rounds": [
+        {
+          "agent": "Math Expert",
+          "round": 1,
+          "content": "Code agent encountered an error: Error in code agent step 1: Error code: 403 - {'error': {'message': 'token quota is not enough, token remain quota: ¥0.018840, need quota: ¥0.054576 (request id: 20260208155530122914566AcodijIh)', 'type': 'new_api_error', 'param': '', 'code': 'pre_consume_token_quota_failed'}}"
+        },
+        {
+          "agent": "Logic Expert",
+          "round": 1,
+          "content": "Code agent encountered an error: Error in code agent step 1: Error code: 403 - {'error': {'message': 'token quota is not enough, token remain quota: ¥0.018840, need quota: ¥0.054576 (request id: 2026020815553352455606gdboXpkG)', 'type': 'new_api_error', 'param': '', 'code': 'pre_consume_token_quota_failed'}}"
+        },
+        {
+          "agent": "Critical Thinking Expert",
+          "round": 1,
+          "content": "Code agent encountered an error: Error in code agent step 1: Error code: 403 - {'error': {'message': 'token quota is not enough, token remain quota: ¥0.018840, need quota: ¥0.054576 (request id: 20260208155533500905547YRROvUXF)', 'type': 'new_api_error', 'param': '', 'code': 'pre_consume_token_quota_failed'}}"
+        },
+        {
+          "agent": "Math Expert",
+          "round": 2,
+          "content": "Code agent encountered an error: Error in code agent step 1: Error code: 403 - {'error': {'message': 'token quota is not enough, token remain quota: ¥0.018840, need quota: ¥0.054576 (request id: 20260208155533655091484xkODGFZw)', 'type': 'new_api_error', 'param': '', 'code': 'pre_consume_token_quota_failed'}}"
+        },
+        {
+          "agent": "Logic Expert",
+          "round": 2,
+          "content": "Code agent encountered an error: Error in code agent step 1: Error code: 403 - {'error': {'message': 'token quota is not enough, token remain quota: ¥0.018840, need quota: ¥0.054576 (request id: 20260208155533941860858FsQ3KtzS)', 'type': 'new_api_error', 'param': '', 'code': 'pre_consume_token_quota_failed'}}"
+        },
+        {
+          "agent": "Critical Thinking Expert",
+          "round": 2,
+          "content": "Code agent encountered an error: Error in code agent step 1: Error code: 403 - {'error': {'message': 'token quota is not enough, token remain quota: ¥0.018840, need quota: ¥0.054576 (request id: 20260208155534120347285zjhN5C2O)', 'type': 'new_api_error', 'param': '', 'code': 'pre_consume_token_quota_failed'}}"
+        },
+        {
+          "agent": "Math Expert",
+          "round": 3,
+          "content": "Code agent encountered an error: Error in code agent step 1: Error code: 403 - {'error': {'message': 'token quota is not enough, token remain quota: ¥0.018840, need quota: ¥0.054576 (request id: 20260208155534275498499pIrLSe0z)', 'type': 'new_api_error', 'param': '', 'code': 'pre_consume_token_quota_failed'}}"
+        },
+        {
+          "agent": "Logic Expert",
+          "round": 3,
+          "content": "Code agent encountered an error: Error in code agent step 1: Error code: 403 - {'error': {'message': 'token quota is not enough, token remain quota: ¥0.018840, need quota: ¥0.054576 (request id: 20260208155534559312882Y33RNVti)', 'type': 'new_api_error', 'param': '', 'code': 'pre_consume_token_quota_failed'}}"
+        },
+        {
+          "agent": "Critical Thinking Expert",
+          "round": 3,
+          "content": "Code agent encountered an error: Error in code agent step 1: Error code: 403 - {'error': {'message': 'token quota is not enough, token remain quota: ¥0.018840, need quota: ¥0.054576 (request id: 20260208155534739732979KGQfJRtS)', 'type': 'new_api_error', 'param': '', 'code': 'pre_consume_token_quota_failed'}}"
+        },
+        {
+          "agent": "Math Expert",
+          "round": 4,
+          "content": "Code agent encountered an error: Error in code agent step 1: Error code: 403 - {'error': {'message': 'token quota is not enough, token remain quota: ¥0.018840, need quota: ¥0.054576 (request id: 20260208155534894755272D8kEAjqK)', 'type': 'new_api_error', 'param': '', 'code': 'pre_consume_token_quota_failed'}}"
+        },
+        {
+          "agent": "Logic Expert",
+          "round": 4,
+          "content": "Code agent encountered an error: Error in code agent step 1: Error code: 403 - {'error': {'message': 'token quota is not enough, token remain quota: ¥0.018840, need quota: ¥0.054576 (request id: 20260208155535180287925IMiECZIx)', 'type': 'new_api_error', 'param': '', 'code': 'pre_consume_token_quota_failed'}}"
+        }
+      ]
+    },
+    {
+      "problem": "What was the complete title of the book in which two James Beard Award winners recommended the restaurant where Ali Khan enjoyed a New Mexican staple in his cost-conscious TV show that started in 2015? Write the numbers in plain text if there are some in the title.",
+      "debate_round_count": 11,
+      "debate_rounds": [
+        {
+          "agent": "Math Expert",
+          "round": 1,
+          "content": "Code agent encountered an error: Error in code agent step 1: Error code: 403 - {'error': {'message': 'token quota is not enough, token remain quota: ¥0.018840, need quota: ¥0.054576 (request id: 20260208155521410310097EiBt1iDk)', 'type': 'new_api_error', 'param': '', 'code': 'pre_consume_token_quota_failed'}}"
+        },
+        {
+          "agent": "Logic Expert",
+          "round": 1,
+          "content": "Code agent encountered an error: Error in code agent step 1: Error code: 403 - {'error': {'message': 'token quota is not enough, token remain quota: ¥0.018840, need quota: ¥0.054576 (request id: 20260208155533568988979V1OwolP)', 'type': 'new_api_error', 'param': '', 'code': 'pre_consume_token_quota_failed'}}"
+        },
+        {
+          "agent": "Critical Thinking Expert",
+          "round": 1,
+          "content": "Code agent encountered an error: Error in code agent step 1: Error code: 403 - {'error': {'message': 'token quota is not enough, token remain quota: ¥0.018840, need quota: ¥0.054576 (request id: 20260208155533492423870cSCBqGQD)', 'type': 'new_api_error', 'param': '', 'code': 'pre_consume_token_quota_failed'}}"
+        },
+        {
+          "agent": "Math Expert",
+          "round": 2,
+          "content": "Code agent encountered an error: Error in code agent step 1: Error code: 403 - {'error': {'message': 'token quota is not enough, token remain quota: ¥0.018840, need quota: ¥0.054576 (request id: 20260208155533949904099NCL57awc)', 'type': 'new_api_error', 'param': '', 'code': 'pre_consume_token_quota_failed'}}"
+        },
+        {
+          "agent": "Logic Expert",
+          "round": 2,
+          "content": "Code agent encountered an error: Error in code agent step 1: Error code: 403 - {'error': {'message': 'token quota is not enough, token remain quota: ¥0.018840, need quota: ¥0.054576 (request id: 20260208155534250428707js37JlcU)', 'type': 'new_api_error', 'param': '', 'code': 'pre_consume_token_quota_failed'}}"
+        },
+        {
+          "agent": "Critical Thinking Expert",
+          "round": 2,
+          "content": "Code agent encountered an error: Error in code agent step 1: Error code: 403 - {'error': {'message': 'token quota is not enough, token remain quota: ¥0.018840, need quota: ¥0.054576 (request id: 20260208155534396946960a8S4km3g)', 'type': 'new_api_error', 'param': '', 'code': 'pre_consume_token_quota_failed'}}"
+        },
+        {
+          "agent": "Math Expert",
+          "round": 3,
+          "content": "Code agent encountered an error: Error in code agent step 1: Error code: 403 - {'error': {'message': 'token quota is not enough, token remain quota: ¥0.018840, need quota: ¥0.054576 (request id: 20260208155534570442729LP9XQQYu)', 'type': 'new_api_error', 'param': '', 'code': 'pre_consume_token_quota_failed'}}"
+        },
+        {
+          "agent": "Logic Expert",
+          "round": 3,
+          "content": "Code agent encountered an error: Error in code agent step 1: Error code: 403 - {'error': {'message': 'token quota is not enough, token remain quota: ¥0.018840, need quota: ¥0.054576 (request id: 20260208155534874513307OjfeQPJv)', 'type': 'new_api_error', 'param': '', 'code': 'pre_consume_token_quota_failed'}}"
+        },
+        {
+          "agent": "Critical Thinking Expert",
+          "round": 3,
+          "content": "Code agent encountered an error: Error in code agent step 1: Error code: 403 - {'error': {'message': 'token quota is not enough, token remain quota: ¥0.018840, need quota: ¥0.054576 (request id: 2026020815553524763156mKroyEnp)', 'type': 'new_api_error', 'param': '', 'code': 'pre_consume_token_quota_failed'}}"
+        },
+        {
+          "agent": "Math Expert",
+          "round": 4,
+          "content": "Code agent encountered an error: Error in code agent step 1: Error code: 403 - {'error': {'message': 'token quota is not enough, token remain quota: ¥0.018840, need quota: ¥0.054576 (request id: 20260208155535182787397gJFoGVTj)', 'type': 'new_api_error', 'param': '', 'code': 'pre_consume_token_quota_failed'}}"
+        },
+        {
+          "agent": "Logic Expert",
+          "round": 4,
+          "content": "Code agent encountered an error: Error in code agent step 1: Error code: 403 - {'error': {'message': 'token quota is not enough, token remain quota: ¥0.018840, need quota: ¥0.054576 (request id: 20260208155535485289665FW5wsp0M)', 'type': 'new_api_error', 'param': '', 'code': 'pre_consume_token_quota_failed'}}"
+        }
+      ]
+    },
+    {
+      "problem": "In the video https://www.youtube.com/watch?v=L1vXCYZAYYM, what is the highest number of bird species to be on camera simultaneously?",
+      "debate_round_count": 11,
+      "debate_rounds": [
+        {
+          "agent": "Math Expert",
+          "round": 1,
+          "content": "Code agent encountered an error: Error in code agent step 1: Error code: 403 - {'error': {'message': 'token quota is not enough, token remain quota: ¥0.018840, need quota: ¥0.054576 (request id: 20260208155527169270943mvz2W0kU)', 'type': 'new_api_error', 'param': '', 'code': 'pre_consume_token_quota_failed'}}"
+        },
+        {
+          "agent": "Logic Expert",
+          "round": 1,
+          "content": "Code agent encountered an error: Error in code agent step 1: Error code: 403 - {'error': {'message': 'token quota is not enough, token remain quota: ¥0.018840, need quota: ¥0.054576 (request id: 2026020815553366307820nfBKQYIX)', 'type': 'new_api_error', 'param': '', 'code': 'pre_consume_token_quota_failed'}}"
+        },
+        {
+          "agent": "Critical Thinking Expert",
+          "round": 1,
+          "content": "Code agent encountered an error: Error in code agent step 1: Error code: 403 - {'error': {'message': 'token quota is not enough, token remain quota: ¥0.018840, need quota: ¥0.054576 (request id: 20260208155533507217536eEkJsmra)', 'type': 'new_api_error', 'param': '', 'code': 'pre_consume_token_quota_failed'}}"
+        },
+        {
+          "agent": "Math Expert",
+          "round": 2,
+          "content": "Code agent encountered an error: Error in code agent step 1: Error code: 403 - {'error': {'message': 'token quota is not enough, token remain quota: ¥0.018840, need quota: ¥0.054576 (request id: 20260208155533942927323n6fAe0A7)', 'type': 'new_api_error', 'param': '', 'code': 'pre_consume_token_quota_failed'}}"
+        },
+        {
+          "agent": "Logic Expert",
+          "round": 2,
+          "content": "Code agent encountered an error: Error in code agent step 1: Error code: 403 - {'error': {'message': 'token quota is not enough, token remain quota: ¥0.018840, need quota: ¥0.054576 (request id: 20260208155534234446238SBv49XRj)', 'type': 'new_api_error', 'param': '', 'code': 'pre_consume_token_quota_failed'}}"
+        },
+        {
+          "agent": "Critical Thinking Expert",
+          "round": 2,
+          "content": "Code agent encountered an error: Error in code agent step 1: Error code: 403 - {'error': {'message': 'token quota is not enough, token remain quota: ¥0.018840, need quota: ¥0.054576 (request id: 20260208155534402335611eoZfCFqw)', 'type': 'new_api_error', 'param': '', 'code': 'pre_consume_token_quota_failed'}}"
+        },
+        {
+          "agent": "Math Expert",
+          "round": 3,
+          "content": "Code agent encountered an error: Error in code agent step 1: Error code: 403 - {'error': {'message': 'token quota is not enough, token remain quota: ¥0.018840, need quota: ¥0.054576 (request id: 20260208155534555437580sSWIqvj2)', 'type': 'new_api_error', 'param': '', 'code': 'pre_consume_token_quota_failed'}}"
+        },
+        {
+          "agent": "Logic Expert",
+          "round": 3,
+          "content": "Code agent encountered an error: Error in code agent step 1: Error code: 403 - {'error': {'message': 'token quota is not enough, token remain quota: ¥0.018840, need quota: ¥0.054576 (request id: 20260208155534852028405Wb2RgHB1)', 'type': 'new_api_error', 'param': '', 'code': 'pre_consume_token_quota_failed'}}"
+        },
+        {
+          "agent": "Critical Thinking Expert",
+          "round": 3,
+          "content": "Code agent encountered an error: Error in code agent step 1: Error code: 403 - {'error': {'message': 'token quota is not enough, token remain quota: ¥0.018840, need quota: ¥0.054576 (request id: 2026020815553510067063BtKiHZj7)', 'type': 'new_api_error', 'param': '', 'code': 'pre_consume_token_quota_failed'}}"
+        },
+        {
+          "agent": "Math Expert",
+          "round": 4,
+          "content": "Code agent encountered an error: Error in code agent step 1: Error code: 403 - {'error': {'message': 'token quota is not enough, token remain quota: ¥0.018840, need quota: ¥0.054576 (request id: 20260208155535202837557BsdhwffG)', 'type': 'new_api_error', 'param': '', 'code': 'pre_consume_token_quota_failed'}}"
+        },
+        {
+          "agent": "Logic Expert",
+          "round": 4,
+          "content": "Code agent encountered an error: Error in code agent step 1: Error code: 403 - {'error': {'message': 'token quota is not enough, token remain quota: ¥0.018840, need quota: ¥0.054576 (request id: 20260208155535493263887vCWmnQqU)', 'type': 'new_api_error', 'param': '', 'code': 'pre_consume_token_quota_failed'}}"
+        }
+      ]
+    },
+    {
+      "problem": "What was the volume in m^3 of the fish bag that was calculated in the University of Leicester paper \"Can Hiccup Supply Enough Fish to Maintain a Dragon’s Diet?\"",
+      "debate_round_count": 11,
+      "debate_rounds": [
+        {
+          "agent": "Math Expert",
+          "round": 1,
+          "content": "Code agent encountered an error: Error in code agent step 1: Error code: 403 - {'error': {'message': 'token quota is not enough, token remain quota: ¥0.018840, need quota: ¥0.054576 (request id: 20260208155524185710867EXHIf8uA)', 'type': 'new_api_error', 'param': '', 'code': 'pre_consume_token_quota_failed'}}"
+        },
+        {
+          "agent": "Logic Expert",
+          "round": 1,
+          "content": "Code agent encountered an error: Error in code agent step 1: Error code: 403 - {'error': {'message': 'token quota is not enough, token remain quota: ¥0.018840, need quota: ¥0.054576 (request id: 2026020815553363754899MjRKCGL7)', 'type': 'new_api_error', 'param': '', 'code': 'pre_consume_token_quota_failed'}}"
+        },
+        {
+          "agent": "Critical Thinking Expert",
+          "round": 1,
+          "content": "Code agent encountered an error: Error in code agent step 1: Error code: 403 - {'error': {'message': 'token quota is not enough, token remain quota: ¥0.018840, need quota: ¥0.054576 (request id: 20260208155533519189258HLzPatFp)', 'type': 'new_api_error', 'param': '', 'code': 'pre_consume_token_quota_failed'}}"
+        },
+        {
+          "agent": "Math Expert",
+          "round": 2,
+          "content": "Code agent encountered an error: Error in code agent step 1: Error code: 403 - {'error': {'message': 'token quota is not enough, token remain quota: ¥0.018840, need quota: ¥0.054576 (request id: 20260208155533967769011WvrTSffC)', 'type': 'new_api_error', 'param': '', 'code': 'pre_consume_token_quota_failed'}}"
+        },
+        {
+          "agent": "Logic Expert",
+          "round": 2,
+          "content": "Code agent encountered an error: Error in code agent step 1: Error code: 403 - {'error': {'message': 'token quota is not enough, token remain quota: ¥0.018840, need quota: ¥0.054576 (request id: 20260208155534259184584ylaXAm4p)', 'type': 'new_api_error', 'param': '', 'code': 'pre_consume_token_quota_failed'}}"
+        },
+        {
+          "agent": "Critical Thinking Expert",
+          "round": 2,
+          "content": "Code agent encountered an error: Error in code agent step 1: Error code: 403 - {'error': {'message': 'token quota is not enough, token remain quota: ¥0.018840, need quota: ¥0.054576 (request id: 20260208155534419743382nfoDRgqd)', 'type': 'new_api_error', 'param': '', 'code': 'pre_consume_token_quota_failed'}}"
+        },
+        {
+          "agent": "Math Expert",
+          "round": 3,
+          "content": "Code agent encountered an error: Error in code agent step 1: Error code: 403 - {'error': {'message': 'token quota is not enough, token remain quota: ¥0.018840, need quota: ¥0.054576 (request id: 20260208155534577307706PIGndth0)', 'type': 'new_api_error', 'param': '', 'code': 'pre_consume_token_quota_failed'}}"
+        },
+        {
+          "agent": "Logic Expert",
+          "round": 3,
+          "content": "Code agent encountered an error: Error in code agent step 1: Error code: 403 - {'error': {'message': 'token quota is not enough, token remain quota: ¥0.018840, need quota: ¥0.054576 (request id: 20260208155534869692093u6q310JT)', 'type': 'new_api_error', 'param': '', 'code': 'pre_consume_token_quota_failed'}}"
+        },
+        {
+          "agent": "Critical Thinking Expert",
+          "round": 3,
+          "content": "Code agent encountered an error: Error in code agent step 1: Error code: 403 - {'error': {'message': 'token quota is not enough, token remain quota: ¥0.018840, need quota: ¥0.054576 (request id: 2026020815553537929794qHmMzgyT)', 'type': 'new_api_error', 'param': '', 'code': 'pre_consume_token_quota_failed'}}"
+        },
+        {
+          "agent": "Math Expert",
+          "round": 4,
+          "content": "Code agent encountered an error: Error in code agent step 1: Error code: 403 - {'error': {'message': 'token quota is not enough, token remain quota: ¥0.018840, need quota: ¥0.054576 (request id: 20260208155535194404971WV1pG2yf)', 'type': 'new_api_error', 'param': '', 'code': 'pre_consume_token_quota_failed'}}"
+        },
+        {
+          "agent": "Logic Expert",
+          "round": 4,
+          "content": "Code agent encountered an error: Error in code agent step 1: Error code: 403 - {'error': {'message': 'token quota is not enough, token remain quota: ¥0.018840, need quota: ¥0.054576 (request id: 2026020815553548917011830q4cHZP)', 'type': 'new_api_error', 'param': '', 'code': 'pre_consume_token_quota_failed'}}"
+        }
+      ]
+    },
+    {
+      "problem": "Of the authors (First M. Last) that worked on the paper \"Pie Menus or Linear Menus, Which Is Better?\" in 2015, what was the title of the first paper authored by the one that had authored prior papers?",
+      "debate_round_count": 11,
+      "debate_rounds": [
+        {
+          "agent": "Math Expert",
+          "round": 1,
+          "content": "Code agent encountered an error: Error in code agent step 1: Error code: 403 - {'error': {'message': 'token quota is not enough, token remain quota: ¥0.018840, need quota: ¥0.054576 (request id: 2026020815553326825350lw93F1c3)', 'type': 'new_api_error', 'param': '', 'code': 'pre_consume_token_quota_failed'}}"
+        },
+        {
+          "agent": "Logic Expert",
+          "round": 1,
+          "content": "Code agent encountered an error: Error in code agent step 1: Error code: 403 - {'error': {'message': 'token quota is not enough, token remain quota: ¥0.018840, need quota: ¥0.054576 (request id: 20260208155533610471262BfOED0kS)', 'type': 'new_api_error', 'param': '', 'code': 'pre_consume_token_quota_failed'}}"
+        },
+        {
+          "agent": "Critical Thinking Expert",
+          "round": 1,
+          "content": "Code agent encountered an error: Error in code agent step 1: Error code: 403 - {'error': {'message': 'token quota is not enough, token remain quota: ¥0.018840, need quota: ¥0.054576 (request id: 2026020815553453899436L8qdoq5i)', 'type': 'new_api_error', 'param': '', 'code': 'pre_consume_token_quota_failed'}}"
+        },
+        {
+          "agent": "Math Expert",
+          "round": 2,
+          "content": "Code agent encountered an error: Error in code agent step 1: Error code: 403 - {'error': {'message': 'token quota is not enough, token remain quota: ¥0.018840, need quota: ¥0.054576 (request id: 202602081555342051382371fZl8Tmi)', 'type': 'new_api_error', 'param': '', 'code': 'pre_consume_token_quota_failed'}}"
+        },
+        {
+          "agent": "Logic Expert",
+          "round": 2,
+          "content": "Code agent encountered an error: Error in code agent step 1: Error code: 403 - {'error': {'message': 'token quota is not enough, token remain quota: ¥0.018840, need quota: ¥0.054576 (request id: 202602081555344994362350Rr83ZDQ)', 'type': 'new_api_error', 'param': '', 'code': 'pre_consume_token_quota_failed'}}"
+        },
+        {
+          "agent": "Critical Thinking Expert",
+          "round": 2,
+          "content": "Code agent encountered an error: Error in code agent step 1: Error code: 403 - {'error': {'message': 'token quota is not enough, token remain quota: ¥0.018840, need quota: ¥0.054576 (request id: 20260208155534652507527J86Z2cBD)', 'type': 'new_api_error', 'param': '', 'code': 'pre_consume_token_quota_failed'}}"
+        },
+        {
+          "agent": "Math Expert",
+          "round": 3,
+          "content": "Code agent encountered an error: Error in code agent step 1: Error code: 403 - {'error': {'message': 'token quota is not enough, token remain quota: ¥0.018840, need quota: ¥0.054576 (request id: 20260208155534801940948FRPTzcvQ)', 'type': 'new_api_error', 'param': '', 'code': 'pre_consume_token_quota_failed'}}"
+        },
+        {
+          "agent": "Logic Expert",
+          "round": 3,
+          "content": "Code agent encountered an error: Error in code agent step 1: Error code: 403 - {'error': {'message': 'token quota is not enough, token remain quota: ¥0.018840, need quota: ¥0.054576 (request id: 2026020815553594410711fMltCXKY)', 'type': 'new_api_error', 'param': '', 'code': 'pre_consume_token_quota_failed'}}"
+        },
+        {
+          "agent": "Critical Thinking Expert",
+          "round": 3,
+          "content": "Code agent encountered an error: Error in code agent step 1: Error code: 403 - {'error': {'message': 'token quota is not enough, token remain quota: ¥0.018840, need quota: ¥0.054576 (request id: 20260208155535247023240JhtnQ8rt)', 'type': 'new_api_error', 'param': '', 'code': 'pre_consume_token_quota_failed'}}"
+        },
+        {
+          "agent": "Math Expert",
+          "round": 4,
+          "content": "Code agent encountered an error: Error in code agent step 1: Error code: 403 - {'error': {'message': 'token quota is not enough, token remain quota: ¥0.018840, need quota: ¥0.054576 (request id: 20260208155535397617030r7w35fjA)', 'type': 'new_api_error', 'param': '', 'code': 'pre_consume_token_quota_failed'}}"
+        },
+        {
+          "agent": "Logic Expert",
+          "round": 4,
+          "content": "Code agent encountered an error: Error in code agent step 1: Error code: 403 - {'error': {'message': 'token quota is not enough, token remain quota: ¥0.018840, need quota: ¥0.054576 (request id: 20260208155535690713762jsNZk8hN)', 'type': 'new_api_error', 'param': '', 'code': 'pre_consume_token_quota_failed'}}"
+        }
+      ]
+    }
+  ]
+}

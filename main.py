@@ -173,6 +173,24 @@ def main():
         default=None,
         help="Number of debate agents for llm_debate agent (default: 2).",
     )
+    parser.add_argument(
+        "--max-steps",
+        type=int,
+        default=None,
+        help="Manager CodeAgent max steps (BenchAgent-based MAS, default in agent: 15).",
+    )
+    parser.add_argument(
+        "--search-max-steps",
+        type=int,
+        default=None,
+        help="Search ToolCallingAgent max steps (default in agent: 10).",
+    )
+    parser.add_argument(
+        "--num-rounds",
+        type=int,
+        default=None,
+        help="Debate rounds for chateval_newcore (default in agent: 2).",
+    )
 
     # Optimizer arguments
     optimizer_group = parser.add_argument_group("Optimizer Settings")
@@ -283,6 +301,15 @@ def main():
 
     if args.debate_agents is not None:
         agent_config["agents_num"] = args.debate_agents
+
+    if args.max_steps is not None:
+        agent_config["max_steps"] = args.max_steps
+
+    if args.search_max_steps is not None:
+        agent_config["search_max_steps"] = args.search_max_steps
+
+    if args.num_rounds is not None:
+        agent_config["num_rounds"] = args.num_rounds
 
     # Create directories if needed
     Path(args.results_dir).mkdir(exist_ok=True)
