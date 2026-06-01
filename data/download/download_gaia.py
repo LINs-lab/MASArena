@@ -7,13 +7,6 @@ from huggingface_hub import hf_hub_download
 import logging
 import shutil
 
-# Load .env so HF_TOKEN is available
-try:
-    from dotenv import load_dotenv
-    load_dotenv(Path(__file__).resolve().parents[2] / ".env")
-except Exception:
-    pass
-
 # Set up logging
 logging.basicConfig(
     level=logging.INFO,

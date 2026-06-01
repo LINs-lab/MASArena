@@ -1,6 +1,6 @@
 # Package for tool-related modules
-from mas_arena.tools_old.tool_manager import ToolManager
-from mas_arena.tools_old.tool_selector import ToolSelector
+from mas_arena.tools._legacy.tool_manager import ToolManager
+from mas_arena.tools._legacy.tool_selector import ToolSelector
 
 # 导入具体工具类
 from .browser_tool import BrowserTool

@@ -13,12 +13,10 @@
 # import asyncio
 
 # from langchain_openai import ChatOpenAI
-# from dotenv import load_dotenv
 
 # from mas_arena.agents.base import AgentSystem, AgentSystemRegistry
 
 # # Load environment variables
-# load_dotenv()
 
 
 # class SwarmAgent:

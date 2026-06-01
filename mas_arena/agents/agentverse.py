@@ -2,7 +2,6 @@ import time
 import json
 import os
 import asyncio
-from dotenv import load_dotenv
 from dataclasses import dataclass
 from typing import Dict, TypedDict, Any, List
 
@@ -32,7 +31,6 @@ class EvaluationResult(TypedDict):
     solution_quality: float  # solution quality score (0-1)
 
 # Load environment variables
-load_dotenv()
 
 @dataclass
 class ExpertProfile:

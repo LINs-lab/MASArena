@@ -5,10 +5,7 @@ from smolagents import Tool
 import time
 from typing import Any, Optional
 import os
-from dotenv import load_dotenv
 from .search_reflector import SearchReflector
-
-load_dotenv()
 
 
 class BaseSearcher:

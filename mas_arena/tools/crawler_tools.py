@@ -10,10 +10,7 @@ import asyncio
 import requests
 from smolagents import Tool
 
-from dotenv import load_dotenv
 from mas_arena.tools.jina_keys import get_jina_api_keys, is_jina_quota_error
-
-load_dotenv()
 
 
 class SimpleCrawler:

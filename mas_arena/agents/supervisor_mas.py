@@ -15,13 +15,7 @@ from langgraph.types import Command
 from langgraph.prebuilt import create_react_agent
 from langsmith import traceable
 from langgraph.checkpoint.memory import InMemorySaver
-from dotenv import load_dotenv
-import dotenv
 from mas_arena.agents.base import AgentSystem, AgentSystemRegistry
-
-dotenv.load_dotenv()
-
-load_dotenv()
 
 
 class State(MessagesState):

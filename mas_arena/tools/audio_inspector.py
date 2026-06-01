@@ -6,10 +6,7 @@ from smolagents import Tool
 from smolagents.models import MessageRole, Model
 
 import openai
-from dotenv import load_dotenv
 from mutagen._file import File as MutagenFile
-
-load_dotenv()
 
 
 class AudioInspectorTool(Tool):

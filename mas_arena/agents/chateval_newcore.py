@@ -17,14 +17,12 @@ import os
 import re
 import asyncio
 from typing import Dict, Any, List, Optional
-from dotenv import load_dotenv
 
 from mas_arena.agents.base import AgentSystem, AgentSystemRegistry
 from mas_arena.agents.bench_agent import BenchAgent
 from mas_arena.utils.llm_utils import call_model
 
 # Load environment variables
-load_dotenv(override=True)
 
 class ChatEvalNewCore(AgentSystem):
     """

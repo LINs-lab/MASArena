@@ -3,6 +3,7 @@ import yaml
 import contextlib
 from typing import Dict, Any, Optional, List
 from dataclasses import dataclass
+from pathlib import Path
 
 # 导入外部工具
 from mas_arena.tools.external_tools import (
@@ -30,9 +31,16 @@ from smolagents import (
 )
 
 from .prompts import GAIA_FORMAT_PROMPT
+from mas_arena.utils.env import (
+    DEFAULT_MODEL_NAME,
+    get_env_float,
+    get_env_int,
+    get_model_name,
+    get_openai_api_base,
+)
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
-prompts_path = os.path.join(current_dir, "prompts.yaml")
+prompts_path = Path(current_dir).parents[1] / "prompts" / "verl_prompts.yaml"
 with open(prompts_path, "r", encoding="utf-8") as f:
     prompts = yaml.load(f, Loader=yaml.FullLoader)
 
@@ -81,7 +89,7 @@ class SmolagentsAgent:
     def __init__(self, name: str = "smolagents", config: Optional[Dict[str, Any]] = None):
         self.name = name
         self.config = config or {}
-        self.model_name = self.config.get("model_name") or os.getenv("MODEL_NAME", "gpt-4o-mini")
+        self.model_name = self.config.get("model_name") or get_model_name(DEFAULT_MODEL_NAME)
         self.execution_log = []
         self.llm = self._initialize_model()
         self._initialize_tools()
@@ -99,7 +107,7 @@ class SmolagentsAgent:
 
     def _initialize_model(self) -> OpenAIServerModel:
         api_key = self.config.get("api_key") or os.getenv("OPENAI_API_KEY")
-        api_base = self.config.get("api_base") or os.getenv("OPENAI_API_BASE", "https://api.openai.com/v1")
+        api_base = self.config.get("api_base") or get_openai_api_base()
         if not api_key:
             raise ValueError(
                 "OpenAI API key is required. Set OPENAI_API_KEY environment variable or provide in config."
@@ -332,10 +340,10 @@ class SmolagentsAgent:
                     successful_trajectories, _, insights = self.meta_memory.retrieve_memory(
                         task_search_keywords=search_keywords,
                         task_question=problem["problem"],
-                        successful_topk=os.environ.get("successful_topk", 4),
-                        failed_topk=os.environ.get("failed_topk", 2),
-                        insight_topk=os.environ.get("insights_topk", 3),
-                        threshold=os.environ.get("threshold", 0.3),
+                        successful_topk=get_env_int("MAS_RL_SUCCESSFUL_TOPK", 4),
+                        failed_topk=get_env_int("MAS_RL_FAILED_TOPK", 2),
+                        insight_topk=get_env_int("MAS_RL_INSIGHTS_TOPK", 3),
+                        threshold=get_env_float("MAS_RL_SIMILARITY_THRESHOLD", 0.3),
                     )
                     logging.info(f"the number of successful trajectories: {len(successful_trajectories)}")
                     logging.info(f"the number of insights: {len(insights)}")

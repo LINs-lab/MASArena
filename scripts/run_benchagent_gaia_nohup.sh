@@ -4,7 +4,7 @@
 # Usage:
 #   ./scripts/run_benchagent_gaia_nohup.sh
 #   ./scripts/run_benchagent_gaia_nohup.sh 10 2
-#   LIMIT=12 CONCURRENCY=3 MODEL_NAME=qwen3-32b ./scripts/run_benchagent_gaia_nohup.sh
+#   LIMIT=12 CONCURRENCY=3 MODEL_NAME=gpt-4o-mini ./scripts/run_benchagent_gaia_nohup.sh
 
 set -euo pipefail
 
@@ -16,7 +16,7 @@ cd "$(dirname "$0")/.."
 LIMIT="${LIMIT:-${1:-10}}"
 CONCURRENCY="${CONCURRENCY:-${2:-2}}"
 DATA_PATH="${DATA_PATH:-data/gaia_validate_level1.jsonl}"
-MODEL_NAME="${MODEL_NAME:-qwen3-32b}"
+MODEL_NAME="${MODEL_NAME:-gpt-4o-mini}"
 RESULTS_DIR="${RESULTS_DIR:-results}"
 LOG_DIR="${LOG_DIR:-logs/bench_agent_gaia}"
 MANAGER_TOOLS="${MANAGER_TOOLS:-ALL}"

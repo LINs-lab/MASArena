@@ -30,13 +30,10 @@
 #     PythonInterpreterTool,
 # )
 # from mas_arena.agents.base import logger
-# from dotenv import load_dotenv
 # from mas_arena.utils.score import question_scorer
 # from mas_arena.utils.llm_utils import RetryWrapper
 
-# load_dotenv()
 # current_dir = os.path.dirname(os.path.abspath(__file__))
-# prompts_path = os.path.join(current_dir, "simple_smolagents_prompts.yaml")
 # with open(prompts_path, "r", encoding="utf-8") as f:
 #     prompts = yaml.load(f, Loader=yaml.FullLoader)
 # AUTHORIZED_IMPORTS = [
@@ -383,10 +380,6 @@
 #                     successful_trajectories, _, insights = self.meta_memory.retrieve_memory(
 #                         task_search_keywords=search_keywords,
 #                         task_question=problem["problem"],
-#                         successful_topk=os.environ.get("SUCCESSFUL_TOPK", 2),
-#                         failed_topk=os.environ.get("FAILED_TOPK", 1),
-#                         insight_topk=os.environ.get("INSIGHTS_TOPK", 3),
-#                         threshold=os.environ.get("THRESHOLD", 0.3),
 #                     )
 #                     logger.info(f"the number of successful trajectories: {len(successful_trajectories)}")
 #                     logger.info(f"the number of insights: {len(insights)}")

@@ -7,10 +7,6 @@ import arxiv
 from smolagents import Tool
 from smolagents.models import Model
 
-from dotenv import load_dotenv
-
-load_dotenv()
-
 # Configure logging
 logger = logging.getLogger(__name__)
 

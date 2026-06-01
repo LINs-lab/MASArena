@@ -25,9 +25,6 @@ This tool supports the following image formats: [".jpg", ".jpeg", ".png", ".gif"
 
     def __init__(self, model: Model = None, text_limit: int = 1000):
         import os
-        from dotenv import load_dotenv
-
-        load_dotenv()
         super().__init__()
         self.model = model
         self.text_limit = text_limit

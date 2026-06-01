@@ -67,7 +67,12 @@ class MemoryAgentLoop(AgentLoopBase):
             # Pass the model config to SmolAgent.
             # The API key is a dummy key for local vLLM servers, as they don't require authentication.
 
-            embed_func = EmbeddingFunc(os.getenv("embedding_model", "sentence-transformers/all-MiniLM-L6-v2"))
+            embed_func = EmbeddingFunc(
+                os.getenv(
+                    "MAS_RL_EMBEDDING_MODEL",
+                    "sentence-transformers/all-MiniLM-L6-v2",
+                )
+            )
             persist_dir = os.getenv("RL_MELO_PERSIST_DIR", "mas_arena/train/persis/melo")
 
             agent_config = {"model_name": model_name, "api_base": api_base}

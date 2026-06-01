@@ -7,9 +7,6 @@ import json
 from dataclasses import dataclass
 import math
 import numpy as np
-from dotenv import load_dotenv
-
-load_dotenv()
 
 
 def cosine_similarity(vec1: list[float], vec2: list[float]) -> float:

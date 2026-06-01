@@ -3,7 +3,6 @@
 # import asyncio
 # import random
 # import uuid
-# from dotenv import load_dotenv
 # from dataclasses import dataclass, field
 # from typing import Dict, Any, List, Tuple
 # from langchain_openai import ChatOpenAI
@@ -15,7 +14,6 @@
 # nest_asyncio.apply()
 
 # # Load environment variables
-# load_dotenv()
 
 # # Add color output support
 # class Colors:

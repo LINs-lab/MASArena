@@ -2,7 +2,6 @@
 # import logging
 # from typing import Dict, Any, List
 # from dataclasses import dataclass
-# from dotenv import load_dotenv
 # from typing import TypedDict
 # from openai import AsyncOpenAI
 # from langchain_openai import ChatOpenAI
@@ -11,7 +10,6 @@
 # from mas_arena.agents.base import AgentSystem, AgentSystemRegistry
 
 # # Load environment variables
-# load_dotenv()
 
 # logger = logging.getLogger(__name__)
 # logger.setLevel(logging.INFO)

@@ -1,4 +1,4 @@
-# Compatibility shim: tools_old imports expect mas_arena.tools.base.ToolFactory
-from mas_arena.tools_old.base import ToolFactory  # noqa: F401
+# Compatibility shim: internal legacy tools expect mas_arena.tools.base.ToolFactory
+from mas_arena.tools._legacy.base import ToolFactory  # noqa: F401
 
 __all__ = ["ToolFactory"]

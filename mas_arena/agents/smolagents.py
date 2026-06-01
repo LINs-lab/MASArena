@@ -47,15 +47,12 @@
 #     WikipediaSearchTool as SmolWikipediaSearchTool,
 # )
 # from mas_arena.agents.base import logger
-# from dotenv import load_dotenv
 # from mas_arena.utils.score import question_scorer
 # from mas_arena.utils.llm_utils import RetryWrapper
 
 # import asyncio
 
-# load_dotenv(override = True)
 # current_dir = os.path.dirname(os.path.abspath(__file__))
-# prompts_path = os.path.join(current_dir, "prompts.yaml")
 # with open(prompts_path, "r", encoding="utf-8") as f:
 #     prompts = yaml.load(f, Loader=yaml.FullLoader)
 # AUTHORIZED_IMPORTS = [
@@ -627,10 +624,6 @@
 #                         await self.meta_memory.retrieve_memory(
 #                             task_search_keywords=search_keywords,
 #                             task_question=problem["problem"],
-#                             successful_topk=os.environ.get("SUCCESSFUL_TOPK", 2),
-#                             failed_topk=os.environ.get("FAILED_TOPK", 1),
-#                             insight_topk=os.environ.get("INSIGHTS_TOPK", 3),
-#                             threshold=os.environ.get("THRESHOLD", 0.3),
 #                         )
 #                     )
 #                     logger.info(

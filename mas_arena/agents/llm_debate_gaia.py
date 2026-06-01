@@ -15,12 +15,9 @@ Key Philosophy:
 
 import os
 from typing import Dict, Any
-from dotenv import load_dotenv
 
 from mas_arena.agents.base import AgentSystem, AgentSystemRegistry
 from mas_arena.agents.bench_agent import BenchAgent
-
-load_dotenv(override=True)
 
 class LLMDebateAgent(AgentSystem):
     """

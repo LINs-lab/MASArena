@@ -7,7 +7,6 @@ import contextlib
 import sys
 import os
 import datetime
-from dotenv import load_dotenv
 from openai import AzureOpenAI, OpenAI
 
 from lib.utils import (
@@ -23,7 +22,6 @@ KNOWN_GPT_MODELS = {"gpt-4o", "gpt-4", "gpt-4o-mini", "gpt-4.1"}
 ALL_MODELS = list(KNOWN_GPT_MODELS)
 
 def main():
-    load_dotenv()
 
     parser = argparse.ArgumentParser(description="Analyze multi-agent responses for failure attribution.")
 

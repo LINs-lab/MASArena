@@ -3,12 +3,9 @@ import os
 import logging
 import asyncio
 from typing import Dict, Any, List
-from dotenv import load_dotenv
 from openai import AsyncOpenAI
 from mas_arena.agents.base import AgentSystem, AgentSystemRegistry
 from mas_arena.agents.bench_agent import BenchAgent
-
-load_dotenv()
 logger = logging.getLogger(__name__)
 
 class CamelAgent(AgentSystem):

@@ -10,12 +10,10 @@ from typing import Dict, Any
 import contextlib
 
 from openai import AsyncOpenAI
-from dotenv import load_dotenv
 
 from mas_arena.agents.base import AgentSystem, AgentSystemRegistry
 
 # Load environment variables
-load_dotenv()
 
 
 class SingleAgent(AgentSystem):

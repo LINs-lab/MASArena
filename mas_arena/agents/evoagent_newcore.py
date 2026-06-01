@@ -3,7 +3,6 @@ import json
 import asyncio
 import random
 import uuid
-from dotenv import load_dotenv
 from dataclasses import dataclass, field
 from typing import Dict, Any, List, Tuple
 from openai.types.completion_usage import CompletionUsage
@@ -19,7 +18,6 @@ import nest_asyncio
 nest_asyncio.apply()
 
 # Load environment variables
-load_dotenv()
 
 # Add color output support
 class Colors:

@@ -1,9 +1,6 @@
 import os
 import asyncio
 from smolagents import Tool
-from dotenv import load_dotenv
-
-load_dotenv()
 
 
 def _get_browser_timeout_seconds():
@@ -51,9 +48,9 @@ class BrowserTool(Tool):
         
         super().__init__()
         
-        # Try importing from tools_old
+        # Try importing from the internal legacy implementation.
         try:
-            from mas_arena.tools_old.browser_tool import Browser
+            from mas_arena.tools._legacy.browser_tool import Browser
             self.browser_instance = Browser()
             self.available = True
         except ImportError as e:
@@ -83,7 +80,7 @@ class BrowserTool(Tool):
         if not self.available or not self.browser_instance:
             # Try initializing again if it failed or wasn't available (e.g. inside sandbox)
             try:
-                from mas_arena.tools_old.browser_tool import Browser
+                from mas_arena.tools._legacy.browser_tool import Browser
                 self.browser_instance = Browser()
                 self.available = True
             except ImportError:

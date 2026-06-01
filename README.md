@@ -69,7 +69,8 @@ drop the file in `mas_arena/evaluators/`.
 │   ├── benchmark_runner.py  #   Execution engine
 │   ├── agents/              #   Workflow implementations
 │   ├── evaluators/          #   Per-benchmark evaluators
-│   ├── tools/ tools_old/    #   Tool implementations
+│   ├── tools/               #   Tool implementations
+│   ├── prompts/             #   Shared prompt templates
 │   ├── memory/              #   Memory systems
 │   ├── mcp_servers/         #   MCP tool servers
 │   ├── agent_flow/          #   Workflow graph & optimization

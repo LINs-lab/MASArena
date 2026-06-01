@@ -3,14 +3,12 @@ import os
 from typing import List
 
 from langchain.tools import StructuredTool
-from dotenv import load_dotenv
 
 from mas_arena.tools.base import ToolFactory
 
 from tavily import TavilyClient
 
 # Load environment variables from .env file
-load_dotenv()
 
 SEARCH_API = "tavily_search"
 

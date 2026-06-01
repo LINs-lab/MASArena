@@ -16,7 +16,7 @@ if [ -d ".venv" ]; then
 fi
 
 # Set model for smolagents
-export MODEL_NAME="qwen3-32b"
+export MODEL_NAME="${MODEL_NAME:-gpt-4o-mini}"
 export OPENAI_API_TIMEOUT="600" # Increase timeout to 10 minutes
 echo "Using model: $MODEL_NAME"
 

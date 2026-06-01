@@ -10,11 +10,9 @@
 # import contextlib
 # import asyncio
 # from openai import AsyncOpenAI
-# from dotenv import load_dotenv
 # from mas_arena.agents.base import AgentSystem, AgentSystemRegistry
 
 # # Load environment variables
-# load_dotenv(override=True)
 
 # class LLMDebate(AgentSystem):
 #     """

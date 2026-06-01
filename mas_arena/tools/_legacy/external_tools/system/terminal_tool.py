@@ -10,10 +10,6 @@ from datetime import datetime
 from smolagents import Tool
 from smolagents.models import MessageRole, Model
 
-from dotenv import load_dotenv
-
-load_dotenv()
-
 
 class TerminalTool(Tool):
     name = "execute_terminal_command"

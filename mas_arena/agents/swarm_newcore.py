@@ -12,13 +12,11 @@ import os
 from typing import Dict, Any, List, Union, Optional
 import asyncio
 
-from dotenv import load_dotenv
 from mas_arena.agents.bench_agent import BenchAgent
 from mas_arena.agents.base import AgentSystem, AgentSystemRegistry
 from mas_arena.agents.agent_core import Tool
 
 # Load environment variables
-load_dotenv()
 
 
 class SwarmAgent:

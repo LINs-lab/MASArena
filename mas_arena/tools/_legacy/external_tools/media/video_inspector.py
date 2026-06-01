@@ -40,9 +40,6 @@ This tool supports the following video formats: [".mp4", ".avi", ".mov", ".mkv",
 
     def __init__(self, model: Model = None, text_limit: int = 1000):
         # Local imports to satisfy tool validators in sandboxed execution
-        from dotenv import load_dotenv
-
-        load_dotenv()
         super().__init__()
         self.model = model
         self.text_limit = text_limit

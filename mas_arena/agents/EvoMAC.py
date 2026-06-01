@@ -19,14 +19,10 @@ import re
 from collections import defaultdict, deque
 from typing import Dict, Any, List, Tuple, Optional
 
-from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 from mas_arena.agents.base import AgentSystem, AgentSystemRegistry
 from asyncio import Lock
-
-# Load environment variables for configuration
-load_dotenv(override=True)
 
 # SYSTEM PROMPTS - Define roles and behaviors for each agent type
 AGENT_SYSTEM_PROMPTS = {

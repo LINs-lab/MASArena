@@ -17,11 +17,9 @@ from mas_arena.utils.chatgpt_keys import (
     is_chatgpt_rate_limit_error,
     mask_api_key,
 )
+from mas_arena.utils.env import get_openai_api_base
 
-from dotenv import load_dotenv
-load_dotenv()
-
-URL = os.environ["OPENAI_API_BASE"]
+URL = get_openai_api_base()
 print('# api url: ', URL)
 print('# active api keys: ', len(get_chatgpt_api_keys()))
 print('# api key rotation enabled: ', is_chatgpt_key_rotation_enabled())

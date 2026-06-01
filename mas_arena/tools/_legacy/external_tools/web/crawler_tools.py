@@ -10,10 +10,6 @@ import asyncio
 import requests
 from smolagents import Tool
 
-from dotenv import load_dotenv
-
-load_dotenv()
-
 
 class SimpleCrawler:
     """

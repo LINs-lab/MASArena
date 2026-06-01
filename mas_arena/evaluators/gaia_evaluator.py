@@ -11,13 +11,11 @@ import asyncio
 from functools import lru_cache
 from typing_extensions import override
 from openai import AsyncOpenAI
-from dotenv import load_dotenv
 
 from mas_arena.evaluators.base_evaluator import BaseEvaluator
 from mas_arena.evaluators.registry import register_benchmark
 
 # Load environment variables
-load_dotenv(override = True)
 
 DEFAULT_EVAL_MODEL_NAME = "gpt-4o-mini"
 EVAL_MODEL_ENV_NAME = "EVAL_MODEL_NAME"

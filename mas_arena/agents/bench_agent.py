@@ -34,6 +34,13 @@ from mas_arena.agents.reformulator import prepare_response, truncate_observation
 from mas_arena.utils.openai_compat import normalize_openai_api_base
 from mas_arena.utils.score import question_scorer
 from mas_arena.utils.llm_utils import RetryWrapper
+from mas_arena.utils.env import (
+    DEFAULT_MODEL_NAME,
+    get_env_float,
+    get_env_int,
+    get_model_name,
+    get_openai_api_base,
+)
 
 # 导入外部工具（统一管理，避免重复导入）
 from mas_arena.tools import (
@@ -65,12 +72,13 @@ from mas_arena.agents.agent_core import (
 )
 
 from mas_arena.agents.base import logger
-from dotenv import load_dotenv
 
 # 加载prompts
-load_dotenv(override=True)
-current_dir = os.path.dirname(os.path.abspath(__file__))
-prompts_path = os.path.join(current_dir, "prompts.yaml")
+prompts_path = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+    "prompts",
+    "agents_prompts.yaml",
+)
 with open(prompts_path, "r", encoding="utf-8") as f:
     prompts = yaml.load(f, Loader=yaml.FullLoader)
 
@@ -111,7 +119,7 @@ class BenchAgent(AgentSystem):
     
     def __init__(
         self,
-        model: str = "gpt-4o-mini",
+        model: str = DEFAULT_MODEL_NAME,
         manager_tools: Optional[List[Union[str, Tool]]] = None,
         search_tools: Optional[List[Union[str, Tool]]] = None,
         memory: Optional[str] = None,
@@ -210,10 +218,10 @@ class BenchAgent(AgentSystem):
         """初始化语言模型"""
         api_key = self.config.get("api_key") or os.getenv("OPENAI_API_KEY")
         api_base = normalize_openai_api_base(
-            self.config.get("api_base") or os.getenv("OPENAI_API_BASE"),
+            self.config.get("api_base") or get_openai_api_base(),
             "https://api.openai.com/v1",
         )
-        model_name = os.getenv("MODEL_NAME") or  self.config.get("model_name", "gpt-4o-mini")
+        model_name = get_model_name(self.config.get("model_name", DEFAULT_MODEL_NAME))
         
         if not api_key:
             raise ValueError(
@@ -495,10 +503,10 @@ Task:
                         await self.meta_memory.retrieve_memory(
                             task_search_keywords=search_keywords,
                             task_question=problem["problem"],
-                            successful_topk=os.environ.get("SUCCESSFUL_TOPK", 2),
-                            failed_topk=os.environ.get("FAILED_TOPK", 1),
-                            insight_topk=os.environ.get("INSIGHTS_TOPK", 3),
-                            threshold=os.environ.get("THRESHOLD", 0.3),
+                            successful_topk=get_env_int("MAS_RL_SUCCESSFUL_TOPK", 2),
+                            failed_topk=get_env_int("MAS_RL_FAILED_TOPK", 1),
+                            insight_topk=get_env_int("MAS_RL_INSIGHTS_TOPK", 3),
+                            threshold=get_env_float("MAS_RL_SIMILARITY_THRESHOLD", 0.3),
                         )
                     )
                     
@@ -603,10 +611,10 @@ Task:
                 successful_trajectories, _, insights = await self.meta_memory.retrieve_memory(
                     task_search_keywords=search_keywords,
                     task_question=augmented_question,
-                    successful_topk=os.environ.get("SUCCESSFUL_TOPK", 2),
-                    failed_topk=os.environ.get("FAILED_TOPK", 1),
-                    insight_topk=os.environ.get("INSIGHTS_TOPK", 3),
-                    threshold=os.environ.get("THRESHOLD", 0.3),
+                    successful_topk=get_env_int("MAS_RL_SUCCESSFUL_TOPK", 2),
+                    failed_topk=get_env_int("MAS_RL_FAILED_TOPK", 1),
+                    insight_topk=get_env_int("MAS_RL_INSIGHTS_TOPK", 3),
+                    threshold=get_env_float("MAS_RL_SIMILARITY_THRESHOLD", 0.3),
                 )
                 additional_knowledge = "\n\n".join([insight for insight in insights])
                 logger.info(

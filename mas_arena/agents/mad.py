@@ -1,14 +1,11 @@
 import json
 import os
-from dotenv import load_dotenv
 from dataclasses import dataclass
 from typing import Dict, Any, List
 
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage
 from mas_arena.agents.base import AgentSystem, AgentSystemRegistry
-
-load_dotenv(override=True)
 
 @dataclass
 class DebateAgent:

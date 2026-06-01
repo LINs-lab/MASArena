@@ -1,7 +1,7 @@
 import logging
 from typing import Dict, Any, Optional
-from mas_arena.tools_old.tool_selector import ToolSelector
-from mas_arena.tools_old.tool_manager import ToolManager
+from mas_arena.tools._legacy.tool_selector import ToolSelector
+from mas_arena.tools._legacy.tool_manager import ToolManager
 from mas_arena.agents.base import AgentSystem
 from langchain_core.utils.function_calling import convert_to_openai_tool
 

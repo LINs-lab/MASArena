@@ -17,13 +17,11 @@ other BenchAgents (robust execution, error handling).
 
 import os
 from typing import Dict, Any, List, Optional
-from dotenv import load_dotenv
 
 from mas_arena.agents.base import AgentSystem, AgentSystemRegistry
 from mas_arena.agents.bench_agent import BenchAgent
 
 # Load environment variables
-load_dotenv(override=True)
 
 class JarvisAgent(AgentSystem):
     """

@@ -2,7 +2,7 @@ from typing import Dict, List, Any, Optional
 from contextlib import AsyncExitStack
 import logging
 
-from mas_arena.tools_old.base import ToolFactory
+from mas_arena.tools._legacy.base import ToolFactory
 
 logger = logging.getLogger(__name__)
 

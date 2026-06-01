@@ -5,15 +5,12 @@ from typing import Optional, Any
 
 import requests
 from smolagents import Tool
-from dotenv import load_dotenv
 
 from mas_arena.tools.jina_keys import (
     get_jina_api_keys,
     is_jina_quota_error,
     raise_for_jina_status,
 )
-
-load_dotenv()
 
 class JinaSearcher:
     """Minimal Jina Search wrapper (s.jina.ai)."""
@@ -98,7 +95,7 @@ class SearchTool(Tool):
 
         if provider == "tavily":
             try:
-                from mas_arena.tools_old.search_api_tool import TavilySearch
+                from mas_arena.tools._legacy.search_api_tool import TavilySearch
                 self.searcher = TavilySearch()
             except Exception:
                 self.searcher = None

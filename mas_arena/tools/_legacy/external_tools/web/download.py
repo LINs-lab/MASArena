@@ -6,11 +6,8 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 import requests
-from dotenv import load_dotenv
 from smolagents import Tool
 from smolagents.models import MessageRole, Model
-
-load_dotenv()
 
 
 class DownloadTool(Tool):

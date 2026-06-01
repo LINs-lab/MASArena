@@ -2,7 +2,9 @@ import yaml
 from smolagents.models import OpenAIServerModel, ChatMessage
 import json
 from typing import Optional
-import os
+from importlib import resources
+
+from mas_arena.utils.env import get_openai_api_base, get_openai_api_key
 
 
 class SearchReflector:
@@ -13,18 +15,15 @@ class SearchReflector:
             if model is not None
             else OpenAIServerModel(
                 model_id="gpt-4.1",
-                api_base=os.getenv("OPENAI_BASE_URL"),
-                api_key=os.getenv("OPENAI_API_KEY"),
+                api_base=get_openai_api_base(),
+                api_key=get_openai_api_key(),
             )
         )
 
         try:
-            # Try to load prompts from package resources
-            import pkg_resources
-
-            prompts_text = pkg_resources.resource_string(
-                "reflectors", "search_prompts.yaml"
-            ).decode("utf-8")
+            prompts_text = resources.files("mas_arena.prompts").joinpath(
+                "search_prompts.yaml"
+            ).read_text(encoding="utf-8")
             prompts = yaml.safe_load(prompts_text)
 
             self.query_rollout_prompt = prompts["query_rollout"]

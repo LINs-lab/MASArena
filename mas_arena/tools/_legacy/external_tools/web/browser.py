@@ -8,11 +8,9 @@ from smolagents import Tool
 from smolagents.models import Model
 
 from browser_use import Agent, Browser, ChatOpenAI, Controller, Tools
-from dotenv import load_dotenv
 
 from mas_arena.utils.anchor_keys import get_anchor_api_keys, is_anchor_quota_error
-
-load_dotenv()
+from mas_arena.utils.env import get_openai_api_base, get_openai_api_key
 
 
 class BrowserTool(Tool):
@@ -54,8 +52,8 @@ It uses an AI agent to control a remote browser and perform complex web interact
     def _get_browser_llm(self):
         return ChatOpenAI(
             model=self.browser_llm_model,
-            base_url=os.getenv("OPENAI_API_BASE_BROWSER") if os.getenv("OPENAI_API_BASE_BROWSER") else os.getenv("OPENAI_API_BASE"),
-            api_key=os.getenv("OPENAI_API_KEY_BROWSER") if os.getenv("OPENAI_API_KEY_BROWSER") else os.getenv("CHATGPT_API_KEY"),
+            base_url=get_openai_api_base(),
+            api_key=get_openai_api_key(),
         )
 
     def _create_remote_browser_session(self) -> str:

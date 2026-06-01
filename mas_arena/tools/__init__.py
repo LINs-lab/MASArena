@@ -2,18 +2,18 @@
 外部工具集成模块
 
 这个模块统一导入和管理所有的外部工具，提供一个清晰的工具接口。
-现在修改为优先使用 tools_old 中的实现（如果存在且兼容），或者在新工具中封装 old 实现。
+现在修改为优先使用 active tool 实现，必要时兼容封装内部 legacy 实现。
 """
 
 # 媒体工具
-# 尝试从 tools_old 导入，或者使用新实现（如果 tools_old 没有）
+# 尝试从内部 legacy 实现导入，或者使用新实现。
 from .audio_inspector import AudioInspectorTool
 from .visual_inspector import VisualInspectorTool
 
 # 网络工具
 from .search_tool import SearchTool # web_search：优先 Jina(s.jina.ai)，无 key 时兜底 Tavily
-from .browser_tool import BrowserTool # 新增：封装 tools_old.BrowserTool
-from .wikipedia_search import WikipediaSearchTool  # tools_old 没有 Wiki，保留新实现
+from .browser_tool import BrowserTool # 新增：封装内部 legacy BrowserTool
+from .wikipedia_search import WikipediaSearchTool  # legacy 没有 Wiki，保留新实现
 from .crawler_tools import (
     SimpleCrawler,
     CrawlerArchiveSearchTool,

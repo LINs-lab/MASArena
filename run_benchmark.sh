@@ -52,7 +52,7 @@ AGENT_SYSTEM="${AGENT_SYSTEM:-BenchAgent}"
   # Simple_Smolagents, Swarm_newcore, Supervisor_MAS, MAD, ChatDev.
 
 # --- Model --------------------------------------------------------------------
-MODEL_NAME="${MODEL_NAME:-qwen3-32b}"
+MODEL_NAME="${MODEL_NAME:-gpt-4o-mini}"
   # Model name passed through to the agent system.
 
 # --- Concurrency --------------------------------------------------------------

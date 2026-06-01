@@ -9,6 +9,7 @@ from tenacity import retry, stop_after_attempt, retry_if_exception
 from typing import Any
 
 from mas_arena.utils.chatgpt_keys import get_next_chatgpt_api_key
+from mas_arena.utils.env import get_openai_api_base, get_openai_api_key
 
 DEFAULT_LLM_MAX_RETRIES = int(os.environ.get("LLM_MAX_RETRIES", "20"))
 RATE_LIMIT_RETRY_WAIT_SECONDS = int(os.environ.get("LLM_RETRY_WAIT_SECONDS", "60"))
@@ -70,11 +71,11 @@ def call_model(query, model_name, key=None, url=None):
     if len(query) > 300000:
         query = query[:300000]
 
-    api_key = key if key else get_next_chatgpt_api_key()
-    base_url = url if url else os.environ.get("OPENAI_API_BASE")
+    api_key = key if key else get_next_chatgpt_api_key() or get_openai_api_key()
+    base_url = url if url else get_openai_api_base()
     
     if not api_key:
-        raise ValueError("OpenAI API key is not provided. Please set CHATGPT_API_KEY or pass it as an argument.")
+        raise ValueError("OpenAI API key is not provided. Please set OPENAI_API_KEY or pass it as an argument.")
     if not base_url:
         raise ValueError("OpenAI API base URL is not provided. Please set the OPENAI_API_BASE environment variable or pass it as an argument.")
 

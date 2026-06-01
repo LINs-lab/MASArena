@@ -6,9 +6,6 @@ from smolagents import Tool
 from smolagents.models import MessageRole, Model
 
 from openpyxl import load_workbook
-from dotenv import load_dotenv
-
-load_dotenv()
 
 
 class SheetExtractorTool(Tool):

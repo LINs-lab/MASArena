@@ -8,7 +8,7 @@ import importlib
 import asyncio
 import os
 from langchain.tools import StructuredTool
-from mas_arena.tools_old.base import ToolFactory
+from mas_arena.tools._legacy.base import ToolFactory
 
 BROWSER = "browser"
 

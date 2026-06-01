@@ -1,10 +1,7 @@
 import sys
 import json
 import os
-from dotenv import load_dotenv
 from tavily import TavilyClient
-
-load_dotenv()
 
 DEBUG = os.getenv("DEBUG", "false").lower() == "true"
 

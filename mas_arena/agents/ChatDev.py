@@ -6,13 +6,11 @@ from typing import Dict, Any, List, Tuple, Optional
 from dataclasses import dataclass
 from threading import Thread
 
-from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 from mas_arena.agents.base import AgentSystem, AgentSystemRegistry
 
 # Load environment variables
-load_dotenv()
 
 
 @dataclass

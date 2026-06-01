@@ -1,14 +1,12 @@
 import os
 import logging
 from typing import Dict, Any, List
-from dotenv import load_dotenv
 from openai import AsyncOpenAI
 from mas_arena.agents.base import AgentSystem, AgentSystemRegistry
 from mas_arena.agents.bench_agent import BenchAgent
 from mas_arena.agents.agent_core import Tool
 
 # Load environment variables
-load_dotenv()
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -22,7 +20,7 @@ class Camel(AgentSystem):
         super().__init__(name, config)
         self.config = config or {}
         
-        self.model_name = self.config.get("model_name") or os.getenv("MODEL_NAME", "gpt-4o")
+        self.model_name = self.config.get("model_name") or os.getenv("MODEL_NAME", "gpt-4o-mini")
         self.system_prompt = self.config.get("system_prompt", "") + self.format_prompt
         self.max_rounds = 3
         
