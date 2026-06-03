@@ -14,7 +14,7 @@ Yuhang Fu, Ruishan Fang, Jiaqi Shao, Huiyu Zheng, Zhengtao Zhu, Bing Luo, Tao Li
 > and 69.23% on Level 3 — 20+ points above the strongest non-Claude baseline.
 
 <p align="center">
-  <img src="docs/images/methodology.drawio.png" width="88%" alt="BenchAgent shared evaluation substrate"/>
+  <img src="assets/methodology.drawio.png" width="88%" alt="BenchAgent shared evaluation substrate"/>
 </p>
 
 BenchAgent keeps benchmark loading, tool access, usage accounting, logging, and
@@ -27,11 +27,6 @@ substrate: benchmark instances enter the same loader, tool interface,
 accounting, logging, and evaluator, while only the workflow controller changes.
 This separates workflow effects from differences in data handling, tools, or
 scoring.
-
-## 📄 Paper
-
-- `docs/paper/paper.pdf` — compiled paper
-- `docs/paper/` — paper source and reference files used by this README
 
 ## 🏷️ Keywords
 
