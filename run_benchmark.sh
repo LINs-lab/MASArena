@@ -5,10 +5,10 @@
 #
 # Quick start (lazy mode):
 #     ./run_benchmark.sh
-#   Runs math benchmark with BenchAgent using all defaults.
+#   Runs math benchmark with bench_agent using all defaults.
 #
 # Override via environment variables:
-#     BENCHMARK=gaia AGENT_SYSTEM=EvoAgent CONCURRENCY=8 ./run_benchmark.sh
+#     BENCHMARK=gaia AGENT_SYSTEM=evoagent CONCURRENCY=8 ./run_benchmark.sh
 #     BENCHMARK=mmlu_pro LIMIT=50 MODEL_NAME=gpt-4o ./run_benchmark.sh
 #
 # All configuration lives in the env-var block below — nothing hardcoded.
@@ -45,11 +45,10 @@ LIMIT="${LIMIT:-0}"
   # Max problems to evaluate (0 = all).
 
 # --- Agent system -------------------------------------------------------------
-AGENT_SYSTEM="${AGENT_SYSTEM:-BenchAgent}"
+AGENT_SYSTEM="${AGENT_SYSTEM:-bench_agent}"
   # Agent system name. Available examples (may vary by installed plugins):
-  # BenchAgent, Jarvis, EvoAgent, ChatEval_newcore, AutoGen_newcore,
-  # Camel_newcore, LLM_Debate_newcore, MetaGPT_newcore, Single_Agent,
-  # Simple_Smolagents, Swarm_newcore, Supervisor_MAS, MAD, ChatDev.
+  # bench_agent, jarvis, evoagent, chateval, autogen, camel, llm_debate,
+  # metagpt, single_agent, swarm, supervisor_mas, mad, chatdev.
 
 # --- Model --------------------------------------------------------------------
 MODEL_NAME="${MODEL_NAME:-gpt-4o-mini}"
