@@ -1,0 +1,61 @@
+\documentclass{article}
+\usepackage{configuration/iclr2026_conference,times}
+
+\usepackage{hyperref}
+\usepackage{url}
+\usepackage{enumitem}
+
+\usepackage{booktabs}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{multirow}
+\usepackage{array}
+\usepackage{makecell}
+
+\input{resources/preamble.tex}
+\title{Do More Agents Help? Controlled and Protocol-Aligned Evaluation of LLM Agent Workflows}
+
+\author{%
+    \normalfont
+    Yuhang Fu$^{1,*}$\begingroup\renewcommand{\thefootnote}{\S}\thanks{Work was done during Yuhang's internship in Westlake University.}\endgroup
+    \quad Ruishan Fang$^{3,2,*}$
+    \quad Jiaqi Shao$^{4,5}$\\
+    Huiyu Zheng$^{6}$
+    \quad Zhengtao Zhu$^{6}$
+    \quad Bing Luo$^{4,\dagger}$
+    \quad Tao Lin$^{2,\dagger}$\\
+    \texttt{fuzi1fuzi1@bupt.edu.cn}; \quad
+    \texttt{fangruishan@westlake.edu.cn}; \quad
+    \texttt{js1139@duke.edu};\\
+    \texttt{221124120277@zjut.edu.cn}; \quad
+    \texttt{zhentaozhu@zjut.edu.cn};\\
+    \texttt{bing.luo@dukekunshan.edu.cn}; \quad
+    \texttt{lintao@westlake.edu.cn}\\
+    $^1$Beijing University of Posts and Telecommunications \quad
+    $^2$Westlake University\\
+    $^3$Zhejiang University \quad
+    $^4$Duke Kunshan University\\
+    $^5$Hong Kong University of Science and Technology \quad
+    $^6$Zhejiang University of Technology\\
+    $^*$Equal contribution \quad
+    $^\dagger$Corresponding authors
+}
+
+\newcommand{\fix}{\marginpar{FIX}}
+\newcommand{\new}{\marginpar{NEW}}
+
+\begin{document}
+
+\maketitle
+
+\input{resources/main.tex}
+
+\newpage
+
+\bibliography{resources/reference}
+\bibliographystyle{configuration/iclr2026_conference}
+
+\clearpage
+\appendix
+\input{resources/appendix.tex}
+\end{document}

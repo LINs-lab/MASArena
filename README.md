@@ -13,10 +13,53 @@ Yuhang Fu, Ruishan Fang, Jiaqi Shao, Huiyu Zheng, Zhengtao Zhu, Bing Luo, Tao Li
 > On the PAE GAIA snapshot, a Claude-Code-style runtime workflow reaches 66.72% overall
 > and 69.23% on Level 3 — 20+ points above the strongest non-Claude baseline.
 
+<p align="center">
+  <img src="docs/images/methodology.drawio.png" width="88%" alt="BenchAgent shared evaluation substrate"/>
+</p>
+
+BenchAgent keeps benchmark loading, tool access, usage accounting, logging, and
+evaluation fixed while varying the workflow layer across single-agent, fixed
+multi-agent, evolving multi-agent, and protocol-aligned external runtime
+workflows.
+
 ## 📄 Paper
 
-- `submissions/arxiv/` — arXiv-ready source
-- `submissions/emnlp/` — EMNLP-formatted source
+- `docs/paper/paper.pdf` — compiled paper
+- `docs/paper/` — paper source and reference files used by this README
+
+## 📌 Key Results
+
+**Substrate-Internal broad benchmark suite.** With GPT-4.1 and matched
+benchmark loader, tools, evaluator, logger, and answer contract, fixed and
+evolving MAS do not consistently improve over the single-agent anchor.
+
+| Workflow | Paradigm | Avg. Acc. | Avg. Tok. | Avg. Time | Main observation |
+|:---|:---|---:|---:|---:|:---|
+| Single Agent | Single-agent | 74.12% | 27,434.55 | 106.29s | Matched anchor |
+| EvoAgent | Evolving MAS | 75.56% | 34,153.68 | 82.76s | +1.44 pts, within one-run Wilson guidance |
+| LLM-Debate | Fixed MAS | 71.56% | 36,669.25 | 26.63s | Helps on checkable tasks, trails on average |
+| ChatEval | Fixed MAS | 68.84% | 105,838.02 | 56.08s | Strong on IFEval, most token-intensive |
+| Jarvis | Fixed MAS | 66.90% | 9,668.33 | 11.20s | Lightweight but lower accuracy |
+| Camel | Fixed MAS | 66.37% | 8,470.19 | 15.75s | Lower-cost, lower-accuracy trade-off |
+| AutoGen | Fixed MAS | 62.83% | 13,603.05 | 14.22s | Lowest broad-suite average |
+
+**PAE GAIA runtime-workflow study.** On the full GAIA validation split, the
+Claude-Code-style runtime workflow leads especially on longer-horizon tasks.
+
+| Workflow | Paradigm | L1 | L2 | L3 | Overall | Avg. Tok. | Avg. Time |
+|:---|:---|---:|---:|---:|---:|---:|---:|
+| CC-workflow | Runtime-generated workflow | 60.78% | 69.62% | 69.23% | 66.72% | 52,984.69 | 134.90s |
+| Jarvis | Fixed MAS | 66.03% | 43.02% | 19.23% | 46.66% | 332,285.96 | 402.11s |
+| Camel | Fixed MAS | 54.90% | 34.00% | 26.92% | 39.60% | 468,587.39 | 387.42s |
+| ChatEval | Fixed MAS | 49.02% | 34.88% | 26.92% | 38.17% | 1,886,517.67 | 443.76s |
+| Single Agent | Single-agent | 58.82% | 30.00% | 19.23% | 37.56% | 459,652.83 | 213.33s |
+| LLM-Debate | Fixed MAS | 52.94% | 34.00% | 15.38% | 37.15% | 414,812.44 | 201.53s |
+| EvoAgent | Evolving MAS | 54.90% | 30.00% | 19.23% | 36.30% | 1,573,918.58 | 325.04s |
+| AutoGen | Fixed MAS | 56.60% | 30.00% | 11.54% | 35.64% | 383,190.65 | 188.98s |
+
+Takeaway: adding agents is not itself the driver. Workflow structure matters
+when it matches the task's error mode; otherwise handoffs can add cost, compress
+context, or lose task-critical constraints.
 
 ## 🚀 Quick Start
 
@@ -139,18 +182,3 @@ recorded LLM usage, and any saved response or visualization artifact.
 
 When verbose mode is enabled, the runner also prints a visualization command for
 the generated summary file.
-
-## 📅 Meeting Notes
-
-| No. | Date | Notes | Feishu summary |
-|:--- |:---:|:---:|:---:|
-1 | 2025.02.26 20:00 GMT+8 | [Notes](meeting-notes/Meeting-20250226.md) | [Summary](https://ocnfww8fyyv6.feishu.cn/docx/PVXfdIcvYof6R8xKon4cCyQJncb) |
-2 | 2025.03.12 20:30 GMT+8 | [Notes](meeting-notes/Meeting-20250312.md) | [Summary](https://ocnfww8fyyv6.feishu.cn/docx/AYB8dBd9JoiHK5xRwaacX7QrnLh?from=from_copylink) |
-3 | 2025.03.19 20:30 GMT+8 | [Notes](meeting-notes/Meeting-20250319.md) | [Summary](https://ocnfww8fyyv6.feishu.cn/docx/GQEYdxeYyo1x1vxukHhcgnlQnMg) |
-4 | 2025.03.26 20:30 GMT+8 | [Notes](meeting-notes/Meeting-20250326.md) | [Summary](https://ocnfww8fyyv6.feishu.cn/docx/GQEYdxeYyo1x1vxukHhcgnlQnMg) |
-5 | 2025.04.02 20:30 GMT+8 | [Notes](meeting-notes/Meeting-20250402.md) | [Summary](https://ocnfww8fyyv6.feishu.cn/docx/RCHQd7tuxoDGHtxYXLBcC36Bnsh) |
-6 | 2025.04.16 20:30 GMT+8 | [Notes](meeting-notes/Meeting-20250416.md) | [Summary](https://ocnfww8fyyv6.feishu.cn/minutes/obcnwx8h58445o46hw12k4w2) |
-7 | 2025.04.30 20:30 GMT+8 | [Notes](meeting-notes/Meeting-20250430.md) | [Summary](https://ocnfww8fyyv6.feishu.cn/docx/TCUkdxhJGoxPenxKsm0cmKohnjh#doxcnGl4WhCU9SkojzO91IAcltc) |
-8 | 2025.05.14 20:30 GMT+8 | [Notes](meeting-notes/Meeting-20250514.md) | [Summary](https://ocnfww8fyyv6.feishu.cn/minutes/obcng56h82y11ebj672wg1b2) |
-9 | 2025.05.28 20:30 GMT+8 | [Notes](meeting-notes/Meeting-20250528.md) | [Summary](https://ocnfww8fyyv6.feishu.cn/minutes/obcnqgdzxm136p2ja5u53794) |
-Feishu Page: [project_multi_agents_benchmark](https://ocnfww8fyyv6.feishu.cn/docx/PVXfdIcvYof6R8xKon4cCyQJncb)

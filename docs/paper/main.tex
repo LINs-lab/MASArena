@@ -1,0 +1,297 @@
+\begin{abstract}
+    Does adding more agents help an LLM workflow once compared systems share the same benchmark loader, tool access, answer contract, usage accounting, and trajectory logging?
+    We introduce BenchAgent, an evaluation framework that places single-agent, fixed multi-agent (MAS), and evolving MAS workflows under one normalized execution and logging protocol.
+    BenchAgent evaluates these substrate-internal workflows across ten reasoning, coding, and tool-use benchmarks with GPT-4.1, and separately reports a Protocol-Aligned External (PAE) GAIA study of a runtime-generated workflow.
+    Under SI conditions, at most one of six tested MAS exceeds the matched single-agent anchor on benchmark-balanced average accuracy---EvoAgent lies within the Wilson one-run guidance---while the remaining five trail by 2.56--11.29 points and occupy more expensive accuracy--cost trade-offs.
+    On the PAE GAIA snapshot, a Claude-Code-style runtime workflow reaches 66.72\% overall and 69.23\% on Level~3, more than 20 points above the strongest non-Claude baseline (Jarvis, a fixed MAS).
+\end{abstract}
+
+
+\setlength{\parskip}{1.5pt plus1.5pt minus0pt}
+
+
+\section{Introduction}
+\label{sec:introduction}
+LLM-based agent research has expanded from single reasoning-and-acting loops~\citep{yao2022react,schick2023toolformer,nakano2021webgpt,yang2024sweagent} and role-specialized multi-agent systems~\citep{li2023camel,wu2023autogen,hong2023metagpt} to designs that configure, evolve, or generate the workflow itself~\citep{chen2023agentverse,yuan2024evoagent,hu2024adas,zhang2024aflow,fourney2024magenticone}.
+
+Accuracy alone cannot separate workflow organization from protocol advantage.
+Recent benchmarks broaden coverage to interactive tasks, tool use, web environments, software engineering, and diagnostic signals~\citep{liu2023agentbench,mialon2023gaia,ma2024agentboard,zhou2023webarena,jimenez2024swebench,qin2023toolbench}.
+Yet cross-paradigm comparisons routinely leave inputs, answer contracts, tool surfaces, usage accounting, or trajectory logging uneven across systems.
+For example, debate and orchestration frameworks explicitly add extra rounds, role-specialized handoffs, or tool-routing policies relative to a single-controller loop~\citep{du2023multiagentdebate,wu2023autogen,shen2023hugginggpt}; if such systems are compared only by final accuracy, the observed gap can mix coordination with protocol advantage.
+Our same-instance contrast in Figure~\ref{fig:gaia_generated_team_failure} later shows a complementary failure mode: an intermediate handoff can drop a task constraint that is invisible in the final answer alone.
+This is why analytical traces matter in agent evaluation frameworks~\citep{ma2024agentboard,harbor_framework}: without them, equivalent-looking systems can spend different tokens, lose different constraints, or handle tool failures differently.
+
+\begin{figure*}[!t]
+    \centering
+    \includegraphics[width=0.92\textwidth]{resources/figure/methodology.drawio.png}
+    \vspace{-0.5em}
+    \caption{\small
+        \textbf{BenchAgent compares workflow paradigms under a shared evaluation substrate}. Benchmark instances enter the same loading, tool-access, accounting, logging, and evaluation interfaces, while the workflow layer varies across single-agent, fixed MAS, dynamic/evolving MAS, and externally evaluated runtime-generated workflows. Within the substrate-internal setting, this design isolates workflow lift from differences in benchmark loading, tool implementation, or evaluation criteria; under the PAE setting, it documents aligned runtime workflows under the same evaluation target. The central question is whether workflow organization itself changes accuracy, cost, and trace behavior.
+    }
+    \label{fig:paradigm_centered_setup}
+\end{figure*}
+
+Figure~\ref{fig:paradigm_centered_setup} sketches the evaluation setup: benchmark instances enter a shared runtime and evaluator, while only the workflow layer varies across single-agent, fixed MAS, dynamic/evolving MAS, and externally evaluated runtime-generated execution.
+The goal is not to identify the strongest possible agent controller, but to estimate workflow lift: \emph{whether reorganizing a matched controller into a MAS workflow yields reliable marginal gain under explicit protocol boundaries.}
+Accordingly, the paper reports one controlled substrate-internal comparison and one protocol-aligned external runtime case study rather than treating all systems as a single symmetric leaderboard.
+
+We build BenchAgent for this purpose.
+BenchAgent is an evaluation framework; it wraps existing benchmarks in a common execution interface and records the process signals needed for workflow comparison.
+BenchAgent places single-agent systems, fixed MAS, and evolving MAS under the same benchmark-normalized interface, sandbox runtime, tool-allocation rules, and process-level logger.
+We use four workflow labels throughout the paper: single-agent, fixed MAS, dynamic/evolving MAS, and runtime-generated workflow.
+We call the first three a \emph{Substrate-Internal} (SI) comparison when the workflow runs inside BenchAgent and exposes its messages, tool calls, usage, and termination state to the same logger.
+For systems that cannot be reimplemented without changing their runtime semantics, we use a \emph{Protocol-Aligned External} (PAE) comparison: inputs, evaluator, final-answer format, tool-capability classes, backend model family, and permission profile are aligned, while controller details remain visible through retained traces.
+
+With BenchAgent, we compare a single-agent configuration and representative fixed and evolving MAS with a GPT-4.1 backend.
+The broad suite covers reasoning, coding, and tool-use benchmarks (see Table~\ref{tab:main_exp1_overall}).
+On GAIA~\citep{mialon2023gaia}, we evaluate the Claude-Code-style runtime workflow (CC-workflow) through a PAE study and compare it with the BenchAgent-based MAS workflows.
+
+The broad benchmark results show that increasing the number of agents or adding explicit coordination does not by itself guarantee positive workflow lift.
+Fixed and evolving MAS vary in effectiveness, token usage, and latency, and several trail the matched single-agent anchor.
+The GAIA comparison asks a narrower system-level question: whether a mature runtime workflow reaches a different accuracy--cost trade-off on long-horizon tool-use tasks.
+It does on Levels~2--3, but this is a deployed-configuration result, not evidence for any single mechanism.
+\textbf{Our key contributions are:}
+\begin{itemize}[nosep, leftmargin=12pt]
+    \item We introduce BenchAgent, a workflow-evaluation substrate that normalizes benchmark loading, tool access, answer contracts, usage accounting, and trajectory logging for cross-paradigm agent comparison.
+    \item Under SI conditions with a GPT-4.1 backend, shared tools, evaluator, and logger, at most one of six tested MAS exceeds the matched single-agent anchor on average, and even that case (EvoAgent, +1.44 points) lies within the Wilson one-run guidance; the remaining five trail by 2.56--11.29 points.
+    \item We report a PAE GAIA snapshot in which the CC-workflow reaches 66.72\% overall accuracy, leads on Levels~2--3, and uses fewer recorded tokens than the strongest non-Claude baseline; isolating which design choice drives the gain requires controlled ablations beyond our deployed-configuration comparison.
+          \looseness=-1
+\end{itemize}
+
+
+\section{Related Work}
+\subsection{Agent Workflow Design}
+ReAct, Toolformer, WebGPT, SWE-agent, and HuggingGPT/JARVIS show that a single instrumented controller can already serve as a competitive workflow~\citep{yao2022react,schick2023toolformer,nakano2021webgpt,yang2024sweagent,shen2023hugginggpt}.
+We therefore treat the single-agent baseline as a matched workflow anchor rather than as a bare model call or as a claim about the strongest possible single-controller design; recent work corroborates that a strong single-agent baseline can match or exceed homogeneous MAS~\citep{xu2026rethinking}.
+
+Multi-agent systems make the division of labor explicit.
+CAMEL and MetaGPT define agent roles and communication procedures~\citep{li2023camel,hong2023metagpt}, AutoGen provides a conversable-agent substrate for fixed or adaptive interaction patterns~\citep{wu2023autogen}, and debate-style systems aggregate multiple proposals before finalization~\citep{du2023multiagentdebate,chan2023chateval}.
+Li~\emph{et al.}~\citep{li2024moreagents} show that sampling-and-voting improves several LLM benchmarks; DSPy~\citep{khattab2023dspy} instead optimizes LM pipelines through compilation.
+Dynamic and evolving systems search over or mutate the workflow structure within a designer-specified space, as in AgentVerse, EvoAgent, ADAS, AFlow, and Magentic-One~\citep{chen2023agentverse,yuan2024evoagent,hu2024adas,zhang2024aflow,fourney2024magenticone}; MaAS extends this by searching over query-dependent agent topologies via an agentic supernet~\citep{zhang2025maas}; MASPO further co-optimizes agent prompts jointly across the pipeline~\citep{wang2026maspo}.
+Cemri~\emph{et al.}~\citep{cemri2025maswhyfail} catalog MAS failure modes attributable to coordination design; Kim~\emph{et al.}~\citep{kim2025scaling} further argue that net workflow gain requires coordination benefit to exceed communication overhead.
+These systems motivate our taxonomy, yet prior comparisons rarely run single-agent, fixed MAS, evolving MAS, and runtime workflows under a unified logging and accounting protocol.
+\looseness=-1
+
+\subsection{Agent Evaluation Frameworks}
+AgentBench, GAIA, AgentBoard, WebArena, SWE-bench, ToolBench, and Silo-Bench~\citep{liu2023agentbench,mialon2023gaia,ma2024agentboard,zhou2023webarena,jimenez2024swebench,qin2023toolbench,zhang2026silobench} extend agent evaluation to interaction, tool use, web/software tasks, analytical traces, and distributed coordination.
+Harbor~\citep{harbor_framework} is closest in infrastructure, evaluating and optimizing sandboxed agents and models in containerized environments.
+BenchAgent occupies a different scope: it introduces neither a new task dataset nor a benchmark split, but instead aligns execution interfaces, tool surfaces, usage accounting, and trajectories, so that coordination policies can be compared on existing benchmarks.
+Table~\ref{tab:appendix_framework_feature_comparison} in Appendix summarizes the feature-level distinction from AgentBench and Harbor.
+
+\subsection{Runtime-Generated Workflows}
+Recent engineering systems push part of workflow design into the execution loop.
+LangGraph~\citep{langgraph_docs} and CrewAI~\citep{crewai_docs} provide graph orchestration and role-based crews; Anthropic~\citep{anthropic_building_effective_agents,anthropic_multiagent_research_system,anthropic_context_engineering} documents subagent creation, context-window isolation, and permission-scoped delegation patterns instantiated in Claude Code~\citep{anthropic_claude_code_product,anthropic_claude_code_overview,anthropic_claude_code_subagents}; similar agentic coding interfaces appear in OpenAI Codex and OpenCode~\citep{openai_codex_product,opencode_product}.
+These systems are documented primarily through official documentation rather than peer-reviewed publications; we cite them as engineering descriptions, not empirical evidence.
+Our GAIA experiment asks whether the CC-workflow paired with a GPT-4.1 backend reaches a different accuracy--cost profile from BenchAgent-based fixed and evolving MAS under a documented PAE comparison.
+
+
+\section{Evaluation Protocol}
+\label{sec:evaluation_protocol}
+\subsection{Workflow Lift as the Measurement Target}
+We evaluate agent systems as \emph{workflow organizations}, not isolated products.
+For a benchmark instance \(x\), a workflow \(w\) produces a final answer \(\hat{y}=w(x)\) and, when available, an execution trace \(\tau_w(x)\) containing model calls, tool calls, messages, artifacts, and termination events.
+A task evaluator \(E(x,\hat{y}) \in \{0,1\}\) measures success, while a cost summary \(c(\tau_w)\) records usage signals such as tokens, latency, tool calls, and delegation structure.
+The comparison therefore asks not only whether \(\hat{y}\) is correct, but also what trace \(\tau_w\) produced it.
+
+We distinguish workflow categories by how \(\mathcal{A}_t\) (active agents), \(G_t\) (communication or delegation topology), and \(\mathcal{T}_t\) (tool scopes) are specified over time:
+\begin{itemize}[leftmargin=12pt, nosep]
+    \item \textbf{Single-agent workflow.} Keeps \(|\mathcal{A}_t|=1\) throughout; a single controller handles the entire trace.
+    \item \textbf{Fixed MAS.} Operates with a predefined \((\mathcal{A},G,\mathcal{T})\), such as solver--critic--aggregator or debate-style handoffs.
+    \item \textbf{Evolving MAS.} Selects or mutates \(G\) at runtime from a designer-specified family \(\mathcal{G}\) (a.k.a.\ dynamic MAS). \looseness=-1
+    \item \textbf{Runtime-generated workflow.} Changes \(\mathcal{A}_t\), \(G_t\), and \(\mathcal{T}_t\) during execution by creating task-specific agents, assigning private context, choosing tool scopes, or adding verification and recovery branches.
+\end{itemize}
+Table~\ref{tab:appendix_workflow_taxonomy} gives the full terminology map.
+
+\begin{definition}[Workflow lift]
+    \label{def:workflow_lift}
+    Our primary substrate-internal quantity is \emph{workflow lift}: the change in accuracy and cost when a single-agent workflow is replaced by a fixed or evolving MAS workflow, with the base model, benchmark loader, tool interface, answer contract, evaluator, and accounting substrate held constant.
+\end{definition}
+
+This framing does not require the single-agent anchor to be the strongest possible ReAct implementation; instead, it requires the compared workflows to share the same control substrate, so that the measured difference reflects the tested workflow organization. Section~\ref{subsec:pass1_wilson} describes how single-run lift estimates are interpreted under Wilson guidance.
+
+
+\subsection{Comparison Setup: SI and PAE}
+\label{subsec:comparison_setup}
+BenchAgent provides the shared execution substrate for the SI comparison and normalizes six interfaces---benchmark loading, input and answer formatting, runtime control, tool access, usage and trajectory logging, and evaluator calls.
+In the broad-benchmark experiment (Section~\ref{subsec:broad_bench_results}), Jarvis/HuggingGPT-style execution, LLM-Debate, EvoAgent, AutoGen, CAMEL, and ChatEval are implemented as workflow instances over this substrate rather than as unrelated tool stacks.
+This substrate renders final scores, token usage, latency, tool calls, message histories, agent identifiers, and stage-level traces comparable across workflows.
+Appendix~\ref{subsec:appendix_prompt_traj_examples} includes retained prompt excerpts that document the controller instructions and output contract used for the external runtime workflow.
+\looseness=-1
+
+Claude Code cannot be reimplemented inside BenchAgent without altering its runtime semantics.
+The GAIA experiment (Section~\ref{subsec:gaia_results}) therefore adopts a PAE comparison.
+The CC-workflow shares the GPT-4.1 backend family, GAIA validation inputs, answer-only output schema, evaluator, and GAIA-relevant tool-capability classes with the SI baselines, while internal controller details remain only partially visible through retained traces.
+Table~\ref{tab:appendix_gaia_protocol_summary} in the Appendix lists which protocol fields are aligned and which cannot be certified from the released artifacts.
+\looseness=-1
+
+\subsection{Reporting Protocol and Wilson Guidance}
+\label{subsec:pass1_wilson}
+For each instance, we record task success, token usage, wall-clock latency, and the full trajectory.
+When traces expose sufficient structure, we also derive process summaries---spawned agents, tool calls, and delegation depth---used for interpretation, not as additional success metrics.
+Broad-benchmark average accuracy is the unweighted mean over ten benchmark-level accuracies; GAIA overall is weighted by level sizes $(N_1,N_2,N_3)=(53,86,26)$.
+All numbers are pass@1 single-run results.
+
+We use the \emph{Wilson 95\% binomial confidence interval}~\citep{wilson1927} as a conservative scale for one-run accuracy gaps: for an observed proportion $\hat{p}$ over $N$ instances, the interval covers the unknown success probability more reliably than the normal approximation when $\hat{p}$ is near $0$ or $1$ or when $N$ is small.
+We report its two-sided half-width per benchmark in Table~\ref{tab:appendix_wilson_widths} and treat any pass@1 gap smaller than this half-width as descriptive rather than as stable ordering evidence.
+Concretely, differences below roughly 17 points on AIME ($N{=}30$) or 18 points on GAIA Level~3 ($N{=}26$) should not be read as ordering evidence under one run.
+
+\section{Experiments}
+\label{sec:experiments}
+We instantiate two experiments under the protocol of Section~\ref{sec:evaluation_protocol}.
+The first experiment (Section~\ref{subsec:broad_bench_results}) tests whether fixed and evolving MAS produce positive workflow lift over a matched single-agent anchor on ten broad benchmarks under SI conditions; the second (Section~\ref{subsec:gaia_results}) places a Claude-Code-style runtime workflow on GAIA under PAE alignment.
+Each number reported below is a pass@1 result from one end-to-end run: we treat gaps smaller than the Wilson half-widths in Appendix Table~\ref{tab:appendix_wilson_widths} as descriptive rather than as stable ordering evidence, and we do not attribute the CC-workflow's GAIA advantage to a single mechanism without ablation evidence.
+
+\subsection{Experimental Setup}
+\label{subsec:exp_setup}
+\noindent\textbf{Datasets.}
+The broad SI comparison covers ten benchmarks: MATH, AIME, GSM8K, DROP, BBH, MMLU-Pro, HumanEval, MBPP, HotpotQA, and IFEval.
+The runtime-workflow study uses the full GAIA validation split~\citep{mialon2023gaia} ($(N_1,N_2,N_3)=(53,86,26)$, weighted by level size for overall accuracy), which stresses multi-step retrieval, file inspection, state preservation, and delayed final-answer release.
+
+\noindent\textbf{Tool allocation.}
+Tool access is benchmark-specific but fixed across compared workflows.
+In the SI suite, HotpotQA uses the expanded full BenchAgent tool registry, whereas MATH, AIME, GSM8K, DROP, BBH, MMLU-Pro, HumanEval, MBPP, and IFEval expose only \texttt{python\_interpreter} beyond final-answer emission.
+GAIA uses the corresponding full-tool regime: BenchAgent-based systems receive the expanded full registry, and the CC-workflow is matched at the level of GAIA-relevant tool-capability classes under the PAE protocol.
+Appendix Table~\ref{tab:appendix_tool_regimes} summarizes the benchmark-level allocation.
+
+\noindent\textbf{Compared systems.}
+The single-agent anchor is BenchAgent Core---a full substrate run, not a bare LLM call---sharing the same loader, evaluator, and tool registry as all MAS wrappers.
+It serves as the workflow-lift estimator for the broad-benchmark experiment (Section~\ref{subsec:broad_bench_results}), not as a claim about the strongest possible single-agent controller.
+Fixed MAS baselines include Jarvis~\citep{shen2023hugginggpt}, LLM-Debate~\citep{du2023multiagentdebate}, AutoGen~\citep{wu2023autogen}, CAMEL~\citep{li2023camel}, and ChatEval~\citep{chan2023chateval}; EvoAgent~\citep{yuan2024evoagent} represents the evolving MAS category.
+Implementation notes, transfer sanity checks, and a vanilla ReAct anchor calibration appear in Appendix Tables~\ref{tab:appendix_baseline_fidelity} and~\ref{tab:appendix_react_calibration}.
+
+\noindent\textbf{CC-workflow.}
+Evaluated only on GAIA under a PAE protocol: inputs, answer schema, evaluator, backend model family, and GAIA-relevant tool-capability classes are aligned; the controller remains partially external.
+Full protocol documentation appears in Appendix Tables~\ref{tab:appendix_gaia_protocol_summary} and~\ref{tab:appendix_gaia_tool_alignment}.
+
+\begin{table*}[!t]
+    \centering
+    \caption{\small
+        \textbf{Substrate-Internal broad-benchmark comparison of single-agent, fixed MAS, and evolving MAS under matched protocols.} Wilson 95\% confidence-interval half-widths are shown for the individual benchmark rows only; the Avg. Acc. row reports benchmark-balanced average accuracy, while Avg. Tok. reports instance-level average end-to-end token usage and Avg. Time reports instance-level average execution time. Section~\ref{subsec:pass1_wilson} describes averaging and interpretation.
+    }
+    \vspace{-1em}
+    \label{tab:main_exp1_overall}
+    \setlength{\tabcolsep}{3.8pt}
+    \renewcommand{\arraystretch}{1.16}
+    \small
+    \resizebox{\textwidth}{!}{
+        \begin{tabular}{lccccccc}
+            \toprule
+            \textbf{Benchmark / Metric} & \textbf{Single Agent}          & \textbf{EvoAgent}              & \textbf{LLM-debate}            & \textbf{Camel}                 & \textbf{AutoGen}               & \textbf{Jarvis}                & \textbf{ChatEval}             \\
+            \midrule
+            MATH                        & 66.75{\scriptsize $\pm$4.6}\%  & 61.75{\scriptsize $\pm$4.7}\%  & 69.34{\scriptsize $\pm$4.5}\%  & 61.05{\scriptsize $\pm$4.8}\%  & 40.53{\scriptsize $\pm$4.8}\%  & 60.25{\scriptsize $\pm$4.8}\%  & 59.75{\scriptsize $\pm$4.8}\% \\
+            AIME                        & 46.67{\scriptsize $\pm$16.8}\% & 36.67{\scriptsize $\pm$16.3}\% & 26.67{\scriptsize $\pm$15.1}\% & 26.08{\scriptsize $\pm$15.0}\% & 20.00{\scriptsize $\pm$13.9}\% & 26.70{\scriptsize $\pm$15.1}\% & 3.33{\scriptsize $\pm$8.0}\%  \\
+            GSM8K                       & 94.50{\scriptsize $\pm$2.3}\%  & 93.25{\scriptsize $\pm$2.5}\%  & 93.50{\scriptsize $\pm$2.4}\%  & 86.05{\scriptsize $\pm$3.4}\%  & 88.00{\scriptsize $\pm$3.2}\%  & 89.00{\scriptsize $\pm$3.1}\%  & 85.00{\scriptsize $\pm$3.5}\% \\
+            DROP                        & 90.50{\scriptsize $\pm$2.9}\%  & 93.00{\scriptsize $\pm$2.5}\%  & 89.75{\scriptsize $\pm$3.0}\%  & 88.62{\scriptsize $\pm$3.1}\%  & 83.25{\scriptsize $\pm$3.7}\%  & 90.00{\scriptsize $\pm$3.0}\%  & 90.50{\scriptsize $\pm$2.9}\% \\
+            BBH                         & 78.25{\scriptsize $\pm$4.0}\%  & 94.00{\scriptsize $\pm$2.4}\%  & 71.48{\scriptsize $\pm$4.4}\%  & 61.00{\scriptsize $\pm$4.8}\%  & 66.67{\scriptsize $\pm$4.6}\%  & 53.50{\scriptsize $\pm$4.9}\%  & 73.00{\scriptsize $\pm$4.3}\% \\
+            MMLU-Pro                    & 86.50{\scriptsize $\pm$3.4}\%  & 87.00{\scriptsize $\pm$3.3}\%  & 79.50{\scriptsize $\pm$3.9}\%  & 60.11{\scriptsize $\pm$4.8}\%  & 69.50{\scriptsize $\pm$4.5}\%  & 77.50{\scriptsize $\pm$4.1}\%  & 71.00{\scriptsize $\pm$4.4}\% \\
+            HumanEval                   & 84.73{\scriptsize $\pm$6.2}\%  & 81.68{\scriptsize $\pm$6.6}\%  & 93.89{\scriptsize $\pm$4.2}\%  & 89.68{\scriptsize $\pm$5.3}\%  & 61.83{\scriptsize $\pm$8.2}\%  & 88.55{\scriptsize $\pm$5.5}\%  & 86.25{\scriptsize $\pm$5.9}\% \\
+            MBPP                        & 68.32{\scriptsize $\pm$4.9}\%  & 73.02{\scriptsize $\pm$4.7}\%  & 72.72{\scriptsize $\pm$4.7}\%  & 75.07{\scriptsize $\pm$4.6}\%  & 73.02{\scriptsize $\pm$4.7}\%  & 75.95{\scriptsize $\pm$4.5}\%  & 75.36{\scriptsize $\pm$4.6}\% \\
+            HotpotQA                    & 62.25{\scriptsize $\pm$4.7}\%  & 68.50{\scriptsize $\pm$4.5}\%  & 65.00{\scriptsize $\pm$4.7}\%  & 55.53{\scriptsize $\pm$4.8}\%  & 58.75{\scriptsize $\pm$4.8}\%  & 64.75{\scriptsize $\pm$4.7}\%  & 60.00{\scriptsize $\pm$4.8}\% \\
+            IFEval                      & 62.75{\scriptsize $\pm$4.7}\%  & 66.75{\scriptsize $\pm$4.6}\%  & 53.79{\scriptsize $\pm$4.9}\%  & 60.50{\scriptsize $\pm$4.8}\%  & 66.73{\scriptsize $\pm$4.6}\%  & 42.75{\scriptsize $\pm$4.8}\%  & 84.25{\scriptsize $\pm$3.6}\% \\
+            \midrule
+            Avg. Acc.                   & 74.12\%                        & 75.56\%                        & 71.56\%                        & 66.37\%                        & 62.83\%                        & 66.90\%                        & 68.84\%                       \\
+            Avg. Tok.                   & 27434.55                       & 34153.68                       & 36669.25                       & 8470.19                        & 13603.05                       & 9668.33                        & 105838.02                     \\
+            Avg. Time                   & 106.29s                        & 82.76s                         & 26.63s                         & 15.75s                         & 14.22s                         & 11.20s                         & 56.08s                        \\
+            \bottomrule
+        \end{tabular}
+    }
+    \renewcommand{\arraystretch}{1.0}
+\end{table*}
+
+\begin{figure*}[!t]
+    \centering
+    \includegraphics[width=0.92\textwidth]{resources/figure/main_experiment1_overview/tradeoff_accuracy_cost.pdf}
+    \vspace{-1em}
+    \caption{\small
+        \textbf{Accuracy--cost and accuracy--time trade-offs under SI conditions.}
+        Left: benchmark-balanced average accuracy against instance-level average end-to-end token usage. Right: benchmark-balanced average accuracy against instance-level average execution time. Each point represents one workflow, and the dashed line traces the empirical Pareto front under this descriptive aggregation.
+    }
+    \label{fig:main_exp1_cost}
+\end{figure*}
+
+\noindent\textbf{Model and infrastructure.}
+All reported main-text BenchAgent results use GPT-4.1 (\texttt{gpt-4.1-2025-04-14})~\citep{openai_gpt41_model}.
+Dataset sampling, tool-surface summaries, GAIA-only backend-generalization checks, and trajectory evidence appear in the appendix; the backend checks are scoped to Qwen3-32B for BenchAgent-compatible GAIA workflows and GLM-5 for the BenchAgent GAIA anchor (Appendix Tables~\ref{tab:appendix_qwen32b_gaia_generalization} and~\ref{tab:appendix_glm5_gaia_generalization}).
+
+\subsection{Broad Benchmark Results}
+\label{subsec:broad_bench_results}
+This experiment tests whether fixed or evolving MAS produce workflow lift over the BenchAgent single-agent anchor under matched model, tool surface, evaluator, and logging protocol; results appear in Table~\ref{tab:main_exp1_overall}, with the accuracy--cost view in Figure~\ref{fig:main_exp1_cost}. Appendix Table~\ref{tab:appendix_react_calibration} calibrates the anchor against a standalone vanilla ReAct controller without redefining the comparison target.
+\looseness=-1
+
+\begin{table*}[!t]
+    \centering
+    \caption{\small
+        \textbf{GAIA validation pass@1 comparison under a PAE runtime-workflow setting.} Tok. reports instance-level average end-to-end token usage, and Time reports instance-level average wall-clock time.
+    }
+    \vspace{-1em}
+    \label{tab:main_exp2_gaia}
+    \setlength{\tabcolsep}{5pt}
+    \small
+    \renewcommand{\arraystretch}{1.2}
+    \resizebox{\textwidth}{!}{
+        \begin{tabular}{l l cccccc}
+            \toprule
+            \textbf{Paradigm}          & \textbf{Method} & \textbf{GAIA-L1}                        & \textbf{GAIA-L2}                       & \textbf{GAIA-L3}                        & \textbf{Avg./Overall}                  & \textbf{Tok.}     & \textbf{Time}    \\
+            \midrule
+            Single-Agent               & Single Agent    & 58.82{\scriptsize $\pm$12.8}\%          & 30.00{\scriptsize $\pm$9.5}\%          & 19.23{\scriptsize $\pm$14.7}\%          & 37.56{\scriptsize $\pm$7.3}\%          & 459652.83         & 213.33s          \\
+            \midrule
+            Evolving MAS               & EvoAgent        & 54.90{\scriptsize $\pm$12.9}\%          & 30.00{\scriptsize $\pm$9.5}\%          & 19.23{\scriptsize $\pm$14.7}\%          & 36.30{\scriptsize $\pm$7.3}\%          & 1573918.58        & 325.04s          \\
+            Fixed MAS                  & LLM-Debate      & 52.94{\scriptsize $\pm$13.0}\%          & 34.00{\scriptsize $\pm$9.8}\%          & 15.38{\scriptsize $\pm$13.7}\%          & 37.15{\scriptsize $\pm$7.3}\%          & 414812.44         & 201.53s          \\
+            Fixed MAS                  & Camel           & 54.90{\scriptsize $\pm$12.9}\%          & 34.00{\scriptsize $\pm$9.8}\%          & 26.92{\scriptsize $\pm$16.2}\%          & 39.60{\scriptsize $\pm$7.4}\%          & 468587.39         & 387.42s          \\
+            Fixed MAS                  & AutoGen         & 56.60{\scriptsize $\pm$12.9}\%          & 30.00{\scriptsize $\pm$9.5}\%          & 11.54{\scriptsize $\pm$12.5}\%          & 35.64{\scriptsize $\pm$7.2}\%          & 383190.65         & 188.98s          \\
+            Fixed MAS                  & Jarvis          & 66.03{\scriptsize $\pm$12.4}\%          & 43.02{\scriptsize $\pm$10.2}\%         & 19.23{\scriptsize $\pm$14.7}\%          & 46.66{\scriptsize $\pm$7.5}\%          & 332285.96         & 402.11s          \\
+            Fixed MAS                  & ChatEval        & 49.02{\scriptsize $\pm$13.0}\%          & 34.88{\scriptsize $\pm$9.9}\%          & 26.92{\scriptsize $\pm$16.2}\%          & 38.17{\scriptsize $\pm$7.3}\%          & 1886517.67        & 443.76s          \\
+            \midrule
+            Runtime-Generated Workflow & CC-workflow     & \textbf{60.78{\scriptsize $\pm$12.7}\%} & \textbf{69.62{\scriptsize $\pm$9.5}\%} & \textbf{69.23{\scriptsize $\pm$16.7}\%} & \textbf{66.72{\scriptsize $\pm$7.1}\%} & \textbf{52984.69} & \textbf{134.90s} \\
+            \bottomrule
+        \end{tabular}
+    }
+    \renewcommand{\arraystretch}{1.0}
+\end{table*}
+
+% \looseness=-1
+\noindent\textbf{Fixed and evolving MAS do not consistently produce positive workflow lift.} The matched single-agent anchor reaches 74.12\% benchmark-balanced average accuracy, while EvoAgent reaches 75.56\%. These broad-suite averages are descriptive benchmark-balanced means rather than interval estimates on a single shared instance pool; per-benchmark Wilson half-widths in Table~\ref{tab:main_exp1_overall} carry the row-level uncertainty. EvoAgent is the only MAS with numerically positive average lift, but its +1.44-point gain is smaller than the one-run uncertainty guidance; the remaining MAS fall below the anchor at 62.83\%--71.56\%. Holding model, tools, evaluator, and logger fixed, adding roles or handoffs did not lift overall performance. \emph{\textbf{Takeaway:} at most one MAS exceeds the anchor on average, and that case sits within the one-run uncertainty scale.}
+
+\noindent\textbf{Cost varies more sharply than accuracy.} Figure~\ref{fig:main_exp1_cost} shows workflows with similar benchmark-balanced accuracy but different instance-level token usage and latency. EvoAgent's +1.44-point gain comes at higher token cost; ChatEval is far more token-intensive while trailing the baseline; Camel and Jarvis are lighter and faster but lose accuracy. \emph{\textbf{Takeaway:} accuracy-similar workflows can have sharply different token use and latency.}
+
+% \vspace{-0.35em}
+\noindent\textbf{Workflow structure, not agent count, explains MAS variation} (Appendix Table~\ref{tab:appendix_process_diagnostics}). Agent count does not explain MAS behavior in our suite: EvoAgent gains on BBH through prompt-scaffold search, LLM-Debate gains on HumanEval and MATH where proposals are verifiable, and ChatEval gains on IFEval under multi-judge instruction checking. The same protocols hurt elsewhere. \emph{\textbf{Takeaway:} aggregate MAS behavior follows task-protocol fit rather than agent count.}
+
+% \vspace{-0.35em}
+\noindent\textbf{MAS gains are task-dependent.} EvoAgent's BBH score (94.00\% [$\pm$2.4] vs.\ 78.25\% [$\pm$4.0] for single-agent) reflects task-specific scaffold selection, not a general multi-agent advantage, and raises a fairness question about prompt-search budget equity. LLM-Debate leads on HumanEval and MATH, where proposals are easy to check; ChatEval scores highest on IFEval but collapses on AIME. MAS help when their protocol matches the task error mode, and add overhead or lose information otherwise. Additional task-level views appear in Appendix Figures~\ref{fig:appendix_accuracy_heatmap}--\ref{fig:appendix_delta_lollipops}. \emph{\textbf{Takeaway:} MAS protocols help when they match a task's error mode, and hurt otherwise.}
+
+\subsection{GAIA Runtime Workflow Results}
+\label{subsec:gaia_results}
+This experiment focuses on GAIA, where long-horizon tool use tests state preservation, evidence management, and recovery after partial failures; results appear in Table~\ref{tab:main_exp2_gaia}, with backend-sensitivity checks in Appendix Tables~\ref{tab:appendix_qwen32b_gaia_generalization} and~\ref{tab:appendix_glm5_gaia_generalization} and the same-instance contrast in Figure~\ref{fig:gaia_generated_team_failure}. The comparison remains PAE, as described in Section~\ref{subsec:comparison_setup} and Appendix Table~\ref{tab:appendix_gaia_protocol_summary}, so it compares aligned deployed configurations rather than isolating an internal mechanism.
+
+\begin{figure*}[t]
+    \centering
+    \includegraphics[width=0.88\textwidth]{resources/figure/evo_error_claude_true.pdf}
+    \vspace{-0.8em}
+    \caption{\small
+        \textbf{Same-instance GAIA contrast: EvoAgent vs.\ CC-workflow.} EvoAgent loses a task-critical constraint during linear decomposition, whereas the retained CC-workflow trace preserves intermediate state and verifies before finalization.
+    }
+    \label{fig:gaia_generated_team_failure}
+\end{figure*}
+
+\noindent\textbf{The CC-workflow advantage scales with task length.} The CC-workflow reaches 66.72\% ($\pm$7.1) overall, 20.06 points above the strongest non-Claude result (Jarvis, 46.66\%). Jarvis leads on Level~1, where short retrieval chains often suffice, but the CC-workflow leads by 26.60 points on Level~2 and 42.31 points on Level~3, gaps larger than the uncertainty scale in Appendix Table~\ref{tab:appendix_wilson_widths}. Retained accounting also reports fewer tokens and less wall-clock time than the strongest non-Claude baseline, though cost summaries depend on log visibility and provider-side bookkeeping. \emph{\textbf{Takeaway:} the CC-workflow leads by 20.06 points overall, with a 42.31-point Level~3 gap.}
+
+\noindent\textbf{Retained traces expose structured runtime coordination.} The CC-workflow traces show task-specific subagents, reusable evidence artifacts, and verifier-stage events before final-answer release (6.25 subagents on average, max delegation depth 2.5; Appendix Table~\ref{tab:appendix_claude_trj_stats}). Figure~\ref{fig:gaia_generated_team_failure} illustrates the contrast: EvoAgent loses a task-critical constraint and forces an answer, while the CC-workflow preserves state and verifies before finalization. \emph{\textbf{Takeaway:} subagent count and delegation depth (6.25 / 2.5 max) track task structure.}
+Appendix~\ref{subsec:appendix_prompt_traj_examples} gives a retained event-level excerpt from the GAIA trajectory logs.
+
+\noindent\textbf{The two failure modes are structurally different.} In fixed and evolving MAS baselines, a failed sub-step typically stays in the same linear handoff: a solver makes a claim, an aggregator receives a compressed version, and the final answer can be forced with a missing constraint. In retained CC-workflow traces, failures appear as local tool or state problems addressable by changing tool strategy, re-reading an artifact, or invoking a verifier. Candidate mechanisms---runtime delegation, persistent artifacts, verifier-stage control, and context management---remain confounded; Appendix Table~\ref{tab:gaia_mechanism_evidence} lists the needed ablations. \emph{\textbf{Takeaway:} baseline failures get baked into linear handoffs; CC-workflow failures stay local and recoverable.}
+
+\section{Discussion}
+The broad-benchmark results show task-specific failure modes, not a uniform MAS advantage. Debate-like aggregation helps when independent proposals are checkable (LLM-Debate on HumanEval and MATH), while evolutionary search helps when prompt or role variation finds a better reasoning mode (EvoAgent on BBH). The same machinery hurts when tasks require exact instruction following or tight evidence control, because handoffs can compress context and hide constraints. Table~\ref{tab:main_exp1_overall} is therefore a workflow-lift comparison around a shared SI anchor, not a leaderboard over all single-agent designs.
+
+Runtime-generated workflows require a different evaluation target. The CC-workflow exposes candidate mechanisms---separate context windows, permission scopes, persistent artifacts, and runtime delegation---that remain confounded with provider-side bookkeeping. Evaluations should therefore report workflow topology, context boundaries, tool scopes, and repair gates alongside final scores; otherwise, similar accuracy can hide incompatible coordination policies, costs, and failure modes.
+
+We keep SI and PAE separate: SI isolates workflow wrappers over a common core, while PAE reports what a mature runtime workflow achieves under a documented but less internally controllable protocol. Collapsing them into one leaderboard would mix workflow lift with protocol advantage.
+
+\section{Conclusion}
+BenchAgent evaluates LLM-agent workflows under aligned execution and instrumentation. Across broad benchmarks, fixed and evolving MAS do not consistently beat the matched single-agent anchor and occupy different accuracy--cost trade-offs. On GAIA, the CC-workflow performs better on harder levels with lower retained-token and wall-clock cost under PAE, but this remains a deployed-configuration comparison rather than a mechanism estimate. We release BenchAgent and trajectory tooling for joint study of workflow generation, context management, tool scoping, and verification as properties distinct from agent count.
+
+\section{Limitations}
+Our comparison is controlled but not fully causal. The broad-benchmark MAS are re-instantiations, not exact reproductions; the CC-workflow is an external engineering exemplar routed to the same backend, so its advantage may combine workflow generation, context compaction, file and shell tooling, permission scoping, and provider-side bookkeeping. The results compare deployed configurations, not isolated mechanisms.
+
+Mechanism evidence is partial: we report one-run pass@1 results and rely on retained traces that expose only part of Claude Code's internals. Appendix Table~\ref{tab:appendix_react_calibration} adds a vanilla ReAct calibration on MATH, BBH, HumanEval, and HotpotQA to contextualize the matched anchor. Future work should add repeated trials, controller-sensitivity checks, stricter tool-surface-matched ablations, runtime-workflow ablations, and fuller instrumentation for context packaging and recovery behavior.
