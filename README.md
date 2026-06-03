@@ -22,10 +22,35 @@ evaluation fixed while varying the workflow layer across single-agent, fixed
 multi-agent, evolving multi-agent, and protocol-aligned external runtime
 workflows.
 
+**Figure overview.** The figure shows BenchAgent as a shared evaluation
+substrate: benchmark instances enter the same loader, tool interface,
+accounting, logging, and evaluator, while only the workflow controller changes.
+This separates workflow effects from differences in data handling, tools, or
+scoring.
+
 ## 📄 Paper
 
 - `docs/paper/paper.pdf` — compiled paper
 - `docs/paper/` — paper source and reference files used by this README
+
+## 🏷️ Keywords
+
+LLM agents · multi-agent systems · agent workflow evaluation · protocol-aligned
+benchmarking · GAIA · tool-use agents · workflow lift · runtime-generated
+workflows
+
+## ⭐ Key Features
+
+- **Shared evaluation protocol:** normalizes benchmark loading, tool access,
+  answer contracts, usage accounting, timeouts, and trajectory logging.
+- **Workflow-level comparison:** evaluates single-agent, fixed MAS, evolving
+  MAS, and protocol-aligned external runtime workflows under one reporting lens.
+- **Broad benchmark coverage:** supports reasoning, coding, instruction
+  following, QA, and tool-use benchmarks.
+- **Pluggable agent and evaluator registries:** new workflows and benchmarks can
+  be added through local registry patterns.
+- **Process-aware outputs:** records accuracy, cost, latency, token usage,
+  per-problem traces, and visualization-ready artifacts.
 
 ## 📌 Key Results
 

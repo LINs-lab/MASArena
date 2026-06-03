@@ -1,0 +1,11 @@
+PWD /Users/xuan/LINs_lab/DO-MORE-AGENTS-HELP/MASArena/docs/paper
+INPUT /usr/local/texlive/2026/texmf.cnf
+INPUT /usr/local/texlive/2026/texmf-dist/web2c/texmf.cnf
+INPUT /usr/local/texlive/2026/texmf-var/web2c/pdftex/pdflatex.fmt
+INPUT /Users/xuan/LINs_lab/DO-MORE-AGENTS-HELP/MASArena/docs/paper/paper.tex
+OUTPUT paper.log
+INPUT /usr/local/texlive/2026/texmf-dist/tex/latex/base/article.cls
+INPUT /usr/local/texlive/2026/texmf-dist/tex/latex/base/article.cls
+INPUT /usr/local/texlive/2026/texmf-dist/tex/latex/base/size10.clo
+INPUT /usr/local/texlive/2026/texmf-dist/tex/latex/base/size10.clo
+INPUT /usr/local/texlive/2026/texmf-dist/tex/latex/base/size10.clo
