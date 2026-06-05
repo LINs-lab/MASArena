@@ -1,6 +1,6 @@
 # Do More Agents Help? Controlled and Protocol-Aligned Evaluation of LLM Agent Workflows
 
-[![Arxiv](https://img.shields.io/badge/arXiv-arXiv-b31b1b)](http://arxiv.org/abs/2510.11111<!todo改真的地址>) [![Python](https://img.shields.io/badge/Python-3.12.0-green)](https://www.python.org/downloads/release/python-3120/) [![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](LICENSE)
+[![Arxiv](https://img.shields.io/badge/arXiv-arXiv-b31b1b)](http://arxiv.org/abs/2606.05670) [![Python](https://img.shields.io/badge/Python-3.12.0-green)](https://www.python.org/downloads/release/python-3120/) [![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](LICENSE)
 
 Yuhang Fu, Ruishan Fang, Jiaqi Shao, Huiyu Zheng, Zhengtao Zhu, Bing Luo, Tao Lin
 
