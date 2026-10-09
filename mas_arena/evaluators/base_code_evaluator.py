@@ -43,9 +43,12 @@ class BaseCodeEvaluator(BaseEvaluator):
 
     def _load_data(self):
         self._train_data = []
-        self._dev_data = self._load_dateset_from_path(f"data/{self.name}_validate.jsonl")
-        self._test_data = self._load_dateset_from_path(f"data/{self.name}_test.jsonl")
-        self._test_cases = self._load_dateset_from_path(f"data/{self.name}_public_test.jsonl")
+        self._test_data = self._load_dateset_from_path(self.data_path)
+        # Auxiliary optimization/public-example splits are not required for final scoring.
+        dev_path = f"data/{self.name}_validate.jsonl"
+        public_path = f"data/{self.name}_public_test.jsonl"
+        self._dev_data = self._load_dateset_from_path(dev_path) if Path(dev_path).is_file() else []
+        self._test_cases = self._load_dateset_from_path(public_path) if Path(public_path).is_file() else []
 
     def _get_data(
         self,
@@ -234,6 +237,7 @@ class BaseCodeEvaluator(BaseEvaluator):
             extracted_answer,
             problem["test"],
             problem["entry_point"],
+            test_imports=problem.get("test_imports", []),
         )
         score = 1.0 if passed else 0.0
 

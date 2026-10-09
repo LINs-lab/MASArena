@@ -13,11 +13,13 @@ import json
 from pathlib import Path
 import datetime
 import time
+from math import isfinite
 
 import yaml
 from mas_arena.agents.format import task_format
 from mas_arena.agents.format_prompts import get_format_prompt
 from mas_arena.agents.agent_core import AgentResult
+from mas_arena.agents.workflow_protocol import public_task
 from openai.types.completion_usage import CompletionUsage
 import aiofiles
 
@@ -167,13 +169,13 @@ class AgentSystem(abc.ABC):
         Returns:
             Dictionary with collected LLM usage metrics
         """
-        if not self.metrics_collector:
-            return {} 
-        
         # Track metrics from AIMessages with usage_metadata
         total_tokens = 0
         message_count = 0
         usage_metrics = []
+
+        def valid_count(value):
+            return isinstance(value, (int, float)) and not isinstance(value, bool) and isfinite(value) and value >= 0
         
         for message in messages:
             usage_metadata = None
@@ -183,14 +185,13 @@ class AgentSystem(abc.ABC):
                 usage_metadata = message['usage_metadata']
 
             if usage_metadata:
-                message_count += 1
                 agent_id = ""
                 if hasattr(message, 'name'):
                     agent_id = message.name
                 elif isinstance(message, dict):
                     agent_id = message.get("name") or message.get("agent_id")
 
-                agent_id = agent_id or (message.id if hasattr(message, 'id') and message.id else f"agent_{hash(message)}")
+                agent_id = agent_id or (getattr(message, "id", None) or f"agent_{message_count + 1}")
 
                 if isinstance(usage_metadata, CompletionUsage):
                     input_tokens = usage_metadata.prompt_tokens
@@ -203,29 +204,37 @@ class AgentSystem(abc.ABC):
                     
                 else:
                     # Extract metrics from usage_metadata
-                    input_tokens = usage_metadata.get('input_tokens', 0)
-                    output_tokens = usage_metadata.get('output_tokens', 0)
-                    reasoning_tokens = usage_metadata.get("output_token_details", {}).get("reasoning", 0)
-                    total_tokens_msg = usage_metadata.get('total_tokens', input_tokens + output_tokens)
+                    input_tokens = usage_metadata.get('input_tokens', usage_metadata.get('prompt_tokens'))
+                    output_tokens = usage_metadata.get('output_tokens', usage_metadata.get('completion_tokens'))
+                    reasoning_tokens = (usage_metadata.get("output_token_details") or {}).get("reasoning", 0)
+                    total_tokens_msg = usage_metadata.get('total_tokens')
+                    if total_tokens_msg is None and valid_count(input_tokens) and valid_count(output_tokens):
+                        total_tokens_msg = input_tokens + output_tokens
                     
                     
                     input_token_details = usage_metadata.get('input_token_details', {})
                     output_token_details = usage_metadata.get('output_token_details', {})
                 
-                total_tokens += total_tokens_msg  
+                if not valid_count(total_tokens_msg):
+                    continue
+                input_tokens = input_tokens if valid_count(input_tokens) else None
+                output_tokens = output_tokens if valid_count(output_tokens) else None
+                message_count += 1
+                total_tokens += total_tokens_msg
                 # Record detailed token metrics directly from the message's usage_metadata
-                self.metrics_collector.record_llm_usage(
-                    agent_id=agent_id,
-                    model_name=os.getenv("MODEL_NAME", ""),
-                    prompt_tokens=input_tokens,
-                    completion_tokens=output_tokens,
-                    total_tokens=total_tokens_msg,
-                    reasoning_tokens=reasoning_tokens,
-                    input_token_details=input_token_details,
-                    output_token_details=output_token_details,
-                    latency_ms=execution_time_ms / message_count if message_count > 0 else 0,
-                    tags={"agent_system": self.name, "problem_id": problem_id}
-                )
+                if self.metrics_collector and input_tokens is not None and output_tokens is not None:
+                    self.metrics_collector.record_llm_usage(
+                        agent_id=agent_id,
+                        model_name=os.getenv("MODEL_NAME", ""),
+                        prompt_tokens=input_tokens,
+                        completion_tokens=output_tokens,
+                        total_tokens=total_tokens_msg,
+                        reasoning_tokens=reasoning_tokens,
+                        input_token_details=input_token_details,
+                        output_token_details=output_token_details,
+                        latency_ms=execution_time_ms / message_count if message_count > 0 else 0,
+                        tags={"agent_system": self.name, "problem_id": problem_id}
+                    )
                 
                 # Collect usage metrics
                 usage_metrics.append({
@@ -252,7 +261,7 @@ class AgentSystem(abc.ABC):
                     )
         
         # Record total tokens for this problem
-        if message_count > 0:
+        if message_count > 0 and self.metrics_collector:
             self.metrics_collector.record_metric(
                 "problem.total_tokens",
                 total_tokens,
@@ -267,7 +276,7 @@ class AgentSystem(abc.ABC):
             "total_tokens": total_tokens,
             "message_count": message_count,
             "agent_usage": usage_metrics
-        }
+        } if message_count else {}
 
     def _record_agent_responses(self, problem_id: str, messages: list):
         """
@@ -520,7 +529,6 @@ class AgentSystem(abc.ABC):
         and collecting metrics.
         """
         self.evaluator_name = kwargs.get("evaluator_name", self.evaluator_name)
-        print(self.evaluator_name)
         metrics_registry = kwargs.get("metrics_registry", self.metrics_registry)
         if metrics_registry:
             self.metrics_registry = metrics_registry
@@ -542,15 +550,21 @@ class AgentSystem(abc.ABC):
                 {"problem_id": problem_id, "agent_system": self.name, "evaluator": self.evaluator.name, "run_id": run_id}
             )
         
+        messages = []
+        usage_metrics = {}
+        execution_time_ms = 0
+        response_file = None
+        visualization_file = None
         try:
             agent_run_start_time = time.perf_counter()
-            run_output = await self.run_agent(problem, **kwargs)
+            run_output = await self.run_agent(public_task(problem), **kwargs)
             agent_run_end_time = time.perf_counter()
             execution_time_ms = (agent_run_end_time - agent_run_start_time) * 1000
+            messages = run_output.get("messages", [])
+            usage_metrics = self._record_token_usage(problem_id, execution_time_ms, messages)
             
             # If agent run returns an error, treat it as a failure
             if "error" in run_output and run_output["error"]:
-                messages = run_output.get("messages", [])
                 self._record_agent_responses(problem_id, messages)
                 response_file = await self.save_agent_responses(problem_id, run_id, problem)
                 visualization_file = await self.save_visualization_data(problem_id, run_id)
@@ -562,7 +576,7 @@ class AgentSystem(abc.ABC):
                     "extracted_answer": run_output.get("final_answer", ""),
                     "messages": messages,
                     "execution_time_ms": execution_time_ms,
-                    "llm_usage": self._record_token_usage(problem_id, execution_time_ms, messages),
+                    "llm_usage": usage_metrics,
                     "response_file": str(response_file) if response_file else None,
                     "visualization_file": str(visualization_file) if visualization_file else None,
                     "run_id": run_id,
@@ -576,12 +590,6 @@ class AgentSystem(abc.ABC):
                     error=run_output["error"],
                 )
 
-            messages = run_output.get("messages", [])
-            print("******************************************")
-            print(messages)
-            print("******************************************")
-            usage_metrics = self._record_token_usage(problem_id, execution_time_ms, messages)
-            
             self._record_agent_responses(problem_id, messages)
             response_file = await self.save_agent_responses(problem_id, run_id, problem)
             visualization_file = await self.save_visualization_data(problem_id, run_id)
@@ -677,11 +685,11 @@ class AgentSystem(abc.ABC):
                 "score": 0.0,
                 "is_correct": False,
                 "reasoning": f"Evaluation failed with error: {str(e)}",
-                "messages": [],
-                "execution_time_ms": 0,
-                "llm_usage": {"total_tokens": 0, "message_count": 0, "agent_usage": []},
-                "response_file": None,
-                "visualization_file": None,
+                "messages": messages,
+                "execution_time_ms": execution_time_ms,
+                "llm_usage": usage_metrics,
+                "response_file": str(response_file) if response_file else None,
+                "visualization_file": str(visualization_file) if visualization_file else None,
                 "run_id": run_id,
             }
             return AgentResult(
@@ -849,4 +857,3 @@ def create_agent_system(name: str, config: Dict[str, Any] = None, memory_type: s
         logger.info(f"Memory instance for '{memory_type}' ID: {id(agent_system.meta_memory)}")
 
     return agent_system
-

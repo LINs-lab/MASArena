@@ -3398,7 +3398,7 @@ wheels = [
 ]
 
 [[package]]
-name = "project-memory-layer"
+name = "mas-arena-benchagent"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [

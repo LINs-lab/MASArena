@@ -71,10 +71,10 @@ class BBHEvaluator(BaseEvaluator):
         """
         answer = answer.strip()
         # Normalize multiple-choice answers (e.g., "A" to "(A)", "[A]" to "(A)")
-        if re.match(r"^[A-Z]$", answer):
-            return f"({answer})"
-        if re.match(r"^\[[A-Z]\]$", answer):
-            return f"({answer[1]})"
+        if re.match(r"^[A-Z]$", answer, re.IGNORECASE):
+            return f"({answer.upper()})"
+        if re.match(r"^\[[A-Z]\]$", answer, re.IGNORECASE):
+            return f"({answer[1].upper()})"
         # Normalize sequence answers by collapsing extra spaces
         if re.match(r"^[>\]\}\)\[]+\s*[>\]\}\)\[]*\s*$", answer):
             return " ".join(answer.split())
@@ -103,9 +103,9 @@ class BBHEvaluator(BaseEvaluator):
         is_word_sorting = "word_sorting" in problem_id.lower()
 
         if is_word_sorting:
-            # For word sorting tasks, compare words as sets (order doesn't matter)
-            predicted_words = set(normalized_answer.lower().split())
-            expected_words = set(normalized_expected.lower().split())
+            # Sorting requires the same word order and multiplicity.
+            predicted_words = normalized_answer.lower().split()
+            expected_words = normalized_expected.lower().split()
             if predicted_words == expected_words:
                 return 1.0, extracted_answer, "Correct"
             else:

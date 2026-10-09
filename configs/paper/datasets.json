@@ -1,0 +1,68 @@
+{
+  "dataset_repository": "Brian-Wang117/MASArena-Dataset",
+  "dataset_revision": "468540bdc34bc0f8c7ed52185bcdc8281287b6c3",
+  "checksum_scope": "Local processed source bytes supplied with the experiment workspace; no upstream byte-identity claim.",
+  "sampling_seed": 42,
+  "benchmarks": {
+    "math": {
+      "filename": "math_test.jsonl",
+      "source_count": 486,
+      "evaluated_count": 400,
+      "sha256": "343361223de598f1a8ca101edd5d4a063b8152a3ae80f845855b0d8cfb858e5c"
+    },
+    "aime": {
+      "filename": "aime_test.jsonl",
+      "source_count": 30,
+      "evaluated_count": 30,
+      "sha256": "753d672e547455810c7023169ed7e5820d2a62e01c7b298b6d86da7fbd9c8c91"
+    },
+    "gsm8k": {
+      "filename": "gsm8k_test.jsonl",
+      "source_count": 1055,
+      "evaluated_count": 400,
+      "sha256": "2b8372f7b81d842fea01efb66193152b42506e2b23c890c3d90d2aef228dd788"
+    },
+    "drop": {
+      "filename": "drop_test.jsonl",
+      "source_count": 400,
+      "evaluated_count": 400,
+      "sha256": "ef59d036b8a584a0f452fb41c14d9373302f8aaad9cfb17f356c85e70d09d256"
+    },
+    "bbh": {
+      "filename": "bbh_test.jsonl",
+      "source_count": 540,
+      "evaluated_count": 400,
+      "sha256": "62d0f233a26b9db6881fb078fceaafda8c3818262fd3c57c51ad3a73b75ca47d"
+    },
+    "mmlu_pro": {
+      "filename": "mmlu_pro_test.jsonl",
+      "source_count": 400,
+      "evaluated_count": 400,
+      "sha256": "ad0e3c4d3317bcea22d6320dad93f16721d9ecb28c50c6c73de889923bd940dc"
+    },
+    "humaneval": {
+      "filename": "humaneval_test.jsonl",
+      "source_count": 131,
+      "evaluated_count": 131,
+      "sha256": "867ffd759f2268c97778787fbe82d6f2fea3b2a08ee2138138fc187165678753"
+    },
+    "mbpp": {
+      "filename": "mbpp_test.jsonl",
+      "source_count": 341,
+      "evaluated_count": 341,
+      "sha256": "0e9485dee21c836087453255557f92457b145dce7dad22b980e007c0500a12b0"
+    },
+    "hotpotqa": {
+      "filename": "hotpotqa_test.jsonl",
+      "source_count": 800,
+      "evaluated_count": 400,
+      "sha256": "9b5a171af942e75d5cb7e8746dbc6639f381900467c02e8c2e27eceb77b9a8ce"
+    },
+    "ifeval": {
+      "filename": "ifeval_test.jsonl",
+      "source_count": 541,
+      "evaluated_count": 400,
+      "sha256": "67ffeee0fcb87c317c5b08a2de85557b4a7e96ada6178aa645b4954fe4b53d49"
+    }
+  }
+}

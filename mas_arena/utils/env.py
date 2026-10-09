@@ -2,7 +2,7 @@ import os
 import warnings
 
 
-DEFAULT_MODEL_NAME = "gpt-4o-mini"
+DEFAULT_MODEL_NAME = "gpt-4.1-2025-04-14"
 DEFAULT_OPENAI_API_BASE = "https://api.openai.com/v1"
 
 

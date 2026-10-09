@@ -32,8 +32,8 @@ class BaseEvaluator(metaclass=ABCMeta):
         self.config = config or {}
         
         # Set up data and log paths
-        self.data_path = config.get("data_path", f"data/{name}_test.jsonl")
-        self.log_path = config.get("log_path", f"data/results/{name.upper()}")
+        self.data_path = self.config.get("data_path", f"data/{name}_test.jsonl")
+        self.log_path = self.config.get("log_path", f"data/results/{name.upper()}")
         
         # Set up logging
         os.makedirs(self.log_path, exist_ok=True)

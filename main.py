@@ -72,9 +72,9 @@ def main():
     parser.add_argument(
         "--agent-system",
         type=str,
-        default="single_agent",
+        default="bench_agent",
         choices=list(AVAILABLE_AGENT_SYSTEMS.keys()),
-        help="Agent system to use (default: single_agent)",
+        help="Agent system to use (default: bench_agent)",
     )
 
     parser.add_argument(
@@ -158,7 +158,7 @@ def main():
     parser.add_argument(
         "--model-name",
         type=str,
-        default=None,
+        default=os.getenv("MODEL_NAME", "gpt-4.1-2025-04-14"),
         help="Model name to pass into the selected agent system.",
     )
     parser.add_argument(
@@ -178,6 +178,12 @@ def main():
         type=int,
         default=None,
         help="Manager CodeAgent max steps (BenchAgent-based MAS, default in agent: 15).",
+    )
+    parser.add_argument(
+        "--max-completion-tokens",
+        type=int,
+        default=None,
+        help="Output token cap per model call; overrides MAX_TOKEN_SIZE when supplied.",
     )
     parser.add_argument(
         "--search-max-steps",
@@ -305,6 +311,11 @@ def main():
     if args.max_steps is not None:
         agent_config["max_steps"] = args.max_steps
 
+    if args.max_completion_tokens is not None:
+        if args.max_completion_tokens <= 0:
+            parser.error("--max-completion-tokens must be positive")
+        agent_config["max_completion_tokens"] = args.max_completion_tokens
+
     if args.search_max_steps is not None:
         agent_config["search_max_steps"] = args.search_max_steps
 
@@ -312,7 +323,7 @@ def main():
         agent_config["num_rounds"] = args.num_rounds
 
     # Create directories if needed
-    Path(args.results_dir).mkdir(exist_ok=True)
+    Path(args.results_dir).mkdir(parents=True, exist_ok=True)
 
     # Print header
     

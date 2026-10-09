@@ -78,7 +78,7 @@ class IFEvalEvaluator(BaseEvaluator):
         instr_ids = output.instruction_id_list
 
         # Prompt-level
-        prompt_followed = all(follow_list)
+        prompt_followed = bool(instr_ids) and len(follow_list) == len(instr_ids) and all(follow_list)
 
         # Instruction-level
         total = len(instr_ids)
@@ -122,18 +122,10 @@ class IFEvalEvaluator(BaseEvaluator):
         Evaluates a single sample in both strict and loose modes.
         The score is based on whether the prompt is fully followed in strict mode.
         """
-        # 1. Retrieve and clean the model's answer (remove BOM/whitespace)
-        # The 'final_ans' variable here represents the model's generated output,
-        # which corresponds to the "Predicted" value in evaluation logs.
-        # If 'run_result' (from the agent/model) does not contain a 'final_answer' key,
-        # or if its value is empty, 'final_ans' will default to an empty string.
-        # This means an empty "Predicted" field in logs indicates an empty or missing
-        # 'final_answer' from the agent's execution.
+        # Strict evaluation must see the actual answer, including whitespace.
         final_ans = run_result.get("final_answer", "")
-        try:
-            final_ans = final_ans.encode("utf-8").decode("utf-8-sig").strip()
-        except UnicodeDecodeError:
-            final_ans = final_ans.strip()
+        if not isinstance(final_ans, str):
+            final_ans = ""
 
         # 2. Restore InputExample
         original = problem.get("original_problem", problem)
@@ -160,9 +152,7 @@ class IFEvalEvaluator(BaseEvaluator):
 
         return {
             "final_answer": final_ans,
-            "extracted_answer": (
-                final_ans[:100] + "..." if len(final_ans) > 100 else final_ans
-            ),  # For benchmark_runner.py compatibility
+            "extracted_answer": final_ans,
             "score": score,
             "details": {
                 "strict_evaluation": strict_metrics,

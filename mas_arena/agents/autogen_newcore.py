@@ -4,6 +4,7 @@ from mas_arena.agents.base import AgentSystem, AgentSystemRegistry
 from mas_arena.agents.bench_agent import BenchAgent
 from mas_arena.agents.agent_core import Tool
 from openai import AsyncOpenAI
+from mas_arena.agents.workflow_protocol import bench_settings, client_settings, model_name, request_settings, task_text
 
 class AutoGen(AgentSystem):
     """
@@ -15,25 +16,12 @@ class AutoGen(AgentSystem):
         super().__init__(name, config)
         self.config = config or {}
 
-        bench_agent_config = {
-            "model": self.config.get("model_name", "gpt-4o-mini"),
-            "api_key": os.getenv("OPENAI_API_KEY"),
-            "api_base": os.getenv("OPENAI_API_BASE"),
-            "memory": self.config.get("memory"),
-            "search_tools": self.config.get("search_tools"),
-            "verbosity_level": self.config.get("verbosity_level", 2),
-            "additional_instructions": self.config.get("additional_instructions"),
-            "manager_tools": self.config.get("manager_tools"),
-        }
-        
+        bench_agent_config = bench_settings(self.config)
         self.bench_agent = BenchAgent(**bench_agent_config)
 
         self.num_rounds = self.config.get("num_rounds", 5)
-        self.openai_client = AsyncOpenAI(
-            api_key=os.getenv("OPENAI_API_KEY"),
-            base_url=os.getenv("OPENAI_API_BASE")
-        )
-        self.openai_model = self.config.get("model_name", "gpt-4o-mini")
+        self.openai_client = AsyncOpenAI(**client_settings(self.config))
+        self.openai_model = model_name(self.config)
         self.agents = [
             {
                 "name": "primary",
@@ -49,7 +37,7 @@ class AutoGen(AgentSystem):
         """
         运行基于 BenchAgent 的多轮对话
         """
-        problem_text = problem["problem"]
+        problem_text = task_text(problem)
         
         # 初始用户消息
         initial_user_prompt = f"Problem: {problem_text}"
@@ -58,7 +46,7 @@ class AutoGen(AgentSystem):
         ]
         all_messages = []
         final_answer = ""
-        additional_args = {"problem": problem_text, **kwargs} 
+        additional_args = {"id": problem.get("id", "")}
 
         for round_idx in range(self.num_rounds):
             for agent in self.agents:
@@ -83,6 +71,12 @@ class AutoGen(AgentSystem):
                         )
                         bench_messages = result.get("messages", [])
                         all_messages.extend(bench_messages)
+                        if result.get("error"):
+                            return {
+                                "messages": all_messages,
+                                "final_answer": result.get("final_answer", ""),
+                                "error": result["error"],
+                            }
                         
                         response_content = result["final_answer"]
                         final_answer = response_content
@@ -100,7 +94,7 @@ class AutoGen(AgentSystem):
                         response = await self.openai_client.chat.completions.create(
                             model=self.openai_model,
                             messages=messages,
-                            temperature=0.7
+                            **request_settings(self.config, temperature=0.7)
                         )
                         
                         response_content = response.choices[0].message.content
@@ -115,21 +109,6 @@ class AutoGen(AgentSystem):
 
                     conversation_history.append({"role": "assistant", "content": response_content, "name": agent_name})
 
-                    if agent_name == "critic" and "approve" in response_content.lower():
-                        summary_message = {
-                            'content': final_answer,
-                            'name': 'system_final',
-                            'role': 'assistant',
-                            'message_type': 'ai_response',
-                            'usage_metadata': None 
-                        }
-                        
-                        all_messages.append(summary_message)
-                        return {
-                            "messages": all_messages,
-                            "final_answer": final_answer
-                        }
-
                 except Exception as e:
                     error_message = f"Error during {agent_name} step: {str(e)}"
                     all_messages.append({
@@ -140,14 +119,18 @@ class AutoGen(AgentSystem):
                     })
                     return {
                         "messages": all_messages,
-                        "final_answer": final_answer if final_answer else error_message
+                        "final_answer": final_answer if final_answer else error_message,
+                        "error": error_message,
                     }
 
-        print("final_answer:",final_answer)
         return {
             "messages": all_messages,
             "final_answer": final_answer
         }
+
+    async def aclose(self):
+        await self.bench_agent.aclose()
+        await self.openai_client.close()
 
 
 

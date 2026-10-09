@@ -51,7 +51,7 @@ AGENT_SYSTEM="${AGENT_SYSTEM:-bench_agent}"
   # metagpt, single_agent, swarm, supervisor_mas, mad, chatdev.
 
 # --- Model --------------------------------------------------------------------
-MODEL_NAME="${MODEL_NAME:-gpt-4o-mini}"
+MODEL_NAME="${MODEL_NAME:-gpt-4.1-2025-04-14}"
   # Model name passed through to the agent system.
 
 # --- Concurrency --------------------------------------------------------------

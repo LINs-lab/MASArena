@@ -183,3 +183,19 @@ data.zip
 data/files/gaia/test/
 data/files/gaia/validate/
 extracted_files/
+
+# Experiment inputs and generated state remain local.
+/data/*
+!/data/download/
+/data/download/*
+!/data/download/*.py
+!/data/download/dataset_config.json
+!/data/model_data.py
+logs/
+log/
+outputs/
+traces/
+trajectories/
+artifacts/
+mas_arena/memory/persist/
+.local-artifacts-backup/

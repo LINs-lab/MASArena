@@ -194,7 +194,7 @@ If the answer is strictly required to be a specific word, then it must match tha
                 )
 
             # Normalize fields
-            parsed.setdefault("is_correct", False)
+            parsed["is_correct"] = parsed.get("is_correct") is True
             conf = parsed.get("confidence", 0.0) or 0.0
             try:
                 conf_f = float(conf)
@@ -279,7 +279,7 @@ If the answer is strictly required to be a specific word, then it must match tha
                 break
 
         # Compose final output
-        is_correct = bool(last_result.get("is_correct")) if last_result else False
+        is_correct = last_result.get("is_correct") is True if last_result else False
         extracted_answer = (last_result.get("extracted_answer") if last_result else None) or answer
         return {
             "score": 1.0 if is_correct else 0.0,

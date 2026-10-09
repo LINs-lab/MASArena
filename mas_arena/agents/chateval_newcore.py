@@ -8,7 +8,7 @@ Logic:
 1.  It orchestrates a debate between 3 specialized agents: Math Expert, Logic Expert, and Critical Thinking Expert.
 2.  Each expert is a BenchAgent instance.
     - Math Expert: Uses Python tools to verify calculations.
-    - Logic & Critical Thinking Experts: Pure LLM (no tools) for faster, conceptual analysis.
+    - Logic & Critical Thinking Experts: prompted to avoid tools, with the same available tool registry.
 3.  The system runs for a specified number of rounds.
 4.  A final synthesizer (ResultExtractor) aggregates the debate into a final answer.
 """
@@ -20,7 +20,8 @@ from typing import Dict, Any, List, Optional
 
 from mas_arena.agents.base import AgentSystem, AgentSystemRegistry
 from mas_arena.agents.bench_agent import BenchAgent
-from mas_arena.utils.llm_utils import call_model
+from openai import AsyncOpenAI
+from mas_arena.agents.workflow_protocol import bench_settings, client_settings, model_name, request_settings, task_text
 
 # Load environment variables
 
@@ -32,7 +33,7 @@ class ChatEvalNewCore(AgentSystem):
     discuss a problem before a final answer is extracted.
     
     Each debater is powered by BenchAgent.
-    Optimization: Only Math Expert gets Python tools; others are pure LLMs to save time/tokens.
+    Role prompts request different tool use; access remains benchmark-specific for every role.
     """
 
     def __init__(self, name: str = "chateval_newcore", config: Dict[str, Any] = None):
@@ -40,8 +41,9 @@ class ChatEvalNewCore(AgentSystem):
         self.config = config or {}
         
         # Configuration
-        self.model_name = self.config.get("model_name") or os.getenv("MODEL_NAME", "gpt-4o-mini")
+        self.model_name = model_name(self.config)
         self.num_rounds = self.config.get("num_rounds", 2)
+        self.client = AsyncOpenAI(**client_settings(self.config))
         
         # Initialize Debaters (BenchAgents)
         self.agents = self._create_debate_agents()
@@ -112,32 +114,10 @@ class ChatEvalNewCore(AgentSystem):
             base_instructions = agent_config.get("additional_instructions", "")
             specific_instructions = f"{definition['role_prompt']}\n\n{base_instructions}"
             
-            # Determine tools
-            if definition["use_tools"]:
-                # Math expert gets configured tools (usually python)
-                manager_tools = self.config.get("manager_tools", ["python_interpreter"])
-            else:
-                # Others get no extra tools (BenchAgent adds FinalAnswer automatically)
-                manager_tools = []
-
-            # Initialize BenchAgent
             bench_agent = BenchAgent(
+                **bench_settings(self.config),
                 name=f"agent_{i}_{definition['name'].replace(' ', '_')}",
-                model=self.model_name,
-                manager_tools=manager_tools,
-                search_tools=[], # No search for debaters to keep it focused/fast
-                memory=None, # No long-term memory needed for debate turns
-                api_key=self.config.get("api_key"),
-                api_base=self.config.get("api_base"),
-                max_steps=self.config.get("max_steps", 15),
-                verbosity_level=self.config.get("verbosity_level", 1),
                 additional_instructions=specific_instructions,
-                # Pass other config items
-                **{k: v for k, v in self.config.items() if k not in [
-                    "model_name", "manager_tools", "search_tools", "memory", 
-                    "api_key", "api_base", "max_steps", "verbosity_level", 
-                    "additional_instructions", "name", "num_rounds"
-                ]}
             )
             agents.append(bench_agent)
             
@@ -147,7 +127,8 @@ class ChatEvalNewCore(AgentSystem):
         """
         Run the iterative debate process.
         """
-        problem_text = problem["problem"]
+        problem_text = task_text(problem)
+        self._extraction_messages = []
         all_messages = []
         debate_history = []  # Stores string representation of the debate for context
         
@@ -163,9 +144,7 @@ class ChatEvalNewCore(AgentSystem):
                 try:
                     result = await agent.run_agent_step(
                         augmented_question=context,
-                        additional_args={
-                            "expected_answer": problem.get("solution")
-                        }
+                        additional_args={"id": problem.get("id", "")}
                     )
                     
                     response_text = result.get("final_answer", "No answer provided.")
@@ -192,6 +171,7 @@ class ChatEvalNewCore(AgentSystem):
 
         # 2. Result Extraction
         final_answer = await self._extract_final_result(debate_history, problem_text)
+        all_messages.extend(self._extraction_messages)
         
         return {
             "messages": all_messages,
@@ -286,38 +266,17 @@ class ChatEvalNewCore(AgentSystem):
         )
         
         try:
-            response = await asyncio.to_thread(
-                call_model,
-                prompt,
-                self.model_name
+            response = await self.client.chat.completions.create(
+                model=self.model_name,
+                messages=[{"role": "user", "content": prompt}],
+                **request_settings(self.config),
             )
-            answer_text = self._normalize_final_answer_text(response)
-
-            # Recovery pass: avoid low-value refusal outputs when debate already has candidates.
-            if self._is_refusal_like(answer_text):
-                candidates = self._collect_candidate_answers(debate_history)
-                if candidates:
-                    rescue_prompt = (
-                        f"Problem: {problem}\n\n"
-                        "You must choose the best final answer from candidate answers below.\n"
-                        "Rules:\n"
-                        "- Return ONLY one final answer string.\n"
-                        "- No explanations.\n"
-                        "- Do not return refusal text.\n"
-                        "- Match required format in the problem statement.\n\n"
-                        "Candidate answers:\n"
-                        + "\n".join(f"- {c}" for c in candidates[:12])
-                    )
-                    rescue_response = await asyncio.to_thread(
-                        call_model,
-                        rescue_prompt,
-                        self.model_name
-                    )
-                    rescued = self._normalize_final_answer_text(rescue_response)
-                    if not self._is_refusal_like(rescued):
-                        return rescued
-
-            return answer_text
+            content = response.choices[0].message.content or ""
+            self._extraction_messages.append({
+                "role": "assistant", "name": "ResultExtractor", "content": content,
+                "message_type": "aggregation", "usage_metadata": response.usage,
+            })
+            return self._normalize_final_answer_text(content)
         except Exception as e:
             return f"Error extracting final answer: {str(e)}"
 
@@ -328,11 +287,6 @@ class ChatEvalNewCore(AgentSystem):
         m = re.search(r"<answer>\s*([\s\S]*?)\s*</answer>", s, flags=re.IGNORECASE)
         if m:
             s = m.group(1).strip()
-        # If model returns multi-line content, keep the first non-empty line.
-        if "\n" in s:
-            lines = [ln.strip() for ln in s.splitlines() if ln.strip()]
-            if lines:
-                s = lines[0]
         return s.strip()
 
     def _is_refusal_like(self, answer: str) -> bool:
@@ -369,6 +323,11 @@ class ChatEvalNewCore(AgentSystem):
                 seen.add(key)
                 candidates.append(content)
         return candidates
+
+    async def aclose(self):
+        for agent in self.agents:
+            await agent.aclose()
+        await self.client.close()
 
 # Register
 AgentSystemRegistry.register("chateval_newcore", ChatEvalNewCore)

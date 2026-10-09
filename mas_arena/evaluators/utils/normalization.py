@@ -85,6 +85,7 @@ def normalize_problem_keys(
         "test_imports": "test_imports",
         "instruction_id_list": "instruction_id_list",
         "kwargs": "kwargs",
+        "level": "level",
     }
 
     for standard_key, source_key_name in key_definitions.items():

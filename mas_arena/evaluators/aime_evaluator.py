@@ -60,20 +60,4 @@ class AIMEEvaluator(MathEvaluator):
         Returns:
             Evaluation results dictionary
         """
-        # Extract the final answer from messages
-        all_messages = run_result.get("messages", [])
-        final_answer = super().extract_final_answer(all_messages)
-
-        if self.evaluate_type == 0:
-            # Use the new calculate_score method
-            score, extracted_answer = super().simple_calculate_score(problem["solution"], final_answer)
-        else:
-            # Use the new calculate_score method
-            score, extracted_answer = super().calculate_score(problem["solution"], final_answer)
-
-        # Return evaluation results
-        return {
-            "final_answer": final_answer,
-            "extracted_answer": extracted_answer,
-            "score": score,
-        }
+        return await super().evaluate(problem, run_result)

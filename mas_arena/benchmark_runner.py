@@ -9,6 +9,7 @@ This module provides functionality for running benchmarks on agent systems.
 import os
 import json
 import random
+from decimal import Decimal, ROUND_HALF_UP
 import shutil
 from pathlib import Path
 from datetime import datetime
@@ -28,6 +29,7 @@ from rich import print as rprint
 import time
 import logging
 import os
+from math import isfinite
 
 from mas_arena.metrics import MetricsRegistry, MetricsCollector
 from mas_arena.agents import create_agent_system, AVAILABLE_AGENT_SYSTEMS
@@ -126,6 +128,7 @@ class BenchmarkRunner:
             "problem_id": problem_id,
             "problem": normalized_problem.get("problem"),
             "expected": normalized_problem.get("solution"),
+            "level": normalized_problem.get("level"),
             "prediction": "",
             "score": 0,
             "is_correct": False,
@@ -150,20 +153,68 @@ class BenchmarkRunner:
             return text
         return text[: limit - 3] + "..."
 
+    @staticmethod
+    def _result_is_correct(result):
+        if result.get("status") in {"error", "timeout", "failed", "cancelled"} or result.get("error"):
+            return False
+        return result.get("is_correct", result.get("score", 0) == 1) is True
+
+    @staticmethod
+    def _summarize_token_usage(results, total):
+        """Summarize recorded usage, including failures, without filling missing values."""
+        def valid_count(value):
+            return isinstance(value, (int, float)) and not isinstance(value, bool) and isfinite(value) and value >= 0
+
+        token_counts = []
+        input_counts = []
+        output_counts = []
+        for result in results:
+            usage = result.get("llm_usage") or {}
+            count = usage.get("total_tokens")
+            agents = usage.get("agent_usage") or []
+            # Older exports used this sentinel even when no metadata was available.
+            missing_sentinel = count == 0 and usage.get("message_count") == 0 and not agents
+            if not valid_count(count) or missing_sentinel:
+                continue
+            token_counts.append(count)
+            for destination, key in ((input_counts, "prompt_tokens"), (output_counts, "completion_tokens")):
+                if valid_count(usage.get(key)):
+                    destination.append(usage[key])
+                elif agents and all(valid_count(agent.get(key)) for agent in agents):
+                    destination.append(sum(agent[key] for agent in agents))
+
+        observed = len(token_counts)
+        mean = sum(token_counts) / observed if observed else None
+        return {
+            "total_recorded_tokens": sum(token_counts) if observed else None,
+            "token_usage_observed_problems": observed,
+            "token_usage_missing_problems": total - observed,
+            "token_usage_coverage": observed / total if total else 0,
+            "token_usage_mean_scope": "observed_problems_including_failures",
+            "avg_tokens_observed": mean,
+            "rounded_avg_tokens_per_run": int(Decimal(str(mean)).quantize(Decimal(1), rounding=ROUND_HALF_UP)) if mean is not None else None,
+            "avg_input_tokens": sum(input_counts) / len(input_counts) if input_counts else None,
+            "avg_output_tokens": sum(output_counts) / len(output_counts) if output_counts else None,
+            "input_token_usage_observed_problems": len(input_counts),
+            "output_token_usage_observed_problems": len(output_counts),
+            # Compatibility alias; its historical name no longer describes its scope.
+            "avg_tokens_per_successful_problem": mean,
+        }
+
     async def _log_live_result(self, result_entry):
         if self._live_result_lock is None:
             self._live_result_lock = asyncio.Lock()
 
         async with self._live_result_lock:
             self._live_completed += 1
-            if result_entry.get("is_correct") or result_entry.get("score", 0) == 1:
+            if self._result_is_correct(result_entry):
                 self._live_correct += 1
 
             completed = self._live_completed
             total = self._live_total or completed
             correct = self._live_correct
-            accuracy = correct / completed * 100 if completed else 0.0
-            status = "correct" if result_entry.get("is_correct") or result_entry.get("score", 0) == 1 else "wrong"
+            accuracy = correct / total * 100 if total else 0.0
+            status = "correct" if self._result_is_correct(result_entry) else "wrong"
 
         logger.info(
             "LIVE_RESULT progress=%d/%d correct=%d accuracy=%.2f%% id=%s result=%s score=%s duration_ms=%s expected=%s prediction=%s",
@@ -272,6 +323,7 @@ class BenchmarkRunner:
 
         if not data_path:
             data_path = benchmark_config.get("data_path", f"data/{benchmark_name}_test.jsonl")
+        self.agent_config["data_path"] = str(data_path)
 
         output_file = Path(self.results_dir) / f"{benchmark_name}_{agent_system}_{self.timestamp}.json"
 
@@ -312,9 +364,7 @@ class BenchmarkRunner:
                         break
 
         if limit and limit < len(problems):
-            seed = 42
-            random.seed(seed)
-            problems = random.sample(problems, limit)
+            problems = random.Random(42).sample(problems, limit)
 
         return problems, benchmark_config, output_file
 
@@ -339,8 +389,8 @@ class BenchmarkRunner:
             problem_duration_ms = self.metrics_collector.stop_timer(f"mas_arena.problem.{problem_id}")
 
             duration_ms = results.get("execution_time_ms", problem_duration_ms)
-            score = results.get("score", 0)
-            is_correct = results.get("is_correct", score == 1)
+            is_correct = self._result_is_correct(results)
+            score = int(is_correct)
 
             self.metrics_collector.record_metric(
                 "mas_arena.problem.result",
@@ -356,7 +406,9 @@ class BenchmarkRunner:
                 "problem_id": problem_id,
                 "problem": normalized_problem["problem"],
                 "expected": normalized_problem["solution"],
-                "prediction": results.get("extracted_answer") or results.get("final_answer") or "",
+                "level": normalized_problem.get("level"),
+                "prediction": results.get("final_answer", results.get("extracted_answer", "")),
+                "extracted_answer": results.get("extracted_answer"),
                 "score": score,
                 "is_correct": is_correct,
                 "status": results.get("status"),
@@ -370,6 +422,8 @@ class BenchmarkRunner:
                     "duration_ms": duration_ms,
                 },
             }
+            if "f1" in results:
+                result_entry["f1"] = results["f1"]
             if verbose:
                 status_char = "E" if results.get("status") == "error" else "✓" if is_correct else "✗"
                 print(f"Result: {status_char} ({duration_ms:.0f}ms)")
@@ -415,6 +469,7 @@ class BenchmarkRunner:
                 "problem_id": problem_id,
                 "problem": normalized_problem.get("problem"),
                 "expected": normalized_problem.get("solution"),
+                "level": normalized_problem.get("level"),
                 "prediction": "",
                 "status": "error",
                 "error": str(e),
@@ -452,7 +507,8 @@ class BenchmarkRunner:
                 agent = create_agent_system(agent_system, agent_config, memory_type=memory_type)
                 agent.set_metrics_registry(self.metrics_registry)
                 try:
-                    return await agent.evaluate(normalized_problem, metrics_registry=self.metrics_registry)
+                    result = await agent.evaluate(normalized_problem, metrics_registry=self.metrics_registry)
+                    return getattr(result, "raw_responses", result)
                 finally:
                     if hasattr(agent, "aclose"):
                         try:
@@ -470,10 +526,10 @@ class BenchmarkRunner:
 
             valid_results = [res for res in results_list if not isinstance(res, Exception)]
 
-            is_correct = any(res.get("is_correct", res.get("score") == 1) for res in valid_results)
+            is_correct = any(self._result_is_correct(res) for res in valid_results)
 
             first_correct_result = next(
-                (res for res in valid_results if res.get("is_correct", res.get("score") == 1)),
+                (res for res in valid_results if self._result_is_correct(res)),
                 None,
             )
 
@@ -515,7 +571,9 @@ class BenchmarkRunner:
                 "problem_id": problem_id,
                 "problem": normalized_problem["problem"],
                 "expected": normalized_problem["solution"],
-                "prediction": representative_result.get("extracted_answer") or representative_result.get("final_answer") or "",
+                "level": normalized_problem.get("level"),
+                "prediction": representative_result.get("final_answer", representative_result.get("extracted_answer", "")),
+                "extracted_answer": representative_result.get("extracted_answer"),
                 "score": 1 if is_correct else 0,
                 "is_correct": is_correct,
                 "status": "completed" if valid_results else "error",
@@ -580,6 +638,7 @@ class BenchmarkRunner:
                 "problem_id": problem_id,
                 "problem": normalized_problem.get("problem"),
                 "expected": normalized_problem.get("solution"),
+                "level": normalized_problem.get("level"),
                 "prediction": "",
                 "status": "error",
                 "error": str(e),
@@ -599,43 +658,29 @@ class BenchmarkRunner:
         verbose,
         pass_at_k=1,
         start_time=None,
+        expected_total=None,
     ):
-        print(f"All results: {all_results}")
         run_end_time = time.perf_counter()
         wall_clock_time_ms = (run_end_time - start_time) * 1000 if start_time is not None else None
 
-        total = len(all_results)
+        total = len(all_results) if expected_total is None else expected_total
+        if total < len(all_results):
+            raise ValueError("The planned problem count cannot be smaller than the result count")
         if total == 0:
             print("No results to finalize.")
             return {}
 
-        correct = sum(1 for r in all_results if r.get("score", 0) == 1)
+        all_results = [
+            {**result, "score": int(self._result_is_correct(result)), "is_correct": self._result_is_correct(result)}
+            for result in all_results
+        ]
+        correct = sum(r["score"] for r in all_results)
         errored = sum(1 for r in all_results if r.get("status") == "error")
-
-        # Calculate accuracy only on non-errored problems
-        valid_runs = total - errored
-        accuracy = correct / valid_runs if valid_runs > 0 else 0.0
+        accuracy = correct / total
 
         accuracy_metric_name = f"pass_at_{pass_at_k}_accuracy" if pass_at_k > 1 else "accuracy"
 
         total_duration = sum(r.get("duration_ms", 0) for r in all_results)
-
-        # Calculate avg_tokens only on successful (non-errored) runs
-        successful_runs = [r for r in all_results if r.get("status") != "error"]
-        total_input_tokens = sum(
-            sum(agent.get("prompt_tokens", 0) for agent in r.get("llm_usage", {}).get("agent_usage", []))
-            for r in all_results
-        )
-        total_output_tokens = sum(
-            sum(agent.get("completion_tokens", 0) for agent in r.get("llm_usage", {}).get("agent_usage", []))
-            for r in all_results
-        )
-        total_tokens_successful = sum(r.get("llm_usage", {}).get("total_tokens", 0) for r in successful_runs)
-
-        # Avoid division by zero: compute averages only when there are successful runs
-        avg_input_tokens = total_input_tokens / len(successful_runs) if successful_runs else 0
-        avg_output_tokens = total_output_tokens / len(successful_runs) if successful_runs else 0
-        avg_tokens = total_tokens_successful / len(successful_runs) if successful_runs else 0
 
         summary = {
             "benchmark": benchmark_name,
@@ -643,13 +688,14 @@ class BenchmarkRunner:
             "total_problems": total,
             "correct": correct,
             "errored": errored,
+            "timed_out": sum(1 for r in all_results if r.get("status") == "timeout"),
+            "missing_results": total - len(all_results),
+            "accuracy_denominator": total,
             accuracy_metric_name: accuracy,
             "total_duration_ms": total_duration,
             "wall_clock_time_ms": wall_clock_time_ms,
             "avg_duration_ms": total_duration / total if total > 0 else 0,
-            "avg_input_tokens": avg_input_tokens,
-            "avg_output_tokens": avg_output_tokens,
-            "avg_tokens_per_successful_problem": avg_tokens,
+            **self._summarize_token_usage(all_results, total),
             "results_file": str(output_file),
             # "metrics_dir": str(metrics_output),
             "timestamp": self.timestamp,
@@ -926,10 +972,27 @@ class BenchmarkRunner:
             async def process_with_semaphore(i, p):
                 async with semaphore:
                     # Create a fresh agent instance per problem to isolate state
-                    agent = create_agent_system(agent_system, self.agent_config, memory_type=memory_type)
-                    agent.set_metrics_registry(self.metrics_registry)
+                    agent = None
                     try:
+                        agent = create_agent_system(agent_system, self.agent_config, memory_type=memory_type)
+                        agent.set_metrics_registry(self.metrics_registry)
                         return await self._process_one_problem(i, p, agent, benchmark_config, verbose)
+                    except Exception as exc:
+                        # Initialization/normalization failures still occupy a planned task slot.
+                        keys = benchmark_config.get("normalization_keys", {})
+                        raw_problem = p if isinstance(p, dict) else {}
+                        result = {
+                            "problem_id": raw_problem.get(keys.get("id", "id"), f"problem_{i + 1}"),
+                            "problem": raw_problem.get(keys.get("problem", "problem")),
+                            "expected": raw_problem.get(keys.get("solution", "solution")),
+                            "level": raw_problem.get(keys.get("level", "level")),
+                            "prediction": "", "score": 0, "is_correct": False,
+                            "status": "error", "error": str(exc), "duration_ms": 0,
+                            "agent_system": agent_system, "llm_usage": {},
+                        }
+                        logger.error("PROBLEM_SETUP_ERROR id=%s error=%s", result["problem_id"], exc)
+                        await self._log_live_result(result)
+                        return result
                     finally:
                         if hasattr(agent, "aclose"):
                             try:
@@ -961,6 +1024,7 @@ class BenchmarkRunner:
             verbose,
             pass_at_k,
             start_time=run_start_time,
+            expected_total=len(problems),
         )
 
     def visualize_results(self, output_dir=None):

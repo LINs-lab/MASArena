@@ -8,18 +8,19 @@ across different benchmark evaluators.
 import re
 
 
-def extract_answer_generic(text: str) -> str:
+def extract_answer_generic(text: str, *, structured_fallbacks: bool = True) -> str:
     """
     Generic answer extraction with comprehensive fallback patterns.
     Suitable for most text-based benchmarks like HotpotQA, BBH, etc.
 
     Args:
         text: The model's output text
+        structured_fallbacks: Whether to search for choices, booleans, and bracket sequences.
 
     Returns:
         The extracted answer (e.g., "(A)", "True", text content)
     """
-    text = text.strip()
+    text = "" if text is None else str(text).strip()
 
     # Primary pattern: Content within <answer>...</answer> tags
     tag_pattern = r"<answer>\s*([\s\S]*?)\s*</answer>"
@@ -33,14 +34,20 @@ def extract_answer_generic(text: str) -> str:
     if match:
         return match.group(1).strip()
 
+    if not structured_fallbacks:
+        lines = [line.strip() for line in text.splitlines() if line.strip()]
+        return lines[-1] if lines else ""
+
     # Fallback: Look for multiple-choice options (e.g., (A), A, [A])
-    option_pattern = r"\([A-Z]\)|[A-Z]\b|\[[A-Z]\]"
+    if re.fullmatch(r"[A-Za-z]", text):
+        return f"({text.upper()})"
+    option_pattern = r"\([A-Za-z]\)|\[[A-Za-z]\]|(?<!\w)[A-Z](?!\w)"
     matches = re.findall(option_pattern, text, re.DOTALL)
     if matches:
         last_match = matches[-1]
         # Normalize to (A) format
         if not last_match.startswith("("):
-            last_match = f"({last_match[-1]})"
+            last_match = f"({last_match.strip('[]')})"
         return last_match.strip()
 
     # Fallback: Look for boolean values

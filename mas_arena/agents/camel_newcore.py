@@ -2,6 +2,7 @@ import os
 import logging
 from typing import Dict, Any, List
 from openai import AsyncOpenAI
+from mas_arena.agents.workflow_protocol import bench_settings, client_settings, model_name, request_settings, task_text
 from mas_arena.agents.base import AgentSystem, AgentSystemRegistry
 from mas_arena.agents.bench_agent import BenchAgent
 from mas_arena.agents.agent_core import Tool
@@ -20,25 +21,13 @@ class Camel(AgentSystem):
         super().__init__(name, config)
         self.config = config or {}
         
-        self.model_name = self.config.get("model_name") or os.getenv("MODEL_NAME", "gpt-4o-mini")
+        self.model_name = model_name(self.config)
         self.system_prompt = self.config.get("system_prompt", "") + self.format_prompt
         self.max_rounds = 3
         
-        bench_agent_config = {
-            "model": self.model_name,
-            "api_key": os.getenv("OPENAI_API_KEY"),
-            "api_base": os.getenv("OPENAI_API_BASE"),
-            "memory": self.config.get("memory"),
-            "search_tools": self.config.get("search_tools"),
-            "verbosity_level": self.config.get("verbosity_level", 2),
-            "additional_instructions": self.config.get("additional_instructions"),
-            "manager_tools": self.config.get("manager_tools"),
-        }
+        bench_agent_config = bench_settings(self.config)
         self.bench_agent = BenchAgent(**bench_agent_config)
-        self.client = AsyncOpenAI(
-            api_key=os.getenv("OPENAI_API_KEY"),
-            base_url=os.getenv("OPENAI_API_BASE")
-        )
+        self.client = AsyncOpenAI(**client_settings(self.config))
 
 
     async def _get_completion(self, system_prompt: str, messages: List[Dict[str, str]], agent_name: str) -> Dict[str, Any]:
@@ -48,7 +37,7 @@ class Camel(AgentSystem):
         response = await self.client.chat.completions.create(
             model=self.model_name,
             messages=chat_messages,
-            temperature=self.config.get("temperature", 0.7)
+            **request_settings(self.config)
         )
         
         content = response.choices[0].message.content
@@ -65,7 +54,7 @@ class Camel(AgentSystem):
             }
         }
     async def run_agent(self, problem: Dict[str, Any], **kwargs) -> Dict[str, Any]:
-        problem_text = problem["problem"]
+        problem_text = task_text(problem)
         
         all_messages = []        # 框架记录：包含 metadata
         conversation_history = [] # LLM 上下文：纯净的 role/content 列表
@@ -143,7 +132,7 @@ Please analyze the above discussions and provide a final answer.
 Requirements:{self.system_prompt}
 
 """ 
-        additional_args = {"problem": problem_text, **kwargs}
+        additional_args = {"id": problem.get("id", "")}
         summary_result = await self.bench_agent.run_agent_step(augmented_question=extract_user_prompt, additional_args=additional_args)
         final_answer = summary_result.get("final_answer", "")
         bench_messages = summary_result.get("messages", [])
@@ -153,6 +142,10 @@ Requirements:{self.system_prompt}
             "messages": all_messages,
             "final_answer": final_answer
         }
+
+    async def aclose(self):
+        await self.bench_agent.aclose()
+        await self.client.close()
 
 # 注册系统
 AgentSystemRegistry.register("camel", Camel)

@@ -28,9 +28,19 @@
     "python": "python_interpreter_server"
   },
   "agent_tool_configs": {
-    "researcher": ["web_search", "file_reader"],
-    "coder": ["calculator", "python", "file_reader"],
-    "default": ["web_search", "calculator"]
+    "researcher": [
+      "web_search",
+      "file_reader"
+    ],
+    "coder": [
+      "calculator",
+      "python",
+      "file_reader"
+    ],
+    "default": [
+      "web_search",
+      "calculator"
+    ]
   },
   "default_timeout": 300,
   "logging": {

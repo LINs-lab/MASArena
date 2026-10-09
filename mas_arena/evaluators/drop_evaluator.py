@@ -50,7 +50,7 @@ class DROPEvaluator(BaseEvaluator):
         3. Last non-empty line of text
         Always returns a trimmed string (may be empty).
         """
-        txt = str(raw).strip()
+        txt = "" if raw is None else str(raw).strip()
 
         # 1. Check for <answer>...</answer> tags
         m = _ANS_TAG_RE.search(txt)
@@ -91,7 +91,7 @@ class DROPEvaluator(BaseEvaluator):
                 "extracted_answer": extracted,
                 "expected": problem["solution"],
                 "score": score,
-                "passed": score >= 0.3,  # Matches official threshold of 0.3 for passing
+                "passed": score >= 0.3,  # BenchAgent's binary-success threshold
             },
             run_type="evaluation",
             start_time=time.strftime("%Y-%m-%dT%H:%M:%SZ"),
@@ -136,11 +136,13 @@ class DROPEvaluator(BaseEvaluator):
         run = self._make_run(problem, str(raw_out), extracted_answer, best_f1)
         self.run_evaluator.evaluate_run(run=run)
 
-        # Final score: 1.0 if F1 >= 0.3, else use the F1 score directly
-        final_score = 1 if best_f1 >= 0.3 else best_f1
+        # The paper reports binary success; retain F1 only as a diagnostic.
+        final_score = int(best_f1 >= 0.3)
 
         return {
             "final_answer": str(raw_out),
             "extracted_answer": extracted_answer,
             "score": final_score,
+            "is_correct": bool(final_score),
+            "f1": best_f1,
         }

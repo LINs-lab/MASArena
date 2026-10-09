@@ -1,7 +1,17 @@
 [project]
-name = "project_memory_layer"
+name = "mas-arena-benchagent"
 version = "0.1.0"
-description = "Add your description here"
+description = "BenchAgent: a protocol-aligned framework for evaluating LLM agent workflows"
+license = { text = "Apache-2.0" }
+authors = [
+    { name = "Yuhang Fu" },
+    { name = "Ruishan Fang" },
+    { name = "Jiaqi Shao" },
+    { name = "Huiyu Zheng" },
+    { name = "Zhengtao Zhu" },
+    { name = "Bing Luo" },
+    { name = "Tao Lin" },
+]
 readme = "README.md"
 requires-python = ">=3.11,<3.13"
 dependencies = [

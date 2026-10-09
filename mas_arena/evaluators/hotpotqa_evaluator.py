@@ -49,7 +49,7 @@ class HotpotQAEvaluator(BaseEvaluator):
         Returns:
             The extracted answer (e.g., "(A)", "True", "] >")
         """
-        return extract_answer_generic(text)
+        return extract_answer_generic(text, structured_fallbacks=False)
 
     def normalize_answer(self, s: str) -> str:
         """
@@ -75,7 +75,7 @@ class HotpotQAEvaluator(BaseEvaluator):
             Tuple of (f1_score, extracted_answer)
         """
         extracted_answer = self.extract_answer(prediction)
-        f1_score = calculate_f1_score(ground_truth, extracted_answer)
+        f1_score = calculate_f1_score(ground_truth, extracted_answer) if extracted_answer else 0.0
         return f1_score, extracted_answer
 
     def create_run(
@@ -138,12 +138,14 @@ class HotpotQAEvaluator(BaseEvaluator):
                 f.write(f"Predicted: {final_answer}\n")
                 f.write(f"Score: {score}\n")
 
-        # Final score: 1.0 if score >= 0.3, else use the score directly
-        final_score = 1 if score >= 0.3 else score
+        # The paper reports binary success; retain F1 only as a diagnostic.
+        final_score = int(score >= 0.3)
 
         return {
             "final_answer": final_answer,
             "extracted_answer": extracted_answer,
             "score": final_score,
+            "is_correct": bool(final_score),
+            "f1": score,
             "context": context_str,
         }

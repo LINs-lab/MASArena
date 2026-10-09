@@ -3,19 +3,18 @@ import json
 import asyncio
 import random
 import uuid
+from collections import Counter
 from dataclasses import dataclass, field
 from typing import Dict, Any, List, Tuple
 from openai.types.completion_usage import CompletionUsage
-from langchain_openai import ChatOpenAI
-from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
-from langchain_community.callbacks.openai_info import OpenAICallbackHandler
+from openai import AsyncOpenAI
+from langchain_core.messages import HumanMessage, AIMessage
 from mas_arena.agents.base import AgentSystem, AgentSystemRegistry
 from mas_arena.agents.bench_agent import BenchAgent
+from mas_arena.agents.workflow_protocol import bench_settings, client_settings, model_name, public_task, request_settings, task_text, usage_dict
 from mas_arena.agents.agent_core import Tool
 import os 
 
-import nest_asyncio
-nest_asyncio.apply()
 
 # Load environment variables
 
@@ -72,36 +71,35 @@ class BenchEnhancedAgent:
     result: Dict[str, Any] = field(default_factory=dict)
     
 
+    worker_config: Dict[str, Any] = field(default_factory=dict, repr=False)
     bench_agent: Any = field(default=None, repr=False)
         
     def __post_init__(self):
         """Initialize BenchAgent after dataclass init."""
 
+        settings = bench_settings({**self.worker_config, "model_name": self.model_name})
         self.bench_agent = BenchAgent(
-            model=self.model_name,
-            name=f"BenchWorker-{self.name}",
-            additional_instructions=self.system_prompt,
-
-            format_prompt="You must provide a final, direct answer, after your reasoning."
+            **settings, name=f"BenchWorker-{self.name}",
+            additional_instructions="\n\n".join(filter(None, [
+                self.worker_config.get("additional_instructions"), self.system_prompt,
+            ])),
         )
-    
-    async def solve(self, problem: str) -> Dict[str, Any]:
-        """Solve the given problem using BenchAgent.run_agent_step and return results"""
 
-        augmented_problem = f"{self.system_prompt}\n\nProblem to solve:\n{problem}"
+    async def solve(self, problem: Dict[str, Any]) -> Dict[str, Any]:
+        """Solve task-only inputs using BenchAgent and retain recorded usage"""
+
+        task = public_task(problem)
+        task["problem"] = f"{self.system_prompt}\n\nProblem to solve:\n{task['problem']}"
         
         start_time = time.time()
 
-        bench_result = await self.bench_agent.run_agent_step(
-            augmented_problem, 
-            additional_args={}
-        )
+        bench_result = await self.bench_agent.run_agent(task)
         
         end_time = time.time()
         
         execution_time_ms = (end_time - start_time) * 1000
 
-        extracted_answer = bench_result.get("final_answer", "No answer extracted.")
+        extracted_answer = bench_result.get("final_answer") or ""
         
 
         # Collect token usage from the last message that carries it (bench_agent puts
@@ -129,6 +127,7 @@ class BenchEnhancedAgent:
         result = {
             "agent_id": self.agent_id,
             "name": self.name,
+            "status": "error" if bench_result.get("error") else "success",
             "execution_time_ms": execution_time_ms,
             "extracted_answer": extracted_answer,
             "usage_metadata": {
@@ -150,7 +149,7 @@ class EvoAgent(AgentSystem):
     2. First iteration: Crossover operation, update parent agent settings based on parent agent results and initial agents, generate new offspring agents
     3. Second iteration: Mutation operation, generate more offspring agents based on parent agents and initial agents
     4. Select 5 best agents
-    5. Pass the problem to the final five agents, each generating an answer
+    5. Select the five highest-agreement existing candidate answers
     6. Aggregate output through a new LLM
     """
     
@@ -165,7 +164,7 @@ class EvoAgent(AgentSystem):
         super().__init__(name, config)
         
         # Default configuration
-        self.model_name = self.config.get("model_name", "gpt-4o-mini")
+        self.model_name = model_name(self.config)
         self.initial_agents_count = self.config.get("initial_agents_count", 3)
         self.final_agents_count = self.config.get("final_agents_count", 5)
         self.crossover_rate = self.config.get("crossover_rate", 0.7)
@@ -191,19 +190,30 @@ class EvoAgent(AgentSystem):
             0,
         ) or 0
         
-        self.bench_agent_executor = BenchAgent(
-            model=self.config.get("model_name", "gpt-4o-mini"),
-            api_key=self.config.get("api_key") or os.getenv("OPENAI_API_KEY"),
-            api_base=self.config.get("api_base") or os.getenv("OPENAI_API_BASE"),
-            search_max_steps=self.config.get("search_max_steps", 10),
-            verbosity_level=self.config.get("verbosity_level", 2),
-            manager_tools= self.config.get("manager_tools"),
-            search_tools= self.config.get("search_tools"),
-            memory= self.config.get("memory"),
-            additional_instructions=self.config.get("additional_instructions")
+        self.client = AsyncOpenAI(**client_settings(self.config))
+        self.rng = random.Random(self.config.get("seed", 42))
+        self._evolution_messages = []
+        self._candidates = []
+
+    def _new_candidate(self, **kwargs) -> BenchEnhancedAgent:
+        candidate = BenchEnhancedAgent(**kwargs, worker_config=self.config)
+        self._candidates.append(candidate)
+        return candidate
+
+    async def _complete(self, prompt: str, stage: str) -> tuple[str, Dict[str, Any]]:
+        response = await self.client.chat.completions.create(
+            model=self.model_name, messages=[{"role": "user", "content": prompt}],
+            **request_settings(self.config),
         )
-        
-   
+        content = response.choices[0].message.content or ""
+        usage = usage_dict(response.usage)
+        if stage != "aggregation":
+            self._evolution_messages.append({
+                "role": "assistant", "name": f"EVO-{stage}", "content": content,
+                "message_type": "prompt_evolution", "usage_metadata": usage,
+            })
+        return content, usage
+
     async def _run_after_delay(self, index: int, awaitable):
         if self.worker_delay_seconds > 0 and index > 0:
             await asyncio.sleep(index * self.worker_delay_seconds)
@@ -230,12 +240,11 @@ class EvoAgent(AgentSystem):
             system_prompt = base_prompts[i % len(base_prompts)]
             
             # 使用 BenchEnhancedAgent
-            agent = BenchEnhancedAgent( 
+            agent = self._new_candidate(
                 agent_id=agent_id,
                 name=name,
                 model_name=self.model_name,
                 system_prompt=system_prompt,
-                bench_agent = self.bench_agent_executor
             )
             
             base_agents.append(agent)
@@ -257,13 +266,6 @@ class EvoAgent(AgentSystem):
         try:
             # Add timeout handling
             async with asyncio.timeout(self.evolution_step_timeout_seconds):  # Set operation timeout
-                # Use LLM for crossover, add callback to collect token usage
-                callback_handler = OpenAICallbackHandler()
-                
-                llm = ChatOpenAI(
-                    model=self.model_name
-                )
-                
                 prompt = f"""
                 You are performing a crossover operation on two AI agent configurations to create a new, improved agent.
 
@@ -287,21 +289,11 @@ class EvoAgent(AgentSystem):
                 Please ensure the returned format is valid JSON without any additional text or explanations.
                 """
                 
-                response = await llm.ainvoke([{"role": "user", "content": prompt}], config={'callbacks': [callback_handler]})
-                
-                # Add token usage metadata
-                if isinstance(response, AIMessage):
-                    response.usage_metadata = {
-                        "input_tokens": callback_handler.prompt_tokens,
-                        "output_tokens": callback_handler.completion_tokens,
-                        "total_tokens": callback_handler.total_tokens,
-                        "input_token_details": {"prompt": len(prompt.split())},
-                        "output_token_details": {"reasoning": callback_handler.completion_tokens}
-                    }
-                
+                content, _ = await self._complete(prompt, "crossover")
+
                 try:
                     # Try to extract JSON content
-                    content = response.content.strip()
+                    content = content.strip()
                     
                     # Try to find JSON start and end positions
                     json_start = content.find('{')
@@ -317,10 +309,10 @@ class EvoAgent(AgentSystem):
                         # Ensure name starts with EVO-C-
                         name = config.get("name", "")
                         if not name.startswith("EVO-C-"):
-                            name = f"EVO-C-{random.randint(1, 999)}"
+                            name = f"EVO-C-{self.rng.randint(1, 999)}"
                         
                         # Create offspring agent 
-                        child = BenchEnhancedAgent( 
+                        child = self._new_candidate(
                             agent_id=str(uuid.uuid4()),
                             name=name,
                             model_name=self.model_name,
@@ -334,33 +326,33 @@ class EvoAgent(AgentSystem):
                 except Exception as e:
                     print(f"{Colors.YELLOW}Warning: Failed to parse crossover result: {str(e)}, using simple random selection{Colors.ENDC}")
                     # If parsing fails, use simple random selection 
-                    child = BenchEnhancedAgent( 
+                    child = self._new_candidate(
                         agent_id=str(uuid.uuid4()),
-                        name=f"EVO-C-{random.randint(1, 999)}",
+                        name=f"EVO-C-{self.rng.randint(1, 999)}",
                         model_name=self.model_name,
-                        system_prompt=parent1.system_prompt if random.random() < 0.5 else parent2.system_prompt
+                        system_prompt=parent1.system_prompt if self.rng.random() < 0.5 else parent2.system_prompt
                     )
                     
                     return child
         except asyncio.TimeoutError:
             print(f"{Colors.RED}Warning: Crossover operation timeout, using simple random selection{Colors.ENDC}")
             # Use simple random selection on timeout 
-            child = BenchEnhancedAgent( 
+            child = self._new_candidate(
                 agent_id=str(uuid.uuid4()),
-                name=f"EVO-C-{random.randint(1, 999)}",
+                name=f"EVO-C-{self.rng.randint(1, 999)}",
                 model_name=self.model_name,
-                system_prompt=parent1.system_prompt if random.random() < 0.5 else parent2.system_prompt
+                system_prompt=parent1.system_prompt if self.rng.random() < 0.5 else parent2.system_prompt
             )
             
             return child
         except Exception as e:
             print(f"{Colors.RED}Warning: Crossover operation error: {str(e)}, using simple random selection{Colors.ENDC}")
             # Use simple random selection on error 
-            child = BenchEnhancedAgent( 
+            child = self._new_candidate(
                 agent_id=str(uuid.uuid4()),
-                name=f"EVO-C-{random.randint(1, 999)}",
+                name=f"EVO-C-{self.rng.randint(1, 999)}",
                 model_name=self.model_name,
-                system_prompt=parent1.system_prompt if random.random() < 0.5 else parent2.system_prompt
+                system_prompt=parent1.system_prompt if self.rng.random() < 0.5 else parent2.system_prompt
             )
             
             return child
@@ -379,13 +371,6 @@ class EvoAgent(AgentSystem):
         try:
             # Add timeout handling
             async with asyncio.timeout(self.evolution_step_timeout_seconds):  # Set operation timeout
-                # Use LLM for mutation, add callback to collect token usage
-                callback_handler = OpenAICallbackHandler()
-                
-                llm = ChatOpenAI(
-                    model=self.model_name
-                )
-                
                 prompt = f"""
                 You are performing a mutation operation on an AI agent configuration to create a mutated version.
 
@@ -404,21 +389,11 @@ class EvoAgent(AgentSystem):
                 Please ensure the returned format is valid JSON without any additional text or explanations.
                 """
                 
-                response = await llm.ainvoke([{"role": "user", "content": prompt}], config={'callbacks': [callback_handler]})
-                
-                # Add token usage metadata
-                if isinstance(response, AIMessage):
-                    response.usage_metadata = {
-                        "input_tokens": callback_handler.prompt_tokens,
-                        "output_tokens": callback_handler.completion_tokens,
-                        "total_tokens": callback_handler.total_tokens,
-                        "input_token_details": {"prompt": len(prompt.split())},
-                        "output_token_details": {"reasoning": callback_handler.completion_tokens}
-                    }
-                
+                content, _ = await self._complete(prompt, "mutation")
+
                 try:
                     # Try to extract JSON content
-                    content = response.content.strip()
+                    content = content.strip()
                     
                     # Try to find JSON start and end positions
                     json_start = content.find('{')
@@ -434,10 +409,10 @@ class EvoAgent(AgentSystem):
                         # Ensure name starts with EVO-M-
                         name = config.get("name", "")
                         if not name.startswith("EVO-M-"):
-                            name = f"EVO-M-{random.randint(1, 999)}"
+                            name = f"EVO-M-{self.rng.randint(1, 999)}"
                         
                         # Create mutated offspring agent 
-                        child = BenchEnhancedAgent( 
+                        child = self._new_candidate(
                             agent_id=str(uuid.uuid4()),
                             name=name,
                             model_name=self.model_name,
@@ -451,59 +426,55 @@ class EvoAgent(AgentSystem):
                 except Exception as e:
                     print(f"{Colors.YELLOW}Warning: Failed to parse mutation result: {str(e)}, using simple random modification{Colors.ENDC}")
                     # If parsing fails, use simple random modification 
-                    child = BenchEnhancedAgent( 
+                    child = self._new_candidate(
                         agent_id=str(uuid.uuid4()),
-                        name=f"EVO-M-{random.randint(1, 999)}",
+                        name=f"EVO-M-{self.rng.randint(1, 999)}",
                         model_name=self.model_name,
-                        system_prompt=parent.system_prompt + f" Mutation version {random.randint(1, 100)}"
+                        system_prompt=parent.system_prompt + f" Mutation version {self.rng.randint(1, 100)}"
                     )
                     
                     return child
         except asyncio.TimeoutError:
             print(f"{Colors.RED}Warning: Mutation operation timeout, using simple random modification{Colors.ENDC}")
             # Use simple random modification on timeout 
-            child = BenchEnhancedAgent( 
+            child = self._new_candidate(
                 agent_id=str(uuid.uuid4()),
-                name=f"EVO-M-{random.randint(1, 999)}",
+                name=f"EVO-M-{self.rng.randint(1, 999)}",
                 model_name=self.model_name,
-                system_prompt=parent.system_prompt + f" Mutation version {random.randint(1, 100)}"
+                system_prompt=parent.system_prompt + f" Mutation version {self.rng.randint(1, 100)}"
             )
             
             return child
         except Exception as e:
             print(f"{Colors.RED}Warning: Mutation operation error: {str(e)}, using simple random modification{Colors.ENDC}")
             # Use simple random modification on error 
-            child = BenchEnhancedAgent( 
+            child = self._new_candidate(
                 agent_id=str(uuid.uuid4()),
-                name=f"EVO-M-{random.randint(1, 999)}",
+                name=f"EVO-M-{self.rng.randint(1, 999)}",
                 model_name=self.model_name,
-                system_prompt=parent.system_prompt + f" Mutation version {random.randint(1, 100)}"
+                system_prompt=parent.system_prompt + f" Mutation version {self.rng.randint(1, 100)}"
             )
             
             return child
     
-    def _calculate_score(self, result: Dict[str, Any], problem: Dict[str, Any]) -> float:
-        """
-        Calculate result score
-        
-        Args:
-            result: Agent's result
-            problem: Problem
-            
-        Returns:
-            Score (between 0-1)
-        """
-        try:
-            # Extract answer
-            extracted_answer = result.get("extracted_answer", "")
-            
-            # Use evaluator to calculate score
-            score, _ = self.evaluator.calculate_score(problem.get("solution", ""), extracted_answer)
-            
-            return score
-        except Exception:
-            return 0.0
+    def _score_agents(self, agents: List[BenchEnhancedAgent]) -> None:
+        """Use this generation's answer agreement as fitness, without reference answers."""
+        answers = []
+        for agent in agents:
+            answer = agent.result.get("extracted_answer", "")
+            valid = agent.result.get("status", "success") == "success" and not agent.result.get("error")
+            answers.append(answer.strip() if valid and isinstance(answer, str) else "")
+
+        counts = Counter(answer for answer in answers if answer)
+        total = sum(counts.values())
+        for agent, answer in zip(agents, answers):
+            agent.score = counts[answer] / total if answer and total else 0.0
+            agent.result["score"] = agent.score
     
+    def _rank_candidates(self, candidates: List[BenchEnhancedAgent]) -> None:
+        self._score_agents(candidates)
+        candidates.sort(key=lambda candidate: candidate.score, reverse=True)
+
     async def _summarize_results(self, problem: str, results: List[Dict[str, Any]]) -> Tuple[str, Dict[str, Any]]:
         """
         Use LLM to summarize results from multiple agents
@@ -518,13 +489,6 @@ class EvoAgent(AgentSystem):
         try:
             # Add timeout handling
             async with asyncio.timeout(self.summary_timeout_seconds):  # Set summary timeout
-                # Add callback to collect token usage
-                callback_handler = OpenAICallbackHandler()
-                
-                llm = ChatOpenAI(
-                    model=self.model_name
-                )
-                
                 # Build summary prompt
                 results_text = ""
                 for i, result in enumerate(results):
@@ -544,22 +508,7 @@ class EvoAgent(AgentSystem):
                 {self.format_prompt}
                 """
                 
-                response = await llm.ainvoke([{"role": "user", "content": prompt}], config={'callbacks': [callback_handler]})
-                
-                # Create token usage metadata
-                usage_metadata = {
-                    "input_tokens": callback_handler.prompt_tokens,
-                    "output_tokens": callback_handler.completion_tokens,
-                    "total_tokens": callback_handler.total_tokens,
-                    "input_token_details": {"prompt": len(prompt.split())},
-                    "output_token_details": {"reasoning": callback_handler.completion_tokens}
-                }
-                
-                # Add token usage metadata to AIMessage
-                if isinstance(response, AIMessage):
-                    response.usage_metadata = usage_metadata
-                
-                return response.content, usage_metadata
+                return await self._complete(prompt, "aggregation")
         except asyncio.TimeoutError:
             print(f"{Colors.RED}Warning: Summary result timeout, using best agent's answer{Colors.ENDC}")
             # Use best agent's answer on timeout
@@ -582,11 +531,18 @@ class EvoAgent(AgentSystem):
         Returns:
             Result dictionary
         """
+        # Search state and framework randomness are reset for every task.
+        for candidate in self._candidates:
+            await candidate.bench_agent.aclose()
+        self._candidates = []
+        self._evolution_messages = []
+        self.rng = random.Random(self.config.get("seed", 42))
+        problem = public_task(problem)
         # Record start time
         start_time = time.time()
         
         # Extract problem text and problem ID
-        problem_text = problem.get("problem", "")
+        problem_text = task_text(problem)
         
         # Display problem
         print_step("Problem", Colors.GREEN)
@@ -615,7 +571,7 @@ class EvoAgent(AgentSystem):
             print(f"{Colors.CYAN}Base agents progress: {i + 1}/{len(tasks)}{Colors.ENDC}")
         
         # Sort base agents by score
-        base_agents.sort(key=lambda x: x.score, reverse=True)
+        self._rank_candidates(base_agents)
         
         # Display base agents results
         print_step("Base Agents Results", Colors.GREEN)
@@ -636,8 +592,8 @@ class EvoAgent(AgentSystem):
         crossover_tasks = []
         for _ in range(self.initial_agents_count * 2 - 1):  # -1 because we already added one best base agent
             # Randomly select two parents
-            parent1 = random.choice(base_agents)
-            parent2 = random.choice(base_agents)
+            parent1 = self.rng.choice(base_agents)
+            parent2 = self.rng.choice(base_agents)
             
             # Execute crossover asynchronously
             crossover_tasks.append(self._crossover(parent1, parent2))
@@ -672,7 +628,7 @@ class EvoAgent(AgentSystem):
             print(f"{Colors.CYAN}Crossover agents progress: {i + 1}/{len(tasks)}{Colors.ENDC}")
         
         # Sort crossover agents by score
-        crossover_agents.sort(key=lambda x: x.score, reverse=True)
+        self._rank_candidates(crossover_agents)
         
         # Display crossover agents results
         print_step("Crossover Agents Results", Colors.GREEN)
@@ -693,7 +649,7 @@ class EvoAgent(AgentSystem):
         mutation_tasks = []
         for _ in range(self.initial_agents_count * 3 - 1):  # -1 because we already added one best crossover agent
             # Randomly select one parent
-            parent = random.choice(crossover_agents)
+            parent = self.rng.choice(crossover_agents)
             
             # Execute mutation asynchronously
             mutation_tasks.append(self._mutation(parent))
@@ -728,7 +684,7 @@ class EvoAgent(AgentSystem):
             print(f"{Colors.CYAN}Mutation agents progress: {i + 1}/{len(tasks)}{Colors.ENDC}")
         
         # Sort all agents by score
-        mutation_agents.sort(key=lambda x: x.score, reverse=True)
+        self._rank_candidates(mutation_agents)
         
         # Display mutation agents results
         print_step("Mutation Agents Results", Colors.GREEN)
@@ -744,13 +700,15 @@ class EvoAgent(AgentSystem):
         
         # Summarize final agents' results
         print_step("Summarize Final Results")
-        final_results = [agent.result for agent in final_agents if agent.result.get("status") != "timeout"]
+        final_results = [agent.result for agent in final_agents
+                         if agent.result.get("status", "success") == "success"
+                         and agent.result.get("extracted_answer")]
         if not final_results:
             return {
-                "messages": [],
-                "final_answer": "Execution timeout, unable to get answer",
+                "messages": [*self._evolution_messages, *[{"role": "assistant", "content": agent.result.get("extracted_answer", ""), "usage_metadata": agent.result.get("usage_metadata")} for agent in self._candidates]],
+                "final_answer": "No valid candidate answer",
                 "execution_time_ms": (time.time() - start_time) * 1000,
-                "error": "All EvoAgent workers timed out before producing an answer.",
+                "error": "No selected EvoAgent worker produced a valid answer.",
                 "evolution_metrics": {
                     "initial_agents": len(base_agents),
                     "crossover_agents": len(crossover_agents),
@@ -771,7 +729,7 @@ class EvoAgent(AgentSystem):
         print(f"{Colors.CYAN}Execution time: {execution_time_ms:.2f}ms{Colors.ENDC}")
         
         # Build message list, adapted to AgentSystem.evaluate format
-        messages = []
+        messages = list(self._evolution_messages)
         
         # Add user's original question
         user_message = HumanMessage(content=problem_text)
@@ -860,12 +818,11 @@ class EvoAgent(AgentSystem):
         try:
             start_time = time.time()
             result = await _await_with_optional_timeout(
-                agent.solve(problem_text),
+                agent.solve(problem),
                 self.agent_task_timeout_seconds,
             )
-            score = self._calculate_score(result, problem)
             result.setdefault("status", "success")
-            agent.score = score
+            agent.score = 0.0
             agent.result = result
         except asyncio.TimeoutError:
             print(f"{Colors.RED}Warning: Agent {agent.name} execution timeout{Colors.ENDC}")
@@ -876,13 +833,7 @@ class EvoAgent(AgentSystem):
                 "status": "timeout",
                 "execution_time_ms": self.agent_task_timeout_seconds * 1000 if self.agent_task_timeout_seconds else 0,
                 "extracted_answer": "Execution timeout, unable to get answer",
-                "usage_metadata": {
-                    "input_tokens": 0,
-                    "output_tokens": 0,
-                    "total_tokens": 0,
-                    "input_token_details": {},
-                    "output_token_details": {}
-                }
+                "usage_metadata": usage_dict(agent.bench_agent._extract_token_usage_from_agent())
             }
         except Exception as e:
             print(f"{Colors.RED}Warning: Agent {agent.name} execution error: {str(e)}{Colors.ENDC}")
@@ -893,14 +844,13 @@ class EvoAgent(AgentSystem):
                 "status": "error",
                 "execution_time_ms": 0,
                 "extracted_answer": f"Execution error: {str(e)}",
-                "usage_metadata": {
-                    "input_tokens": 0,
-                    "output_tokens": 0,
-                    "total_tokens": 0,
-                    "input_token_details": {},
-                    "output_token_details": {}
-                }
+                "usage_metadata": usage_dict(agent.bench_agent._extract_token_usage_from_agent())
             }
+
+    async def aclose(self):
+        for candidate in self._candidates:
+            await candidate.bench_agent.aclose()
+        await self.client.close()
 
 # Register agent system
 AgentSystemRegistry.register("evoagent", EvoAgent)

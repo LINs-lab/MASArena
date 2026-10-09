@@ -1,0 +1,68 @@
+{
+  "model": "gpt-4.1-2025-04-14",
+  "temperature": 0.2,
+  "top_p": 1.0,
+  "max_completion_tokens": 8192,
+  "broad_runs": 3,
+  "pass_at_k": 1,
+  "sampling_seed": 42,
+  "accuracy_denominator": "fixed evaluated task count, errors count as incorrect",
+  "token_scope": "retained usage records; no imputation for missing usage",
+  "token_rounding": "round each benchmark mean within each run, then average runs; weight pooled means by benchmark N",
+  "gaia": {
+    "runs": 1,
+    "total": 165,
+    "levels": [
+      53,
+      86,
+      26
+    ],
+    "judge": "gpt-4o-mini"
+  },
+  "workflows": [
+    "bench_agent",
+    "evoagent",
+    "llm_debate",
+    "camel",
+    "autogen",
+    "jarvis",
+    "chateval"
+  ],
+  "benchmark_sizes": {
+    "math": 400,
+    "aime": 30,
+    "gsm8k": 400,
+    "drop": 400,
+    "bbh": 400,
+    "mmlu_pro": 400,
+    "humaneval": 131,
+    "mbpp": 341,
+    "hotpotqa": 400,
+    "ifeval": 400
+  },
+  "wrapper_settings": {
+    "chateval": {
+      "num_rounds": 2
+    },
+    "llm_debate": {
+      "rounds_num": 3,
+      "agents_num": 2
+    },
+    "camel": {
+      "max_rounds": 3
+    },
+    "autogen": {
+      "max_rounds": 5,
+      "critic_temperature": 0.7
+    },
+    "evoagent": {
+      "population_sizes": [
+        3,
+        6,
+        9
+      ],
+      "retain_each_stage": 1,
+      "final_answers": 5
+    }
+  }
+}

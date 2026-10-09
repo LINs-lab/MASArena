@@ -26,13 +26,10 @@ from typing_extensions import override
 from openai.types.completion_usage import CompletionUsage
 import yaml
 import asyncio
-import inspect
 
-from mas_arena.utils.llm_utils import call_model
 from mas_arena.agents.base import AgentSystem, AgentSystemRegistry
 from mas_arena.agents.reformulator import prepare_response, truncate_observation
 from mas_arena.utils.openai_compat import normalize_openai_api_base
-from mas_arena.utils.score import question_scorer
 from mas_arena.utils.llm_utils import RetryWrapper
 from mas_arena.utils.env import (
     DEFAULT_MODEL_NAME,
@@ -72,6 +69,7 @@ from mas_arena.agents.agent_core import (
 )
 
 from mas_arena.agents.base import logger
+from mas_arena.agents.workflow_protocol import request_settings
 
 # 加载prompts
 prompts_path = os.path.join(
@@ -119,15 +117,15 @@ class BenchAgent(AgentSystem):
     
     def __init__(
         self,
-        model: str = DEFAULT_MODEL_NAME,
+        model: Optional[str] = None,
         manager_tools: Optional[List[Union[str, Tool]]] = None,
         search_tools: Optional[List[Union[str, Tool]]] = None,
         memory: Optional[str] = None,
         api_key: Optional[str] = None,
         api_base: Optional[str] = None,
-        max_steps: int = 15,  
-        search_max_steps: int = 10,
-        verbosity_level: int = 2,
+        max_steps: Optional[int] = None,
+        search_max_steps: Optional[int] = None,
+        verbosity_level: Optional[int] = None,
         additional_instructions: Optional[str] = None,
         name: str = "bench_agent",
         **kwargs
@@ -149,43 +147,38 @@ class BenchAgent(AgentSystem):
             name: 代理名称
             **kwargs: 其他配置参数
         """
-        # 构建配置
-        frame = inspect.currentframe()
-        args_info = inspect.getargvalues(frame)
-        init_args = {key: args_info.locals[key] for key in args_info.args}
-
-        registry_config = kwargs.pop("config", {})
-        init_args.update(kwargs)
-
-        print("Initializing BenchAgent with parameters:")
-        self.benchmark_name = registry_config.get("evaluator")
-
-        if model == "gpt-4o-mini" and registry_config.get("model_name"):
-            model = registry_config.get("model_name")
-
-        final_config = registry_config.copy()
-        final_config.update({
-            "model_name": model,
-            "api_key": api_key,
-            "api_base": api_base,
-            "max_steps": max_steps,
-            "search_max_steps": search_max_steps,
-            "verbosity_level": verbosity_level,
-            "additional_instructions": additional_instructions,
-            **kwargs,
-        })
-        
-        # 调用父类构造函数
+        # Explicit arguments override registry values; omitted defaults do not.
+        registry_config = dict(kwargs.pop("config", {}) or {})
+        final_config = {
+            "model_name": get_model_name(DEFAULT_MODEL_NAME), "max_steps": 15,
+            "search_max_steps": 10, "verbosity_level": 2,
+            **registry_config, **kwargs,
+        }
+        explicit = {
+            "model_name": model, "api_key": api_key, "api_base": api_base,
+            "max_steps": max_steps, "search_max_steps": search_max_steps,
+            "verbosity_level": verbosity_level, "additional_instructions": additional_instructions,
+        }
+        final_config.update({key: value for key, value in explicit.items() if value is not None})
+        self.benchmark_name = final_config.get("evaluator")
         super().__init__(name, final_config)
-
         if manager_tools is None:
             manager_tools = final_config.get("manager_tools")
         if search_tools is None:
             search_tools = final_config.get("search_tools")
 
-        self.manager_tools_config = manager_tools or ["python_interpreter"]
-        self.search_tools_config = search_tools or ["search", "browser", "wikipedia"]
-        self.memory_type = memory
+        self.manager_tools_config = manager_tools if manager_tools is not None else ["python_interpreter"]
+        if search_tools is None:
+            if self.benchmark_name in {"hotpotqa", "gaia"}:
+                search_tools = [
+                    "audio_inspector", "visual_inspector", "search", "browser", "wikipedia",
+                    "crawler_read", "crawler_archive_search", "csv_extractor", "markdown_converter",
+                    "sheet_extractor", "text_extractor", "zip_extractor",
+                ]
+            else:
+                search_tools = []
+        self.search_tools_config = search_tools
+        self.memory_type = memory if memory is not None else final_config.get("memory")
         
         # 初始化组件
         self._initialize_model()
@@ -221,31 +214,23 @@ class BenchAgent(AgentSystem):
             self.config.get("api_base") or get_openai_api_base(),
             "https://api.openai.com/v1",
         )
-        model_name = get_model_name(self.config.get("model_name", DEFAULT_MODEL_NAME))
+        model_name = self.config.get("model_name") or get_model_name(DEFAULT_MODEL_NAME)
         
         if not api_key:
             raise ValueError(
                 "API key is required. Provide it in constructor or set OPENAI_API_KEY environment variable."
             )
         
-        # 创建基础LLM模型
-        base_llm = OpenAIServerModel(
-            model_id=model_name,
-            api_base=api_base,
-            api_key=api_key,
-            timeout=int(os.getenv("OPENAI_API_TIMEOUT", "300")),
-        )
-        # 创建用于代理的LLM模型
-        self.llm = OpenAIServerModel(
+        parameters = request_settings(self.config)
+        parameters["max_completion_tokens"] = parameters.pop("max_tokens")
+        self.llm = RetryWrapper(OpenAIServerModel(
             model_id=model_name,
             custom_role_conversions={"tool-call": "assistant", "tool-response": "user"},
-            max_completion_tokens=8192,
             api_base=api_base,
             api_key=api_key,
-        )
-        
-        # 包装重试逻辑
-        self.llm = RetryWrapper(base_llm)
+            timeout=int(self.config.get("timeout", os.getenv("OPENAI_API_TIMEOUT", "300"))),
+            **parameters,
+        ))
 
     def _initialize_tools(self):
         """根据配置初始化工具"""
@@ -434,6 +419,11 @@ Handles complex multi-step problems, writes Python code, and processes data."""
         """关闭资源"""
         if hasattr(self.llm, "aclose"):
             await self.llm.aclose()
+        else:
+            if hasattr(self.llm, "client"):
+                self.llm.client.close()
+            if hasattr(self.llm, "async_client"):
+                await self.llm.async_client.close()
         for tools_list in (getattr(self, "search_tools", []), getattr(self, "manager_tools", [])):
             for tool in tools_list:
                 bi = getattr(tool, "browser_instance", None)
@@ -446,7 +436,7 @@ Handles complex multi-step problems, writes Python code, and processes data."""
     @override
     async def run_agent(self, problem: Dict[str, Any], **kwargs) -> Dict[str, Any]:
         """运行代理系统，这是从原始smolagents.py复制过来的核心逻辑"""
-        self.execution_log = []
+        usage_start = self._usage_totals()
         search_keywords = ""
         
         # 创建增强的问题描述
@@ -481,112 +471,22 @@ Task:
         if "context" in kwargs:
             augmented_question += f"\n\nContext: {kwargs['context']}"
         
-        try:
-            if not self.agent:
-                raise RuntimeError("Agent not properly initialized")
-            
-            additional_knowledge = ""
-            if self.meta_memory is not None:
-                template_str = prompts["build_search_keywords_prompt"]
-                template = Template(template_str)
-                
-                build_search_keywords_prompt = template.substitute(
-                    question=problem["problem"], true_answer=problem["solution"]
-                )
-                
-                search_keywords = await asyncio.to_thread(
-                    call_model, build_search_keywords_prompt, self.config.get("model_name", "gpt-4o-mini")
-                )
-                
-                try:
-                    successful_trajectories, _, insights = (
-                        await self.meta_memory.retrieve_memory(
-                            task_search_keywords=search_keywords,
-                            task_question=problem["problem"],
-                            successful_topk=get_env_int("MAS_RL_SUCCESSFUL_TOPK", 2),
-                            failed_topk=get_env_int("MAS_RL_FAILED_TOPK", 1),
-                            insight_topk=get_env_int("MAS_RL_INSIGHTS_TOPK", 3),
-                            threshold=get_env_float("MAS_RL_SIMILARITY_THRESHOLD", 0.3),
-                        )
-                    )
-                    
-                    additional_knowledge += "\n\n".join([insight for insight in insights])
-                    logger.info(f"Retrieved {len(successful_trajectories)} successful trajectories and {len(insights)} insights")
-                    
-                except Exception as e:
-                    additional_knowledge = None
-                    logger.error(f"Error retrieving memory: {str(e)}")
-            
-            additional_args = {"additional_knowledge": additional_knowledge}
-            result = await asyncio.to_thread(self._run_agent_sync, augmented_question, additional_args)
-            
-            final_answer = self.extract_final_answer(result)
-            
-            # 语义匹配检查
-            semantic_match_prompt = prompts["semantic_match_prompt"].format(
-                question=problem["problem"],
-                prediction=final_answer,
-                true_answer=problem["solution"],
-            )
-            semantic_check = await asyncio.to_thread(
-                call_model,
-                query=semantic_match_prompt, 
-                model_name=self.config.get("model_name", "gpt-4o-mini")
-            )
-            
-            # 如果答案不正确，尝试改进
-            if (not question_scorer(final_answer, problem["solution"])) or (semantic_check == "false"):
-                final_answer = await self._retry_with_suggestions(
-                    problem, augmented_question, additional_knowledge, final_answer
-                )
-            
-            # 构建对话历史
-            conversation_messages = self._extract_conversation_history(augmented_question, final_answer, problem_id=problem.get("id", ""))
-            self.conversation_history.extend(conversation_messages)
+        return await self.run_agent_step(
+            augmented_question, {"id": problem.get("id", "")}, usage_start=usage_start
+        )
 
-            # 提取步骤信息
-            manager_agent_steps, search_agent_steps = self._extract_agent_steps()
-            
-            # 计算最终分数
-            score = 1.0 if question_scorer(final_answer, problem["solution"]) else 0.0
-            is_correct = score == 1.0
-            
-            return {
-                "messages": conversation_messages,
-                "final_answer": final_answer,
-                "extracted_answer": final_answer, # Alias for BenchmarkRunner compatibility
-                "score": score,
-                "is_correct": is_correct,
-                "manager_agent_steps": manager_agent_steps,
-                "search_agent_steps": search_agent_steps,
-                "search_keywords": search_keywords,
-            }
-            
-        except Exception as e:
-            error_message = f"Error running BenchAgent: {str(e)}"
-            error_ai_message = {
-                "content": error_message,
-                "name": "bench_agent_error",
-                "role": "assistant",
-                "message_type": "error_response",
-                "usage_metadata": None,
-            }
-            return {
-                "messages": [error_ai_message],
-                "final_answer": error_message,
-                "error": str(e),
-            }
-    
-    async def run_agent_step(self, augmented_question: str, additional_args: Dict[str, Any]) -> Dict[str, Any]:
+    async def run_agent_step(self, augmented_question: str, additional_args: Dict[str, Any], *, usage_start=None) -> Dict[str, Any]:
         """
         简化版单步运行（类似 llm.invoke）
         - 输入完整的 prompt（augmented_question）
         - 保留工具调用、记忆检索等能力
         - 不做答案校验/重试，直接返回一次运行结果
         """
+        self._usage_start = self._usage_totals() if usage_start is None else usage_start
         self.execution_log = []
         search_keywords = ""
-        additional_args = dict(additional_args or {})
+        additional_args = {key: value for key, value in (additional_args or {}).items()
+                           if key not in {"solution", "expected_answer", "answer", "reference_answer", "ground_truth"}}
         additional_knowledge = ""
 
         # 在单步模式也附加格式提示，确保最终答案符合基准要求
@@ -596,17 +496,9 @@ Task:
         # 如启用记忆，先生成搜索关键词并检索相关记忆
         if self.meta_memory is not None:
             try:
-                template_str = prompts["build_search_keywords_prompt"]
-                template = Template(template_str)
-                build_search_keywords_prompt = template.substitute(
-                    question=augmented_question, true_answer=additional_args.get("expected_answer", "")
-                )
-
-                search_keywords = await asyncio.to_thread(
-                    call_model,
-                    build_search_keywords_prompt,
-                    self.config.get("model_name", "gpt-4o-mini"),
-                )
+                search_keywords = await self.llm.acall([{
+                    "role": "user", "content": "Generate concise memory-retrieval keywords for this task:\n" + augmented_question,
+                }])
 
                 successful_trajectories, _, insights = await self.meta_memory.retrieve_memory(
                     task_search_keywords=search_keywords,
@@ -651,7 +543,7 @@ Task:
                 "name": "bench_agent_error",
                 "role": "assistant",
                 "message_type": "error_response",
-                "usage_metadata": None,
+                "usage_metadata": self._extract_token_usage_from_agent(),
             }
             return {
                 "messages": [error_ai_message],
@@ -662,56 +554,6 @@ Task:
     def _run_agent_sync(self, augmented_question: str, additional_args: Dict[str, Any]) -> Any:
         """同步运行代理"""
         return self.agent.run(augmented_question, additional_args=additional_args)
-
-    async def _retry_with_suggestions(
-        self, problem: Dict[str, Any], augmented_question: str, 
-        additional_knowledge: str, first_answer: str
-    ) -> str:
-        """基于失败分析重试执行"""
-        try:
-            # 提取步骤信息用于分析
-            manager_agent_steps, search_agent_steps = self._extract_agent_steps()
-            
-            annotated_example = {
-                "question": problem["problem"],
-                "prediction": first_answer,
-                "ground_truth": problem["solution"],
-                "manager_agent_steps": manager_agent_steps,
-                "search_agent_steps": search_agent_steps,
-            }
-            
-            # 生成改进建议
-            suggestion_prompt = prompts["failure_attribution_and_suggestion_prompt"].format(
-                knowledge=additional_knowledge, agent_log=str(annotated_example)
-            )
-            
-            suggestion = await asyncio.to_thread(
-                call_model,
-                query=suggestion_prompt,
-                model_name=self.config.get("model_name", "gpt-4o-mini")
-            )
-            
-            logger.info(f"Generated suggestion: {suggestion}")
-            
-            # 解析建议
-            manager_suggestion, search_suggestion = self._parse_suggestions(suggestion)
-            additional_args = {}
-            if manager_suggestion:
-                additional_args["manager_suggestion"] = manager_suggestion
-            if search_suggestion:
-                additional_args["search_suggestion"] = search_suggestion
-            
-            # 如果解析失败，使用原始建议
-            if not additional_args and suggestion:
-                additional_args["suggestion"] = suggestion
-            
-            # 重新运行
-            final_result = self.agent.run(augmented_question, additional_args=additional_args)
-            return self.extract_final_answer(final_result)
-            
-        except Exception as e:
-            logger.error(f"Error in retry with suggestions: {e}")
-            return first_answer
 
     def _extract_agent_steps(self) -> tuple:
         """提取代理步骤信息"""
@@ -920,26 +762,21 @@ Do not add any information that is not present in the file."""
         except Exception as e:
             return f"\n[File: {file_path}]\n Error processing file: {str(e)}\n"
 
-    def _extract_token_usage_from_agent(self, problem_id: str = "") -> Optional[CompletionUsage]:
-        """估算token使用情况"""
-        try:
-            prompt_tokens = 0
-            completion_tokens = 0
-            for worker in self.workers:
-                monitor = worker.agent.monitor
-                prompt_tokens += monitor.total_input_token_count
-                completion_tokens += monitor.total_output_token_count
+    def _usage_totals(self) -> tuple[int, int]:
+        # Manager and search share one model monitor; count each monitor once.
+        monitors = {id(worker.agent.monitor): worker.agent.monitor for worker in self.workers}
+        return (sum(m.total_input_token_count for m in monitors.values()),
+                sum(m.total_output_token_count for m in monitors.values()))
 
-            id_tag = f" id={problem_id}" if problem_id else ""
-            logger.info(
-                f"Token usage{id_tag} - Input: {prompt_tokens}, Output: {completion_tokens}, Total: {prompt_tokens + completion_tokens}"
-            )
-            return CompletionUsage(
-                prompt_tokens=prompt_tokens,
-                completion_tokens=completion_tokens,
-                total_tokens=prompt_tokens + completion_tokens,
-            )
-        except Exception:
+    def _extract_token_usage_from_agent(self, problem_id: str = "") -> Optional[CompletionUsage]:
+        """Recorded input/output tokens for this invocation, including tool calls."""
+        try:
+            incoming, outgoing = self._usage_totals()
+            start_in, start_out = getattr(self, "_usage_start", (0, 0))
+            incoming, outgoing = incoming - start_in, outgoing - start_out
+            return CompletionUsage(prompt_tokens=incoming, completion_tokens=outgoing,
+                                   total_tokens=incoming + outgoing)
+        except (AttributeError, TypeError):
             return None
 
     def _extract_conversation_history(self, query: str, final_answer: Any, problem_id: str = "") -> List[Dict[str, Any]]:

@@ -51,21 +51,10 @@ class MathEvaluator(BaseEvaluator):
 
         # Initialize run evaluator for LangSmith compatibility
         self.run_evaluator = RunEvaluator()
-        self._train_data: Optional[List[dict]] = None
-        self._dev_data: Optional[List[dict]] = None
-        self._test_data: Optional[List[dict]] = None
 
     def _load_data(self):
-        self._test_data = self._load_dateset_from_path(f"data/{self.name}_test.jsonl")
-        import numpy as np
-
-        np.random.seed(42)
-        permutation = np.random.permutation(len(self._test_data))
-        full_test_data = self._test_data
-        # self._dev_data = [full_test_data[idx] for idx in permutation[:50]]
-        # self._test_data = [full_test_data[idx] for idx in permutation[50:150]]
-        self._dev_data = [full_test_data[idx] for idx in permutation[:20]]
-        self._test_data = [full_test_data[idx] for idx in permutation[20:60]]
+        # The runner owns fixed-split sampling; evaluation must use its selected file.
+        self._test_data = self._load_dateset_from_path(self.data_path)
 
     @classmethod
     def from_config(cls, name: str, config: Dict[str, Any] = None):
@@ -81,6 +70,7 @@ class MathEvaluator(BaseEvaluator):
         Returns:
             The extracted answer
         """
+        text = "" if text is None else str(text)
         # Look for LaTeX boxed answers first
         pattern = r"\\boxed{((?:[^{}]|{[^{}]*})*)}"
         boxed_matches = re.findall(pattern, text, re.DOTALL)
@@ -123,6 +113,9 @@ class MathEvaluator(BaseEvaluator):
         Returns:
             True if the expressions are equivalent, False otherwise
         """
+        if prediction is None or reference is None or not str(prediction).strip() or not str(reference).strip():
+            return False
+
         # Direct string comparison
         if str(prediction) == str(reference):
             return True
@@ -134,7 +127,7 @@ class MathEvaluator(BaseEvaluator):
                 reference_val = self.parse_digits(reference)
                 # Check if both values are not None before using isclose
                 if prediction_val is not None and reference_val is not None:
-                    return isclose(prediction_val, reference_val, abs_tol=1e-3)
+                    return isclose(prediction_val, reference_val, rel_tol=0, abs_tol=1e-3)
         except ValueError:
             pass
 
@@ -314,7 +307,7 @@ class MathEvaluator(BaseEvaluator):
 
         try:
             # Numerical evaluation
-            if isclose(N(a_parsed), N(b_parsed), abs_tol=1e-3):
+            if isclose(N(a_parsed), N(b_parsed), rel_tol=0, abs_tol=1e-3):
                 return True
         except (TypeError, ValueError, Exception):
             # This can fail if expressions are not numeric
@@ -397,9 +390,11 @@ class MathEvaluator(BaseEvaluator):
         Returns:
             Evaluation results dictionary
         """
-        # Extract the final answer from messages
-        all_messages = run_result.get("messages", [])
-        final_answer = self.extract_final_answer(all_messages)
+        # A submitted final answer takes precedence over the conversation history.
+        final_answer = run_result.get("final_answer")
+        if "final_answer" not in run_result:
+            final_answer = self.extract_final_answer(run_result.get("messages", []))
+        final_answer = "" if final_answer is None else str(final_answer)
 
         if self.evaluate_type == 0:
             # Use the new calculate_score method
